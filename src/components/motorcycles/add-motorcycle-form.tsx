@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Save, XIcon, MotorcycleIcon as TitleIcon } from "lucide-react"; // Renomeado MotorcycleIcon para TitleIcon para evitar conflito
+import { CalendarIcon, Save, XIcon } from "lucide-react"; // Removido MotorcycleIcon as TitleIcon daqui
+import { MotorcycleIcon as TitleIcon } from '@/components/icons/motorcycle-icon'; // Importado o ícone customizado local
 import type { Motorcycle, MotorcycleStatus, MotorcycleType } from "@/lib/types";
-import { DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"; // Adicionado DialogFooter e DialogClose
+import { DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -276,10 +277,12 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
           />
           
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              <XIcon className="mr-2 h-4 w-4" />
-              Cancelar
-            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" onClick={onCancel}>
+                <XIcon className="mr-2 h-4 w-4" />
+                Cancelar
+              </Button>
+            </DialogClose>
             <Button type="submit">
               <Save className="mr-2 h-4 w-4" />
               Salvar Moto
@@ -290,3 +293,5 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
     </>
   );
 }
+
+    
