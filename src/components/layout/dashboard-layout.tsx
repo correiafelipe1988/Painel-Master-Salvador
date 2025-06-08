@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -21,8 +22,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings } from "lucide-react";
-import type { NavItem, StatusRapidoItem } from "@/lib/types";
+import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
@@ -32,16 +34,70 @@ const navItems: NavItem[] = [
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
 ];
 
-const statusRapidoItems: StatusRapidoItem[] = [
-  { label: "Disponíveis", subLabel: "Motos prontas", count: 23, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700" },
-  { label: "Alugadas", subLabel: "Em uso", count: 255, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700" },
-  { label: "Inadimplentes", subLabel: "Atrasadas", count: 0, bgColor: "bg-red-100", textColor: "text-red-700", badgeTextColor: "text-red-700" },
-  { label: "Manutenção", subLabel: "Em oficina", count: 13, bgColor: "bg-purple-100", textColor: "text-purple-700", badgeTextColor: "text-purple-700" },
-  { label: "Recolhidas", subLabel: "Aguardando", count: 36, bgColor: "bg-orange-100", textColor: "text-orange-700", badgeTextColor: "text-orange-700" },
+const initialStatusRapidoItems: StatusRapidoItemType[] = [
+  { label: "Disponíveis", subLabel: "Motos prontas", count: 0, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700", statusKey: 'active' },
+  { label: "Alugadas", subLabel: "Em uso", count: 0, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700", statusKey: 'alugada' },
+  { label: "Inadimplentes", subLabel: "Atrasadas", count: 0, bgColor: "bg-red-100", textColor: "text-red-700", badgeTextColor: "text-red-700", statusKey: 'inadimplente' },
+  { label: "Manutenção", subLabel: "Em oficina", count: 0, bgColor: "bg-purple-100", textColor: "text-purple-700", badgeTextColor: "text-purple-700", statusKey: 'manutencao' },
+  { label: "Recolhidas", subLabel: "Aguardando", count: 0, bgColor: "bg-orange-100", textColor: "text-orange-700", badgeTextColor: "text-orange-700", statusKey: 'recolhida' },
 ];
+
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
+  const [dynamicStatusRapidoItems, setDynamicStatusRapidoItems] = useState<StatusRapidoItemType[]>(initialStatusRapidoItems);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+
+  useEffect(() => {
+    setIsLoadingStatus(true);
+    const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
+      if (Array.isArray(motosFromDB)) {
+        // Garantir que status undefined seja tratado como 'alugada'
+        const updatedMotorcycles = motosFromDB.map(moto =>
+          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+        );
+        setAllMotorcycles(updatedMotorcycles);
+      } else {
+        console.warn("Data from subscribeToMotorcycles (dashboard layout) was not an array:", motosFromDB);
+        setAllMotorcycles([]);
+      }
+      setIsLoadingStatus(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (isLoadingStatus || !Array.isArray(allMotorcycles)) {
+      // Mantém as contagens em 0 ou o valor anterior enquanto carrega ou se não houver dados
+      setDynamicStatusRapidoItems(prevItems => prevItems.map(item => ({ ...item, count: 0 })));
+      return;
+    }
+
+    const counts: Record<MotorcycleStatus, number> = {
+      active: 0,
+      alugada: 0,
+      inadimplente: 0,
+      manutencao: 0,
+      recolhida: 0,
+      relocada: 0, // Incluído para contagem completa, mesmo que não exibido por padrão
+    };
+
+    allMotorcycles.forEach(moto => {
+      // O status já deve ser 'alugada' por padrão se undefined, devido ao useEffect anterior
+      if (moto.status && counts[moto.status] !== undefined) {
+        counts[moto.status]++;
+      }
+    });
+
+    setDynamicStatusRapidoItems(
+      initialStatusRapidoItems.map(item => ({
+        ...item,
+        count: counts[item.statusKey as MotorcycleStatus] || 0,
+      }))
+    );
+  }, [allMotorcycles, isLoadingStatus]);
+
 
   return (
     <SidebarProvider defaultOpen>
@@ -83,14 +139,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <SidebarSeparator className="my-2" />
           <div className="p-2 space-y-2">
             <p className="px-2 py-1 text-xs font-semibold text-sidebar-foreground/70">STATUS RÁPIDO</p>
-            {statusRapidoItems.map((item) => (
+            {dynamicStatusRapidoItems.map((item) => (
               <div key={item.label} className={cn("flex items-center justify-between p-2.5 rounded-md", item.bgColor)}>
                 <div>
                   <p className={cn("text-sm font-medium", item.textColor)}>{item.label}</p>
                   <p className={cn("text-xs", item.textColor, "opacity-80")}>{item.subLabel}</p>
                 </div>
                 <Badge variant="secondary" className={cn("bg-background/70 font-semibold", item.badgeTextColor)}>
-                  {item.count}
+                  {isLoadingStatus ? "..." : item.count}
                 </Badge>
               </div>
             ))}

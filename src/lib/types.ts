@@ -13,7 +13,8 @@ export interface Kpi {
 }
 
 export interface ChartDataPoint {
-  date: string;
+  date?: string; // Mantido opcional para compatibilidade com gráficos mensais que usam 'month'
+  month?: string; // Para gráficos mensais ou diários formatados como 'dd/MM'
   count: number;
 }
 
@@ -58,10 +59,13 @@ export interface StatusRapidoItem {
   textColor: string;
   badgeBgColor?: string;
   badgeTextColor?: string;
+  statusKey?: MotorcycleStatus; // Adicionado para facilitar o mapeamento
 }
 
 export type MotorcyclePageFilters = {
   status: MotorcycleStatus | 'all';
   model: string | 'all';
   searchTerm: string;
+  data_ultima_mov?: Date | null; // Adicionado para filtro de data
 };
+
