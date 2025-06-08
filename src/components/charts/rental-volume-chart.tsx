@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContaine
 import { ChartContainer, ChartTooltipContent, ChartLegendContent, type ChartConfig } from "@/components/ui/chart";
 
 export interface MonthlyRentalDataPoint {
-  month: string; // "Jan", "Fev", etc.
+  month: string; // "Jan", "Fev", etc. or "dd/MM" for daily
   novas: number;
   usadas: number;
 }
@@ -13,7 +13,7 @@ export interface MonthlyRentalDataPoint {
 const chartConfig = {
   novas: {
     label: "Novas",
-    color: "hsl(var(--chart-5))", // Green
+    color: "hsl(var(--chart-2))", // Changed from chart-5 (Green) to chart-2 (Blue)
   },
   usadas: {
     label: "Usadas",

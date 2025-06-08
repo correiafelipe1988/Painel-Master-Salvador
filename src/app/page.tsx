@@ -15,7 +15,7 @@ import { format, isValid, parseISO, getMonth, getYear, subDays, eachDayOfInterva
 import { ptBR } from 'date-fns/locale';
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
-import { RentalVolumeChart, type MonthlyRentalDataPoint } from "@/components/charts/rental-volume-chart"; // Stays as MonthlyRentalDataPoint, we'll adapt
+import { RentalVolumeChart, type MonthlyRentalDataPoint } from "@/components/charts/rental-volume-chart";
 import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
 import { TotalRentalsVolumeChart } from "@/components/charts/total-rentals-volume-chart";
 import type { ChartDataPoint } from "@/lib/types";
@@ -167,7 +167,6 @@ export default function DashboardPage() {
   // Update Daily Charts Data (Last 30 days)
   useEffect(() => {
     if (isLoading || !Array.isArray(allMotorcycles) || allMotorcycles.length === 0) {
-      // Set to empty array or null to show loading/no data state in charts
       setDailyRecoveryData([]);
       setDailyRentalData([]);
       setDailyRelocatedData([]);
@@ -180,7 +179,9 @@ export default function DashboardPage() {
     const dateInterval = eachDayOfInterval({ start: startDate, end: endDate });
 
     const dailyDatesFormatted = dateInterval.map(d => format(d, 'yyyy-MM-dd'));
+    // Use 'dd/MM' for display, matching the ChartDataPoint type expectation for 'month' field in this context
     const dailyDisplayDates = dateInterval.map(d => format(d, 'dd/MM', { locale: ptBR }));
+
 
     const dailyRecoveryCounts: { [date: string]: number } = {};
     const dailyRentalNovasCounts: { [date: string]: number } = {};
@@ -205,7 +206,7 @@ export default function DashboardPage() {
         if (moto.status === 'alugada') {
           if (moto.type === 'nova') dailyRentalNovasCounts[movDateStr]++;
           else if (moto.type === 'usada') dailyRentalUsadasCounts[movDateStr]++;
-          else dailyRentalNovasCounts[movDateStr]++; // Default to nova if type undefined
+          else dailyRentalNovasCounts[movDateStr]++; 
           dailyTotalRentalsCounts[movDateStr]++;
         }
         if (moto.status === 'relocada') {
@@ -215,6 +216,7 @@ export default function DashboardPage() {
       }
     });
     
+    // For daily charts, the 'month' property of ChartDataPoint/MonthlyRentalDataPoint will hold 'dd/MM'
     setDailyRecoveryData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyRecoveryCounts[dailyDatesFormatted[i]] })));
     setDailyRentalData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, novas: dailyRentalNovasCounts[dailyDatesFormatted[i]], usadas: dailyRentalUsadasCounts[dailyDatesFormatted[i]] })));
     setDailyRelocatedData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyRelocatedCounts[dailyDatesFormatted[i]] })));
@@ -311,7 +313,7 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-6 w-6 text-green-600" />
+              <CalendarDays className="h-6 w-6 text-blue-600" /> 
                <div>
                 <CardTitle className="font-headline">Volume Diário - Motos Alugadas</CardTitle>
                 <CardDescription className="flex items-center gap-1 text-sm">
@@ -362,28 +364,9 @@ export default function DashboardPage() {
       
       <Separator className="my-8" />
       
-      <Card className="shadow-lg">
-        <CardHeader>
-            <CardTitle>Próximos Passos</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <p className="text-muted-foreground">
-                Esta é a visão principal do dashboard. Para análises mensais detalhadas e outros relatórios, 
-                acesse a página de <Link href="/relatorios" className="text-primary hover:underline">Relatórios</Link>.
-            </p>
-             <div className="mt-6 p-6 border rounded-lg bg-muted/30 shadow-inner min-h-[200px] flex items-center justify-center">
-                <p className="text-muted-foreground text-center">
-                    Outros componentes e visualizações de dados podem ser adicionados aqui conforme necessário.
-                    <br />
-                    (Ex: Alertas importantes, atalhos rápidos, etc.)
-                </p>
-            </div>
-        </CardContent>
-      </Card>
+      {/* Próximos Passos Card Removido */}
 
     </DashboardLayout>
   );
 }
-    
-
     
