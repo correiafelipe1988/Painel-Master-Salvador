@@ -1,38 +1,58 @@
 
 "use client"
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts"
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import type { ChartConfig } from "@/components/ui/chart";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
-import { translateMotorcycleStatus } from "@/lib/utils"; // Adicionaremos esta função
+import { ChartContainer, ChartTooltipContent, ChartLegendContent } from "@/components/ui/chart"
 
-export interface StatusDistributionDataPoint {
-  status: string; // O nome do status (ex: "Alugada")
-  count: number;
-  fill: string; // Cor para a barra (ex: "hsl(var(--chart-1))")
+export interface StatusDistributionPieDataPoint {
+  name: string;      // Translated status name (e.g., "Alugada")
+  value: number;     // Percentage value for the pie slice (e.g., 45.5 for 45.5%)
+  count: number;     // Raw count of motorcycles in this status
+  fill: string;      // Color for the pie slice (e.g., "hsl(var(--chart-1))")
 }
 
-// O chartConfig aqui pode ser usado para a legenda ou tooltip, se necessário,
-// mas as cores das barras virão da propriedade 'fill' nos dados.
-const chartConfig = {
-  count: {
-    label: "Quantidade",
-  },
-} satisfies ChartConfig;
+const chartConfig = {} satisfies ChartConfig; // Simplified, colors come from data
 
-// Mapeamento de status para cores do tema
-const statusColors: Record<string, string> = {
-  'active': 'var(--chart-5)', // Verde para Disponível/Ativa
-  'alugada': 'var(--chart-2)', // Azul para Alugada
-  'inadimplente': 'hsl(var(--destructive))', // Vermelho para Inadimplente
-  'manutencao': 'var(--chart-4)', // Amarelo/Laranja para Manutenção (usando chart-4 como exemplo)
-  'recolhida': 'var(--chart-1)', // Azul/Teal para Recolhida
-  'relocada': 'var(--chart-3)', // Laranja para Relocada
-  'N/Definido': 'hsl(var(--muted-foreground))',
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload as StatusDistributionPieDataPoint;
+    return (
+      <div className="rounded-lg border bg-background p-2.5 shadow-lg">
+        <p className="text-sm font-medium text-foreground">{`${data.name}`}</p>
+        <p className="text-xs text-muted-foreground">{`Percentual: ${data.value.toFixed(1)}%`}</p>
+        <p className="text-xs text-muted-foreground">{`Contagem: ${data.count}`}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.6; // Adjust label position
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  if (percent * 100 < 3) return null; // Don't show label for very small slices
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="hsl(var(--primary-foreground))" // Use a contrasting color for text on slices
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize="10px"
+      fontWeight="medium"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
 };
 
 
-export function StatusDistributionChart({ data }: { data: StatusDistributionDataPoint[] | null }) {
+export function StatusDistributionChart({ data }: { data: StatusDistributionPieDataPoint[] | null }) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground">
@@ -40,58 +60,57 @@ export function StatusDistributionChart({ data }: { data: StatusDistributionData
       </div>
     );
   }
+  
+  // Prepare chartConfig dynamically for ChartLegendContent based on input data
+  const dynamicChartConfig: ChartConfig = data.reduce((acc, item) => {
+    // Create a key for the config, e.g., 'Alugada', replacing spaces for safety if any
+    const configKey = item.name.replace(/\s+/g, '_'); 
+    acc[configKey] = { label: item.name, color: item.fill };
+    return acc;
+  }, {} as ChartConfig);
 
-  // Ordenar os dados para uma exibição mais consistente, se desejado
-  const sortedData = [...data].sort((a, b) => b.count - a.count);
+  // Data for legend needs to match what ChartLegendContent expects: array of objects with 'value' (label) and 'color'
+   const legendPayload = data.map(item => ({
+    value: item.name, // The label for the legend item
+    color: item.fill, // The color for the legend item
+    type: 'square', // Optional: shape of the legend icon
+  }));
 
 
   return (
     <div className="h-[350px] w-full">
-      <ChartContainer config={chartConfig} className="h-full w-full">
+      <ChartContainer config={dynamicChartConfig} className="h-full w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart 
-            data={sortedData} 
-            layout="vertical"
-            margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-            <XAxis 
-              type="number" 
-              stroke="hsl(var(--muted-foreground))" 
-              fontSize={10} 
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-              domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.1) +1, 5)]}
+          <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--accent) / 0.1)' }}/>
+            <Legend 
+              content={<ChartLegendContent payload={legendPayload} />} 
+              verticalAlign="bottom" 
+              align="center"
+              wrapperStyle={{ paddingTop: '20px' }}
             />
-            <YAxis
-              dataKey="status"
-              type="category"
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={10}
-              axisLine={false}
-              tickLine={false}
-              width={80} // Ajuste a largura para caber os rótulos
-              tickFormatter={(value) => value.length > 12 ? `${value.substring(0,10)}...` : value}
-            />
-            <Tooltip
-              cursor={{ fill: 'hsl(var(--accent) / 0.1)' }}
-              content={<ChartTooltipContent indicator="dot" />}
-            />
-            <Bar dataKey="count" nameKey="Quantidade" radius={[0, 4, 4, 0]} barSize={20}>
-              {sortedData.map((entry, index) => (
-                <LabelList 
-                  key={`label-${index}`}
-                  dataKey="count" 
-                  position="right" 
-                  style={{ fontSize: '10px', fill: 'hsl(var(--foreground))' }} 
-                  formatter={(value: number) => value > 0 ? value : null} 
-                />
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={renderCustomizedLabel}
+              outerRadius={100} // Adjust as needed
+              innerRadius={40} // Creates a donut chart effect, set to 0 for full pie
+              dataKey="value" // This is the percentage
+              nameKey="name" // This is the status name
+              stroke="hsl(var(--background))" // Border color for slices
+              strokeWidth={2}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
-            </Bar>
-          </BarChart>
+            </Pie>
+          </PieChart>
         </ResponsiveContainer>
       </ChartContainer>
     </div>
   )
 }
+
+    

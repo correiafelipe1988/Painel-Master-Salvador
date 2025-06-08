@@ -8,11 +8,11 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart, CalendarDays as PageCalendarIcon } from "lucide-react";
-import type { Motorcycle, Kpi, MotorcycleStatus, ChartDataPoint } from "@/lib/types";
+import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart as PagePieIcon, CalendarDays as PageCalendarIcon } from "lucide-react"; // Renomeado PieChart para PagePieIcon
+import type { Motorcycle, Kpi, MotorcycleStatus } from "@/lib/types";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { useToast } from "@/hooks/use-toast";
-import { StatusDistributionChart, type StatusDistributionDataPoint } from "@/components/charts/status-distribution-chart";
+import { StatusDistributionChart, type StatusDistributionPieDataPoint } from "@/components/charts/status-distribution-chart"; // Atualizado tipo de dado
 import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
 import { RentalVolumeChart, type MonthlyRentalDataPoint } from "@/components/charts/rental-volume-chart";
 import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
@@ -43,7 +43,7 @@ export default function RelatoriosPage() {
   const [kpiData, setKpiData] = useState<Kpi[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
-  const [statusDistributionData, setStatusDistributionData] = useState<StatusDistributionDataPoint[] | null>(null);
+  const [statusDistributionData, setStatusDistributionData] = useState<StatusDistributionPieDataPoint[] | null>(null); // Atualizado tipo de dado
   const { toast } = useToast();
 
   const [monthlyRecoveryData, setMonthlyRecoveryData] = useState<ChartDataPoint[] | null>(null);
@@ -71,47 +71,67 @@ export default function RelatoriosPage() {
   useEffect(() => {
     if (isLoading || !Array.isArray(allMotorcycles)) return;
 
+    // Logic for representative motorcycles (unique placa, most recent status)
+    const uniqueMotorcyclesByPlaca: { [placa: string]: Motorcycle } = {};
+    allMotorcycles.forEach(moto => {
+      if (!moto.placa) return;
+      const existingMoto = uniqueMotorcyclesByPlaca[moto.placa];
+      if (!existingMoto || 
+          (moto.data_ultima_mov && existingMoto.data_ultima_mov && new Date(moto.data_ultima_mov) > new Date(existingMoto.data_ultima_mov)) ||
+          (moto.data_ultima_mov && !existingMoto.data_ultima_mov)) {
+        uniqueMotorcyclesByPlaca[moto.placa] = moto;
+      } else if (!moto.data_ultima_mov && !existingMoto.data_ultima_mov) {
+         // If both current and existing lack date, keep existing (first one encountered based on original order)
+      }
+    });
+    const representativeMotorcycles = Object.values(uniqueMotorcyclesByPlaca);
+    const totalUniqueMotorcycles = representativeMotorcycles.length;
+
+
     const numericSelectedYear = parseInt(selectedYear, 10);
 
-    // KPIs calculation (geral, não depende do ano selecionado, exceto talvez para as descrições de tendência)
-    const totalMotos = allMotorcycles.length;
-    const motosAlugadas = allMotorcycles.filter(m => m.status === 'alugada').length;
-    const motosInadimplentes = allMotorcycles.filter(m => m.status === 'inadimplente').length;
-    const percInadimplencia = totalMotos > 0 ? (motosInadimplentes / totalMotos) * 100 : 0;
-    const taxaAlugadas = totalMotos > 0 ? (motosAlugadas / totalMotos) * 100 : 0;
-    const valorPendente = allMotorcycles
+    // KPIs calculation
+    const motosAlugadas = representativeMotorcycles.filter(m => m.status === 'alugada').length;
+    const motosInadimplentes = representativeMotorcycles.filter(m => m.status === 'inadimplente').length;
+    const percInadimplencia = totalUniqueMotorcycles > 0 ? (motosInadimplentes / totalUniqueMotorcycles) * 100 : 0;
+    const taxaAlugadas = totalUniqueMotorcycles > 0 ? (motosAlugadas / totalUniqueMotorcycles) * 100 : 0;
+    const valorPendente = representativeMotorcycles
       .filter(m => m.status === 'inadimplente' && typeof m.valorDiaria === 'number')
       .reduce((sum, moto) => sum + (moto.valorDiaria || 0), 0);
 
     setKpiData([
-      { title: "Total de Motos", value: totalMotos.toString(), icon: TrendingUp, description: "Frota ativa total", color: "text-blue-700", iconBgColor: "bg-blue-100", iconColor: "text-blue-700" },
+      { title: "Total de Motos Únicas", value: totalUniqueMotorcycles.toString(), icon: TrendingUp, description: "Frota ativa (placas únicas)", color: "text-blue-700", iconBgColor: "bg-blue-100", iconColor: "text-blue-700" },
       { title: "Motos Alugadas", value: motosAlugadas.toString(), icon: BarChartBig, description: `Taxa de Ocupação: ${taxaAlugadas.toFixed(0)}%`, color: "text-green-700", iconBgColor: "bg-green-100", iconColor: "text-green-700" },
       { title: "% Inadimplência", value: `${percInadimplencia.toFixed(1)}%`, icon: Clock, description: "Percentual de inadimplentes", color: "text-red-700", iconBgColor: "bg-red-100", iconColor: "text-red-700" },
       { title: "Valor Pendente", value: `R$ ${valorPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Download, description: "Total de diárias em aberto", color: "text-orange-700", iconBgColor: "bg-orange-100", iconColor: "text-orange-700" },
     ]);
 
-    // Status Distribution Chart (geral, não depende do ano selecionado)
+    // Status Distribution Pie Chart Data
     const statusCounts: Record<string, number> = {};
-    allMotorcycles.forEach(moto => {
+    representativeMotorcycles.forEach(moto => {
       const statusKey = moto.status || 'N/Definido';
       statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
     });
-    const distData = Object.entries(statusCounts).map(([status, count]) => ({
-      status: translateMotorcycleStatus(status as MotorcycleStatus | undefined),
-      count: count,
-      fill: statusColorsForChart[status as MotorcycleStatus || 'N/Definido'] || 'hsl(var(--muted-foreground))',
+
+    const pieData: StatusDistributionPieDataPoint[] = Object.entries(statusCounts)
+      .filter(([, count]) => count > 0) // Only include statuses with count > 0 for pie chart
+      .map(([statusKey, count]) => ({
+        name: translateMotorcycleStatus(statusKey as MotorcycleStatus | undefined),
+        value: totalUniqueMotorcycles > 0 ? parseFloat(((count / totalUniqueMotorcycles) * 100).toFixed(1)) : 0,
+        count: count,
+        fill: statusColorsForChart[statusKey as MotorcycleStatus || 'N/Definido'] || 'hsl(var(--muted-foreground))',
     }));
-    setStatusDistributionData(distData);
+    setStatusDistributionData(pieData);
 
 
-    // Monthly Charts Data (depende do ano selecionado)
+    // Monthly Charts Data (depende do ano selecionado, usa allMotorcycles para histórico)
     const recoveryCounts = Array(12).fill(0);
     const rentalNovasCounts = Array(12).fill(0);
     const rentalUsadasCounts = Array(12).fill(0);
     const relocatedCounts = Array(12).fill(0);
     const totalRentalsCounts = Array(12).fill(0);
 
-    allMotorcycles.forEach(moto => {
+    allMotorcycles.forEach(moto => { // Histórico usa allMotorcycles
       if (moto.data_ultima_mov) {
         try {
           const movDate = parseISO(moto.data_ultima_mov);
@@ -122,7 +142,7 @@ export default function RelatoriosPage() {
             if (moto.status === 'alugada') {
               if (moto.type === 'nova') rentalNovasCounts[monthIndex]++;
               else if (moto.type === 'usada') rentalUsadasCounts[monthIndex]++;
-              else rentalNovasCounts[monthIndex]++; // Default to nova if type undefined
+              else rentalNovasCounts[monthIndex]++; 
               totalRentalsCounts[monthIndex]++;
             }
             if (moto.status === 'relocada') {
@@ -214,10 +234,10 @@ export default function RelatoriosPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <PieChart className="h-6 w-6 text-primary" />
+              <PagePieIcon className="h-6 w-6 text-primary" />
               <div>
-                <CardTitle className="font-headline">Distribuição de Motos por Status</CardTitle>
-                <CardDescription>Contagem de motocicletas em cada status (geral).</CardDescription>
+                <CardTitle className="font-headline">Distribuição de Motos por Status (%)</CardTitle>
+                <CardDescription>Percentual de motocicletas únicas em cada status.</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -292,4 +312,6 @@ export default function RelatoriosPage() {
     </DashboardLayout>
   );
 }
+    
+
     
