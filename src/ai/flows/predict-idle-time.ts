@@ -1,7 +1,8 @@
+
 'use server';
 
 /**
- * @fileOverview Fluxo de IA para prever o tempo ocioso de motocicletas com base no status, tipo e filial.
+ * @fileOverview Fluxo de IA para prever o tempo ocioso de motocicletas com base no status, tipo e franqueado.
  *
  * - predictIdleTime - Prevê o tempo ocioso de uma motocicleta.
  * - PredictIdleTimeInput - Tipo de entrada para predictIdleTime.
@@ -16,7 +17,7 @@ const PredictIdleTimeInputSchema = z.object({
     .enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao'])
     .describe('O status atual da motocicleta.'),
   type: z.enum(['nova', 'usada']).describe('O tipo da motocicleta (nova ou usada).'),
-  filial: z.string().describe('A filial da motocicleta.'),
+  franqueado: z.string().describe('O franqueado da motocicleta.'), // Alterado de filial para franqueado
   data_ultima_mov: z.string().describe('A data da última movimentação da motocicleta. Formato: AAAA-MM-DD'),
 });
 
@@ -41,14 +42,14 @@ const predictIdleTimePrompt = ai.definePrompt({
   name: 'predictIdleTimePrompt',
   input: {schema: PredictIdleTimeInputSchema},
   output: {schema: PredictIdleTimeOutputSchema},
-  prompt: `Você é um assistente de IA que prevê o tempo ocioso de uma motocicleta com base em seu status atual, tipo, filial e data da última movimentação.
+  prompt: `Você é um assistente de IA que prevê o tempo ocioso de uma motocicleta com base em seu status atual, tipo, franqueado e data da última movimentação.
 
   Analise dados históricos e tendências atuais para estimar por quanto tempo a motocicleta permanecerá ociosa.
   Forneça um tempo ocioso previsto em dias e uma justificativa detalhada para a previsão, incluindo tendências identificadas.
 
   Status da Motocicleta: {{{status}}}
   Tipo da Motocicleta: {{{type}}}
-  Filial: {{{filial}}}
+  Franqueado: {{{franqueado}}}
   Data da Última Movimentação: {{{data_ultima_mov}}}
 
   Responda com o tempo ocioso previsto em dias e a justificativa para a previsão:

@@ -25,14 +25,14 @@ export type MotorcycleType = 'nova' | 'usada';
 
 export interface Motorcycle {
   id: string;
-  code: string;
+  placa: string; // Alterado de code para placa
   status: MotorcycleStatus;
   type: MotorcycleType;
-  filial: string;
+  franqueado: string; // Alterado de filial para franqueado
   data_ultima_mov: string; // YYYY-MM-DD
   tempo_ocioso_dias: number;
-  qrCodeUrl?: string; // Optional: URL to the QR code image or data
-  model?: string; // Added model property
+  qrCodeUrl?: string; // Mantido para dados, mas label na UI será CS
+  model?: string;
 }
 
 export interface NavItem {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -33,7 +34,7 @@ const formSchema = z.object({
   type: z.enum(['nova', 'usada'], {
     required_error: "O tipo é obrigatório.",
   }),
-  filial: z.string().min(1, "A filial é obrigatória."),
+  franqueado: z.string().min(1, "O franqueado é obrigatório."), // Alterado de filial para franqueado
   data_ultima_mov: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A data deve estar no formato AAAA-MM-DD."),
 });
 
@@ -51,7 +52,7 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
     defaultValues: {
       status: "active",
       type: "nova",
-      filial: "",
+      franqueado: "", // Alterado de filial para franqueado
       data_ultima_mov: new Date().toISOString().split('T')[0], 
     },
   });
@@ -60,7 +61,12 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
     setIsLoading(true);
     onPredictionResult(null); 
     try {
-      const input: PredictIdleTimeInput = values;
+      const input: PredictIdleTimeInput = {
+        status: values.status,
+        type: values.type,
+        franqueado: values.franqueado, // Alterado de filial para franqueado
+        data_ultima_mov: values.data_ultima_mov,
+      };
       const result = await predictIdleTime(input);
       onPredictionResult(result);
     } catch (error) {
@@ -126,12 +132,12 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
 
               <FormField
                 control={form.control}
-                name="filial"
+                name="franqueado" // Alterado de filial para franqueado
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Filial</FormLabel>
+                    <FormLabel>Franqueado</FormLabel> 
                     <FormControl>
-                      <Input placeholder="Ex: Salvador Centro" {...field} />
+                      <Input placeholder="Ex: Franqueado Salvador Centro" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

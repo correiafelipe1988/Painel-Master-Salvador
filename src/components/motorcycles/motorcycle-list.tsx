@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Download } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,12 +24,12 @@ import {
 import type { MotorcyclePageFilters } from '@/app/motorcycles/page';
 
 const mockMotorcycles: Motorcycle[] = [
-  { id: '1', code: 'MOTO001', status: 'active', type: 'nova', filial: 'Salvador Centro', data_ultima_mov: '2024-07-20', tempo_ocioso_dias: 2, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
-  { id: '2', code: 'MOTO002', status: 'inadimplente', type: 'usada', filial: 'Salvador Norte', data_ultima_mov: '2024-07-10', tempo_ocioso_dias: 12, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_y' },
-  { id: '3', code: 'MOTO003', status: 'manutencao', type: 'nova', filial: 'Salvador Centro', data_ultima_mov: '2024-07-15', tempo_ocioso_dias: 7, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
-  { id: '4', code: 'MOTO004', status: 'recolhida', type: 'usada', filial: 'Lauro de Freitas', data_ultima_mov: '2024-06-25', tempo_ocioso_dias: 27, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_z' },
-  { id: '5', code: 'MOTO005', status: 'active', type: 'nova', filial: 'Salvador Norte', data_ultima_mov: '2024-07-22', tempo_ocioso_dias: 0, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_y' },
-  { id: '6', code: 'MOTO006', status: 'relocada', type: 'usada', filial: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
+  { id: '1', placa: 'MOTO001', status: 'active', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-20', tempo_ocioso_dias: 2, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
+  { id: '2', placa: 'MOTO002', status: 'inadimplente', type: 'usada', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-10', tempo_ocioso_dias: 12, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_y' },
+  { id: '3', placa: 'MOTO003', status: 'manutencao', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-15', tempo_ocioso_dias: 7, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
+  { id: '4', placa: 'MOTO004', status: 'recolhida', type: 'usada', franqueado: 'Lauro de Freitas', data_ultima_mov: '2024-06-25', tempo_ocioso_dias: 27, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_z' },
+  { id: '5', placa: 'MOTO005', status: 'active', type: 'nova', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-22', tempo_ocioso_dias: 0, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_y' },
+  { id: '6', placa: 'MOTO006', status: 'relocada', type: 'usada', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
 ];
 
 const getStatusBadgeVariant = (status: MotorcycleStatus) => {
@@ -72,10 +72,9 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
       const statusMatch = filters.status === 'all' || moto.status === filters.status;
       const modelMatch = filters.model === 'all' || moto.model === filters.model;
       const searchTermMatch = filters.searchTerm === '' ||
-        moto.code.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        moto.filial.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        moto.placa.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        moto.franqueado.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
         (moto.model && moto.model.toLowerCase().includes(filters.searchTerm.toLowerCase()));
-      // Add other fields to search if needed, e.g., moto.type
       
       return statusMatch && modelMatch && searchTermMatch;
     });
@@ -95,17 +94,16 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
         <h3 className="text-lg font-semibold text-foreground">
           {`Motocicletas (${filteredMotorcycles.length} encontradas)`}
         </h3>
-        {/* Button "Exportar Dados" moved to PageHeader */}
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>QR</TableHead>
-              <TableHead>Código</TableHead>
+              <TableHead>CS</TableHead>
+              <TableHead>Placa</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>Filial</TableHead>
+              <TableHead>Franqueado</TableHead>
               <TableHead>Modelo</TableHead>
               <TableHead>Últ. Movimento</TableHead>
               <TableHead>Ociosa (Dias)</TableHead>
@@ -126,7 +124,7 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
                     {moto.qrCodeUrl && (
                       <Image 
                         src={moto.qrCodeUrl} 
-                        alt={`QR para ${moto.code}`} 
+                        alt={`CS para ${moto.placa}`} 
                         width={30} 
                         height={30} 
                         className="rounded"
@@ -134,14 +132,14 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
                       />
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">{moto.code}</TableCell>
+                  <TableCell className="font-medium">{moto.placa}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(moto.status)}>
                       {translateStatus(moto.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="capitalize">{moto.type}</TableCell>
-                  <TableCell>{moto.filial}</TableCell>
+                  <TableCell>{moto.franqueado}</TableCell>
                   <TableCell className="capitalize">{moto.model || 'N/A'}</TableCell>
                   <TableCell>{new Date(moto.data_ultima_mov).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>{moto.tempo_ocioso_dias}</TableCell>
