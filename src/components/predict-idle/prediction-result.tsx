@@ -24,7 +24,7 @@ export function PredictionResult({ result }: PredictionResultProps) {
           )}
           <CardTitle className={`font-headline ${isError ? 'text-destructive' : 'text-primary'}`}>
             {isError ? "Prediction Error" : "Prediction Result"}
-          </Title>
+          </CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
