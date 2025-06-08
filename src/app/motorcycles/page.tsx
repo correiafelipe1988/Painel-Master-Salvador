@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { MotorcycleFilters } from "@/components/motorcycles/motorcycle-filters";
@@ -178,15 +178,19 @@ export default function MotorcyclesPage() {
 
   const parseCSV = (csvText: string): Motorcycle[] => {
     let cleanedCsvText = csvText;
+    // Remove BOM
     if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
       cleanedCsvText = cleanedCsvText.substring(1);
     }
+  
+    // Normalize line endings and split into lines, trim each line, filter out empty lines
     const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
-
+  
     if (lines.length < 2) {
       throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
     }
-  
+    
+    // Advanced CSV line parser
     const parseCsvLine = (line: string): string[] => {
       const result: string[] = [];
       let currentField = '';
@@ -194,11 +198,12 @@ export default function MotorcyclesPage() {
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
+          // If a quote is encountered and we are in quotes, and the next char is also a quote, it's an escaped quote
           if (inQuotes && i + 1 < line.length && line[i+1] === '"') {
-            currentField += '"'; 
-            i++; 
+            currentField += '"'; // Add a single quote to the field
+            i++; // Skip the next quote
           } else {
-            inQuotes = !inQuotes;
+            inQuotes = !inQuotes; // Toggle quote state
           }
         } else if (char === ',' && !inQuotes) {
           result.push(currentField.trim());
@@ -207,48 +212,40 @@ export default function MotorcyclesPage() {
           currentField += char;
         }
       }
-      result.push(currentField.trim()); 
+      result.push(currentField.trim()); // Add the last field
       return result;
     };
     
-    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim().replace(/\s+/g, ' ')); // Normalize spaces
+    // Normalize headers: toLowerCase, trim, and replace multiple spaces with a single space
+    const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
+    const headers = parseCsvLine(lines[0]).map(normalizeHeader);
     
-    let placaIndex = headers.indexOf('placa');
-    if (placaIndex === -1) placaIndex = headers.indexOf('codigo');
+    const findHeaderIndex = (possibleNames: string[]): number => {
+      for (const name of possibleNames) {
+        const index = headers.indexOf(normalizeHeader(name));
+        if (index !== -1) return index;
+      }
+      return -1;
+    };
 
+    const placaIndex = findHeaderIndex(['placa', 'codigo']);
 
     if (placaIndex === -1) {
-      throw new Error("CSV inválido: Coluna 'placa' ou 'codigo' não encontrada. Cabeçalhos detectados: " + headers.join(' | '));
+      throw new Error("CSV inválido: Coluna 'placa' ou 'codigo' não encontrada. Cabeçalhos detectados (normalizados): " + headers.join(' | '));
     }
   
     const motorcyclesArray: Motorcycle[] = [];
     const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'];
     const allowedType: MotorcycleType[] = ['nova', 'usada'];
   
-    let modelIndex = headers.indexOf('model');
-    if (modelIndex === -1) modelIndex = headers.indexOf('modelo');
-
-    let statusIndex = headers.indexOf('status');
-    
-    let typeIndex = headers.indexOf('type');
-    if (typeIndex === -1) typeIndex = headers.indexOf('tipomoto');
-    if (typeIndex === -1) typeIndex = headers.indexOf('tipo moto');
-
-    let franqueadoIndex = headers.indexOf('franqueado');
-    if (franqueadoIndex === -1) franqueadoIndex = headers.indexOf('filial');
-
-    let dataUltimaMovIndex = headers.indexOf('data_ultima_mov');
-    if (dataUltimaMovIndex === -1) dataUltimaMovIndex = headers.indexOf('data ultima movimentacao');
-    
-    let tempoOciosoDiasIndex = headers.indexOf('tempo_ocioso_dias');
-    if (tempoOciosoDiasIndex === -1) tempoOciosoDiasIndex = headers.indexOf('tempo ocioso dias');
-
-    let qrCodeUrlIndex = headers.indexOf('qrcodeurl'); 
-    if (qrCodeUrlIndex === -1) qrCodeUrlIndex = headers.indexOf('cs');
-
-    let valorDiariaIndex = headers.indexOf('valordiaria');
-    if (valorDiariaIndex === -1) valorDiariaIndex = headers.indexOf('valor diaria');
-
+    const modelIndex = findHeaderIndex(['model', 'modelo']);
+    const statusIndex = findHeaderIndex(['status']);
+    const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto']);
+    const franqueadoIndex = findHeaderIndex(['franqueado', 'filial']);
+    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao']);
+    const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias']);
+    const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']);
+    const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria']);
   
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
@@ -256,11 +253,14 @@ export default function MotorcyclesPage() {
       const placa = placaIndex !== -1 ? values[placaIndex] : undefined;
       if (!placa) continue; 
   
-      const statusValue = statusIndex !== -1 ? values[statusIndex]?.toLowerCase() as MotorcycleStatus : undefined;
-      const typeValue = typeIndex !== -1 ? values[typeIndex]?.toLowerCase() as MotorcycleType : undefined;
+      const statusRaw = statusIndex !== -1 ? values[statusIndex] : undefined;
+      const statusValue = statusRaw ? normalizeHeader(statusRaw) as MotorcycleStatus : undefined;
+
+      const typeRaw = typeIndex !== -1 ? values[typeIndex] : undefined;
+      const typeValue = typeRaw ? normalizeHeader(typeRaw) as MotorcycleType : undefined;
   
       const moto: Motorcycle = {
-        id: `imported-${Date.now()}-${Math.random().toString(36).substring(7)}`, 
+        id: `imported-${Date.now()}-${i}-${Math.random().toString(36).substring(7)}`, 
         placa: placa,
         model: modelIndex !== -1 && values[modelIndex] ? values[modelIndex] : undefined,
         status: statusValue && allowedStatus.includes(statusValue) ? statusValue : undefined,
@@ -289,23 +289,24 @@ export default function MotorcyclesPage() {
         try {
           const importedMotorcycles = parseCSV(text);
           if (importedMotorcycles.length > 0) {
-            setMotorcycles(prev => [...prev, ...importedMotorcycles]);
+            setMotorcycles(prev => [...prev, ...importedMotorcycles]); // Consider merging or replacing based on placa if needed
             toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
           } else {
             toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
           }
         } catch (error: any) {
+          console.error("Erro ao importar CSV:", error);
           toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido.", variant: "destructive" });
         } finally {
           if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+            fileInputRef.current.value = ""; // Reset file input
           }
         }
       };
       reader.onerror = () => {
           toast({ title: "Erro ao ler arquivo", description: "Ocorreu um erro ao tentar ler o arquivo.", variant: "destructive" });
            if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+            fileInputRef.current.value = ""; // Reset file input
           }
       };
       reader.readAsText(file);
@@ -373,5 +374,6 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
+    
 
     
