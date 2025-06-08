@@ -1,7 +1,7 @@
 
 "use client"
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts"
 import type { ChartDataPoint } from "@/lib/types";
 import { ChartContainer, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
@@ -25,7 +25,7 @@ export function RecoveryVolumeChart({ data }: { data: ChartDataPoint[] | null })
     <div className="h-[300px] w-full">
       <ChartContainer config={chartConfig} className="h-full w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+          <BarChart data={data} margin={{ top: 20, right: 10, left: -25, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
             <XAxis
               dataKey="date"
@@ -47,14 +47,21 @@ export function RecoveryVolumeChart({ data }: { data: ChartDataPoint[] | null })
               axisLine={false}
               tickLine={false}
               tickCount={5}
-              domain={[0, 'dataMax + 1']}
+              domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.1) +1, 5)]}
               allowDecimals={false}
             />
             <Tooltip
               cursor={{ fill: 'hsl(var(--accent) / 0.1)' }}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <Bar dataKey="count" nameKey="Recuperadas" fill="var(--color-count)" radius={[2, 2, 0, 0]} barSize={12} />
+            <Bar dataKey="count" nameKey="Recuperadas" fill="var(--color-count)" radius={[2, 2, 0, 0]} barSize={12}>
+              <LabelList 
+                dataKey="count" 
+                position="top" 
+                style={{ fontSize: '10px', fill: 'hsl(var(--foreground))' }} 
+                formatter={(value: number) => value > 0 ? value : null} 
+              />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </ChartContainer>
