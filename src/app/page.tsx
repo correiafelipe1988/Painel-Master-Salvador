@@ -7,12 +7,12 @@ import { KpiSection, kpiDataTop, kpiDataBottom } from "@/components/dashboard/kp
 import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
 import { RentalVolumeChart } from "@/components/charts/rental-volume-chart";
 import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
-import { MaintenanceVolumeChart } from "@/components/charts/maintenance-volume-chart";
+import { TotalRentalsVolumeChart } from "@/components/charts/total-rentals-volume-chart"; // Novo gráfico
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, LineChart, BarChart3, PackagePlus, ChevronsRight, Wrench } from "lucide-react";
+import { CalendarDays, LineChart, BarChart3, PackagePlus, ChevronsRight, Activity } from "lucide-react"; // Activity no lugar de Wrench
 import type { Motorcycle, MotorcycleStatus, ChartDataPoint, RentalDataPoint } from "@/lib/types";
 import { parse, subDays, format, isValid, startOfDay } from 'date-fns';
 
@@ -39,7 +39,7 @@ export default function DashboardPage() {
   const [recoveryData, setRecoveryData] = useState<ChartDataPoint[] | null>(null);
   const [rentalData, setRentalData] = useState<RentalDataPoint[] | null>(null);
   const [relocatedData, setRelocatedData] = useState<ChartDataPoint[] | null>(null);
-  const [maintenanceData, setMaintenanceData] = useState<ChartDataPoint[] | null>(null);
+  const [totalRentalsData, setTotalRentalsData] = useState<ChartDataPoint[] | null>(null); // Novo estado
 
   useEffect(() => {
     const updateTimestamp = () => {
@@ -87,79 +87,54 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (allMotorcycles.length === 0 && recoveryData !== null) { // If motorcycles are cleared, clear charts
+    if (allMotorcycles.length === 0 && recoveryData !== null) { 
         setRecoveryData([]);
         setRentalData([]);
         setRelocatedData([]);
-        setMaintenanceData([]);
+        setTotalRentalsData([]); // Limpar novo gráfico
         return;
     }
     if (allMotorcycles.length > 0) {
       const today = startOfDay(new Date());
       const thirtyDaysAgo = subDays(today, 29);
 
-      // Process Recovery Data (status: 'recolhida')
       const dailyRecoveryCounts = getLast30DaysMap(() => 0);
+      const dailyRentalCounts = getLast30DaysMap(() => ({ nova: 0, usada: 0 }));
+      const dailyRelocatedCounts = getLast30DaysMap(() => 0);
+      const dailyTotalRentalsCounts = getLast30DaysMap(() => 0); // Para o novo gráfico
+
       allMotorcycles.forEach(moto => {
-        if (moto.status === 'recolhida' && moto.data_ultima_mov) {
+        if (moto.data_ultima_mov) {
           try {
             const movDate = parse(moto.data_ultima_mov, 'yyyy-MM-dd', new Date());
             if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
               const formattedDate = format(movDate, 'dd/MM/yyyy');
-              dailyRecoveryCounts.set(formattedDate, (dailyRecoveryCounts.get(formattedDate) || 0) + 1);
+
+              if (moto.status === 'recolhida') {
+                dailyRecoveryCounts.set(formattedDate, (dailyRecoveryCounts.get(formattedDate) || 0) + 1);
+              }
+              
+              if (moto.status === 'alugada') {
+                const entry = dailyRentalCounts.get(formattedDate);
+                if (moto.type === 'nova') entry.nova++;
+                else if (moto.type === 'usada') entry.usada++;
+                dailyRentalCounts.set(formattedDate, entry);
+                dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
+              }
+              
+              if (moto.status === 'relocada') {
+                dailyRelocatedCounts.set(formattedDate, (dailyRelocatedCounts.get(formattedDate) || 0) + 1);
+                dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
+              }
+
             }
-          } catch (e) { console.error("Error parsing date for recovery chart: ", moto.data_ultima_mov, e); }
+          } catch (e) { console.error("Error parsing date for charts: ", moto.data_ultima_mov, e); }
         }
       });
       setRecoveryData(Array.from(dailyRecoveryCounts, ([date, count]) => ({ date, count })));
-
-      // Process Rental Data (status: 'alugada')
-      const dailyRentalCounts = getLast30DaysMap(() => ({ nova: 0, usada: 0 }));
-      allMotorcycles.forEach(moto => {
-        if (moto.status === 'alugada' && moto.data_ultima_mov) {
-           try {
-            const movDate = parse(moto.data_ultima_mov, 'yyyy-MM-dd', new Date());
-            if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
-              const formattedDate = format(movDate, 'dd/MM/yyyy');
-              const entry = dailyRentalCounts.get(formattedDate);
-              if (moto.type === 'nova') entry.nova++;
-              else if (moto.type === 'usada') entry.usada++;
-              dailyRentalCounts.set(formattedDate, entry);
-            }
-          } catch (e) { console.error("Error parsing date for rental chart: ", moto.data_ultima_mov, e); }
-        }
-      });
       setRentalData(Array.from(dailyRentalCounts, ([date, counts]) => ({ date, nova: counts.nova, usada: counts.usada })));
-
-      // Process Relocated Data (status: 'relocada')
-      const dailyRelocatedCounts = getLast30DaysMap(() => 0);
-      allMotorcycles.forEach(moto => {
-        if (moto.status === 'relocada' && moto.data_ultima_mov) {
-          try {
-            const movDate = parse(moto.data_ultima_mov, 'yyyy-MM-dd', new Date());
-            if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
-              const formattedDate = format(movDate, 'dd/MM/yyyy');
-              dailyRelocatedCounts.set(formattedDate, (dailyRelocatedCounts.get(formattedDate) || 0) + 1);
-            }
-          } catch (e) { console.error("Error parsing date for relocated chart: ", moto.data_ultima_mov, e); }
-        }
-      });
       setRelocatedData(Array.from(dailyRelocatedCounts, ([date, count]) => ({ date, count })));
-
-      // Process Maintenance Data (status: 'manutencao')
-      const dailyMaintenanceCounts = getLast30DaysMap(() => 0);
-      allMotorcycles.forEach(moto => {
-        if (moto.status === 'manutencao' && moto.data_ultima_mov) {
-          try {
-            const movDate = parse(moto.data_ultima_mov, 'yyyy-MM-dd', new Date());
-            if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
-              const formattedDate = format(movDate, 'dd/MM/yyyy');
-              dailyMaintenanceCounts.set(formattedDate, (dailyMaintenanceCounts.get(formattedDate) || 0) + 1);
-            }
-          } catch (e) { console.error("Error parsing date for maintenance chart: ", moto.data_ultima_mov, e); }
-        }
-      });
-      setMaintenanceData(Array.from(dailyMaintenanceCounts, ([date, count]) => ({ date, count })));
+      setTotalRentalsData(Array.from(dailyTotalRentalsCounts, ([date, count]) => ({ date, count }))); // Setar dados do novo gráfico
 
     }
   }, [allMotorcycles]);
@@ -270,18 +245,19 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Wrench className="h-6 w-6 text-primary" />
+              <Activity className="h-6 w-6 text-primary" /> 
                <div>
-                <CardTitle className="font-headline">Volume Diário - Motos em Manutenção</CardTitle>
-                <CardDescription>Últimos 30 dias</CardDescription>
+                <CardTitle className="font-headline">Volume Diário - Locações Total</CardTitle>
+                <CardDescription>Últimos 30 dias (Alugadas + Relocadas)</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <MaintenanceVolumeChart data={maintenanceData} />
+            <TotalRentalsVolumeChart data={totalRentalsData} />
           </CardContent>
         </Card>
       </div>
     </DashboardLayout>
   );
 }
+
