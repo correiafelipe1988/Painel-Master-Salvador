@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon } from "lucide-react";
+import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, QrCode as SidebarQrCodeIcon } from "lucide-react";
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
   { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: Users }, // Usando Users como placeholder
-  { href: "/qr-scanner", label: "Leitor QR", subLabel: "Escanear códigos", icon: ListFilter }, // Usando ListFilter como placeholder
+  { href: "/qr-scanner", label: "Leitor QR", subLabel: "Escanear códigos", icon: SidebarQrCodeIcon }, 
 ];
 
 const initialStatusRapidoItems: StatusRapidoItemType[] = [
@@ -132,21 +132,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen>
       <Sidebar>
-        <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2.5">
+        <SidebarHeader className="p-4 flex items-center justify-start"> {/* Alterado para flex e justify-start */}
+          <Link href="/" className="flex items-center">
             <Image
-              src="https://locagoraveiculos.com.br/storage/2023/08/GO-removebg-preview-2-300x252.png"
-              alt="GO Logo"
-              width={32} 
-              height={32} 
+              src="https://storage.googleapis.com/maker-studio-598d9.appspot.com/prompt_images/fec95123-b6d4-4a41-b0de-e2f42a66e632_0.png"
+              alt="Locagora Logo"
+              width={160} 
+              height={36} 
               className="object-contain"
+              priority // Priorizar carregamento do logo
             />
-            <div>
-              <h1 className="text-lg font-semibold text-sidebar-foreground font-headline leading-tight">
-                Master Salvador
-              </h1>
-              <p className="text-xs text-sidebar-foreground/80 leading-tight">Gestão de Locação</p>
-            </div>
           </Link>
         </SidebarHeader>
         <SidebarContent className="flex flex-col">
