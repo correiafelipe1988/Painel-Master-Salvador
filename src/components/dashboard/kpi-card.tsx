@@ -1,16 +1,17 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import type { Kpi } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function KpiCard({ title, value, icon: Icon, description, color, iconBgColor, iconColor }: Kpi) {
+export function KpiCard({ title, value, icon: Icon, description, color, iconBgColor, iconColor, titleClassName, valueClassName, descriptionClassName }: Kpi) {
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300", iconBgColor ? iconBgColor.replace('bg-', 'border-') : 'border-transparent', 'border-l-4')}>
       <CardContent className="p-4 flex justify-between items-center">
         <div>
-          <p className="text-sm text-muted-foreground font-medium">{title}</p>
-          <p className={cn("text-2xl font-bold", color ? color : "text-foreground")}>{value}</p>
+          <p className={cn("text-sm text-muted-foreground font-medium", titleClassName, color ? color.replace('text-','text-muted-') : 'text-muted-foreground')}>{title}</p>
+          <p className={cn("text-2xl font-bold", valueClassName, color ? color : "text-foreground")}>{value}</p>
           {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className={cn("text-xs text-muted-foreground", descriptionClassName)}>{description}</p>
           )}
         </div>
         {Icon && (

@@ -5,8 +5,11 @@ export interface Kpi {
   icon?: React.ElementType;
   description?: string;
   color?: string; // Cor do texto principal do valor
-  iconBgColor?: string; // Cor de fundo da caixa do ícone
+  iconBgColor?: string; // Cor de fundo da caixa do ícone e borda do card
   iconColor?: string; // Cor do ícone
+  titleClassName?: string; // Classe CSS opcional para o título
+  valueClassName?: string; // Classe CSS opcional para o valor
+  descriptionClassName?: string; // Classe CSS opcional para a descrição
 }
 
 export interface ChartDataPoint {
