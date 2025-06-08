@@ -20,20 +20,20 @@ export interface RentalDataPoint {
   usada: number;
 }
 
-export type MotorcycleStatus = 'active' | 'inadimplente' | 'recolhida' | 'relocada' | 'manutencao';
+export type MotorcycleStatus = 'active' | 'inadimplente' | 'recolhida' | 'relocada' | 'manutencao' | 'alugada';
 export type MotorcycleType = 'nova' | 'usada';
 
 export interface Motorcycle {
   id: string;
   placa: string;
-  status: MotorcycleStatus;
-  type: MotorcycleType;
-  franqueado: string;
-  data_ultima_mov: string; // YYYY-MM-DD
-  tempo_ocioso_dias: number;
-  qrCodeUrl?: string; // Usado para CS
-  model: string; // Já existia, mas confirmado pela imagem
-  valorDiaria?: number; // Novo campo
+  model?: string;
+  status?: MotorcycleStatus;
+  type?: MotorcycleType;
+  franqueado?: string;
+  data_ultima_mov?: string; // YYYY-MM-DD
+  tempo_ocioso_dias?: number;
+  qrCodeUrl?: string; // Usado para CS (agora um identificador textual)
+  valorDiaria?: number;
 }
 
 export interface NavItem {
@@ -59,3 +59,4 @@ export type MotorcyclePageFilters = {
   model: string | 'all';
   searchTerm: string;
 };
+

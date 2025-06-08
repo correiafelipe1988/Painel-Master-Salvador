@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import Image from 'next/image';
+// import Image from 'next/image'; // Removido pois não vamos mais gerar QR Code dinamicamente aqui
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, QrCode } from 'lucide-react'; // Adicionado QrCode para um placeholder visual
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,32 +23,38 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MotorcyclePageFilters } from '@/app/motorcycles/page';
 
-const getStatusBadgeVariant = (status: MotorcycleStatus) => {
+const getStatusBadgeVariant = (status?: MotorcycleStatus) => {
+  if (!status) return 'outline';
   switch (status) {
-    case 'active': return 'default'; // Alterado para default para um visual mais próximo do verde "Disponível"
+    case 'active': return 'default';
+    case 'alugada': return 'default';
     case 'inadimplente': return 'destructive';
-    case 'manutencao': return 'secondary'; // Pode ser um amarelo/laranja customizado se necessário
-    case 'recolhida': return 'outline'; // Cinza
-    case 'relocada': return 'default'; // Azul, como no mockup
+    case 'manutencao': return 'secondary';
+    case 'recolhida': return 'outline';
+    case 'relocada': return 'default';
     default: return 'outline';
   }
 };
 
-const getStatusBadgeClassName = (status: MotorcycleStatus) => {
+const getStatusBadgeClassName = (status?: MotorcycleStatus) => {
+  if (!status) return 'bg-gray-200 text-gray-700 border-gray-400'; // Cor para status indefinido
   switch (status) {
     case 'active': return 'bg-green-500 hover:bg-green-600 text-white border-green-500';
+    case 'alugada': return 'bg-sky-500 hover:bg-sky-600 text-white border-sky-500'; // Azul claro para alugada
     case 'inadimplente': return 'bg-red-500 hover:bg-red-600 text-white border-red-500';
-    case 'manutencao': return 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500'; // Ajustado para amarelo
+    case 'manutencao': return 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500';
     case 'recolhida': return 'bg-gray-500 hover:bg-gray-600 text-white border-gray-500';
     case 'relocada': return 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500';
-    default: return '';
+    default: return 'bg-gray-200 text-gray-700 border-gray-400';
   }
 }
 
 
-const translateStatus = (status: MotorcycleStatus): string => {
+const translateStatus = (status?: MotorcycleStatus): string => {
+  if (!status) return 'N/Definido';
   switch (status) {
     case 'active': return 'Disponível';
+    case 'alugada': return 'Alugada';
     case 'inadimplente': return 'Inadimplente';
     case 'manutencao': return 'Manutenção';
     case 'recolhida': return 'Recolhida';
@@ -61,7 +67,7 @@ const translateStatus = (status: MotorcycleStatus): string => {
 
 interface MotorcycleListProps {
   filters: MotorcyclePageFilters;
-  motorcycles: Motorcycle[]; // Recebe a lista de motos como prop
+  motorcycles: Motorcycle[];
 }
 
 export function MotorcycleList({ filters, motorcycles }: MotorcycleListProps) {
@@ -73,11 +79,11 @@ export function MotorcycleList({ filters, motorcycles }: MotorcycleListProps) {
   const filteredMotorcycles = useMemo(() => {
     return motorcycles.filter(moto => {
       const statusMatch = filters.status === 'all' || moto.status === filters.status;
-      const modelMatch = filters.model === 'all' || moto.model.toLowerCase().includes(filters.model.toLowerCase()); // Case-insensitive model match
+      const modelMatch = filters.model === 'all' || (moto.model || '').toLowerCase().includes(filters.model.toLowerCase());
       const searchTermMatch = filters.searchTerm === '' ||
         moto.placa.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        moto.franqueado.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        moto.model.toLowerCase().includes(filters.searchTerm.toLowerCase());
+        (moto.franqueado || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        (moto.model || '').toLowerCase().includes(filters.searchTerm.toLowerCase());
       
       return statusMatch && modelMatch && searchTermMatch;
     });
@@ -126,34 +132,28 @@ export function MotorcycleList({ filters, motorcycles }: MotorcycleListProps) {
                 <TableRow key={moto.id}>
                   <TableCell>
                     {moto.qrCodeUrl ? (
-                       <a href={moto.qrCodeUrl} target="_blank" rel="noopener noreferrer" title={moto.qrCodeUrl}>
-                        <Image 
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=30x30&data=${encodeURIComponent(moto.qrCodeUrl)}`} 
-                          alt={`CS para ${moto.placa}`} 
-                          width={30} 
-                          height={30} 
-                          className="rounded"
-                          data-ai-hint="qr code"
-                        />
-                       </a>
+                      <span title={moto.qrCodeUrl} className="flex items-center gap-1 text-sm"> 
+                        <QrCode className="h-4 w-4 text-muted-foreground" />
+                        {moto.qrCodeUrl}
+                      </span>
                     ) : (
-                      <div className="w-[30px] h-[30px] bg-muted rounded flex items-center justify-center text-muted-foreground text-xs">N/A</div>
+                      <div className="text-xs text-muted-foreground">N/A</div>
                     )}
                   </TableCell>
                   <TableCell className="font-medium">{moto.placa}</TableCell>
-                  <TableCell>{moto.model}</TableCell>
+                  <TableCell>{moto.model || 'N/Definido'}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(moto.status)} className={getStatusBadgeClassName(moto.status)}>
                       {translateStatus(moto.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="capitalize">{moto.type === 'nova' ? 'Nova' : 'Usada'}</TableCell>
-                  <TableCell>{moto.franqueado}</TableCell>
+                  <TableCell className="capitalize">{moto.type ? (moto.type === 'nova' ? 'Nova' : 'Usada') : 'N/Definido'}</TableCell>
+                  <TableCell>{moto.franqueado || 'N/Definido'}</TableCell>
                   <TableCell>
                     {moto.valorDiaria ? `R$ ${moto.valorDiaria.toFixed(2).replace('.', ',')}` : 'N/A'}
                   </TableCell>
-                  <TableCell>{new Date(moto.data_ultima_mov + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                  <TableCell>{moto.tempo_ocioso_dias}</TableCell>
+                  <TableCell>{moto.data_ultima_mov ? new Date(moto.data_ultima_mov + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}</TableCell>
+                  <TableCell>{moto.tempo_ocioso_dias !== undefined ? moto.tempo_ocioso_dias : 'N/A'}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -180,4 +180,3 @@ export function MotorcycleList({ filters, motorcycles }: MotorcycleListProps) {
     </div>
   );
 }
-

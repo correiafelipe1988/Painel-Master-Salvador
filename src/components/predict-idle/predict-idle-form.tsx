@@ -28,13 +28,13 @@ import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const formSchema = z.object({
-  status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao'], {
+  status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'], {
     required_error: "O status é obrigatório.",
   }),
   type: z.enum(['nova', 'usada'], {
     required_error: "O tipo é obrigatório.",
   }),
-  franqueado: z.string().min(1, "O franqueado é obrigatório."), // Alterado de filial para franqueado
+  franqueado: z.string().min(1, "O franqueado é obrigatório."),
   data_ultima_mov: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A data deve estar no formato AAAA-MM-DD."),
 });
 
@@ -52,7 +52,7 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
     defaultValues: {
       status: "active",
       type: "nova",
-      franqueado: "", // Alterado de filial para franqueado
+      franqueado: "", 
       data_ultima_mov: new Date().toISOString().split('T')[0], 
     },
   });
@@ -64,7 +64,7 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
       const input: PredictIdleTimeInput = {
         status: values.status,
         type: values.type,
-        franqueado: values.franqueado, // Alterado de filial para franqueado
+        franqueado: values.franqueado,
         data_ultima_mov: values.data_ultima_mov,
       };
       const result = await predictIdleTime(input);
@@ -97,6 +97,7 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="active">Ativa</SelectItem>
+                        <SelectItem value="alugada">Alugada</SelectItem>
                         <SelectItem value="inadimplente">Inadimplente</SelectItem>
                         <SelectItem value="recolhida">Recolhida</SelectItem>
                         <SelectItem value="relocada">Relocada</SelectItem>
@@ -132,7 +133,7 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
 
               <FormField
                 control={form.control}
-                name="franqueado" // Alterado de filial para franqueado
+                name="franqueado"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Franqueado</FormLabel> 

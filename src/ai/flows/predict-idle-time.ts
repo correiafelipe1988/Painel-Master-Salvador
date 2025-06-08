@@ -14,10 +14,10 @@ import {z} from 'genkit';
 
 const PredictIdleTimeInputSchema = z.object({
   status: z
-    .enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao'])
+    .enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'])
     .describe('O status atual da motocicleta.'),
   type: z.enum(['nova', 'usada']).describe('O tipo da motocicleta (nova ou usada).'),
-  franqueado: z.string().describe('O franqueado da motocicleta.'), // Alterado de filial para franqueado
+  franqueado: z.string().describe('O franqueado da motocicleta.'),
   data_ultima_mov: z.string().describe('A data da última movimentação da motocicleta. Formato: AAAA-MM-DD'),
 });
 
