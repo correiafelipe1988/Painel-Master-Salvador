@@ -5,39 +5,68 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Responsive
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import type { ChartDataPoint } from "@/lib/types";
 import { ChartContainer, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { useEffect, useState } from "react";
 
-const mockRecoveryData: ChartDataPoint[] = Array.from({ length: 30 }, (_, i) => {
+const generateMockRecoveryData = (): ChartDataPoint[] => Array.from({ length: 30 }, (_, i) => {
   const date = new Date();
   date.setDate(date.getDate() - (29 - i));
   return {
-    date: date.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }), // YYYY-MM-DD
+    date: date.toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
     count: Math.floor(Math.random() * 20) + 5,
   };
 });
 
 const chartConfig = {
   count: {
-    label: "Recovered",
+    label: "Recuperadas",
     color: "hsl(var(--primary))",
   },
 } satisfies ChartConfig;
 
 export function RecoveryVolumeChart() {
+  const [data, setData] = useState<ChartDataPoint[]>([]);
+
+  useEffect(() => {
+    setData(generateMockRecoveryData());
+  }, []);
+
+  if (!data.length) {
+    return (
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="font-headline">Motocicletas Recuperadas Diariamente</CardTitle>
+          <CardDescription>Volume nos últimos 30 dias</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground">
+            Carregando dados do gráfico...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="font-headline">Daily Recovered Motorcycles</CardTitle>
-        <CardDescription>Volume over the last 30 days</CardDescription>
+        <CardTitle className="font-headline">Motocicletas Recuperadas Diariamente</CardTitle>
+        <CardDescription>Volume nos últimos 30 dias</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[350px] w-full">
           <ChartContainer config={chartConfig} className="h-full w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockRecoveryData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+              <BarChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="date" 
-                  tickFormatter={(tick) => new Date(tick).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(tick) => {
+                    const dateParts = tick.split('/');
+                    if (dateParts.length === 3) {
+                      return `${dateParts[0]}/${dateParts[1]}`; // Dia/Mês
+                    }
+                    return tick;
+                  }}
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
                 />
@@ -50,7 +79,7 @@ export function RecoveryVolumeChart() {
                   content={<ChartTooltipContent indicator="dot" />}
                 />
                 <Legend wrapperStyle={{paddingTop: '20px'}}/>
-                <Bar dataKey="count" name="Recovered" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name="Recuperadas" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>

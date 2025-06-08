@@ -7,26 +7,26 @@ export default function QrScannerPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="QR Code Scanner"
-        description="Scan motorcycle QR codes for quick identification and actions."
+        title="Leitor de Código QR"
+        description="Escaneie códigos QR de motocicletas para identificação e ações rápidas."
       />
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-headline">
             <QrCode className="h-6 w-6 text-primary" />
-            Scanner Interface
+            Interface do Leitor
           </CardTitle>
           <CardDescription>
-            This feature is under development.
+            Este recurso está em desenvolvimento.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg min-h-[300px] bg-muted/50">
             <QrCode className="h-24 w-24 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              QR Code scanning functionality will be implemented here.
+              A funcionalidade de leitura de Código QR será implementada aqui.
               <br />
-              For now, please use the motorcycle list to manage items.
+              Por enquanto, utilize a lista de motocicletas para gerenciar os itens.
             </p>
           </div>
         </CardContent>

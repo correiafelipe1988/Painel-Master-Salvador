@@ -1,11 +1,11 @@
 'use server';
 
 /**
- * @fileOverview AI flow to predict motorcycle idle time based on status, type and filial.
+ * @fileOverview Fluxo de IA para prever o tempo ocioso de motocicletas com base no status, tipo e filial.
  *
- * - predictIdleTime - Predicts the idle time of a motorcycle.
- * - PredictIdleTimeInput - Input type for predictIdleTime.
- * - PredictIdleTimeOutput - Output type for predictIdleTime.
+ * - predictIdleTime - Prevê o tempo ocioso de uma motocicleta.
+ * - PredictIdleTimeInput - Tipo de entrada para predictIdleTime.
+ * - PredictIdleTimeOutput - Tipo de saída para predictIdleTime.
  */
 
 import {ai} from '@/ai/genkit';
@@ -14,10 +14,10 @@ import {z} from 'genkit';
 const PredictIdleTimeInputSchema = z.object({
   status: z
     .enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao'])
-    .describe('The current status of the motorcycle.'),
-  type: z.enum(['nova', 'usada']).describe('The type of the motorcycle (new or used).'),
-  filial: z.string().describe('The branch (filial) of the motorcycle.'),
-  data_ultima_mov: z.string().describe('The last movement date of the motorcycle. Date format: YYYY-MM-DD'),
+    .describe('O status atual da motocicleta.'),
+  type: z.enum(['nova', 'usada']).describe('O tipo da motocicleta (nova ou usada).'),
+  filial: z.string().describe('A filial da motocicleta.'),
+  data_ultima_mov: z.string().describe('A data da última movimentação da motocicleta. Formato: AAAA-MM-DD'),
 });
 
 export type PredictIdleTimeInput = z.infer<typeof PredictIdleTimeInputSchema>;
@@ -25,10 +25,10 @@ export type PredictIdleTimeInput = z.infer<typeof PredictIdleTimeInputSchema>;
 const PredictIdleTimeOutputSchema = z.object({
   predictedIdleTimeDays: z
     .number()
-    .describe('The predicted idle time in days based on historical data.'),
+    .describe('O tempo ocioso previsto em dias com base em dados históricos.'),
   reasoning: z
     .string()
-    .describe('The AI reasoning behind the predicted idle time, including trends.'),
+    .describe('A justificativa da IA para o tempo ocioso previsto, incluindo tendências.'),
 });
 
 export type PredictIdleTimeOutput = z.infer<typeof PredictIdleTimeOutputSchema>;
@@ -41,17 +41,17 @@ const predictIdleTimePrompt = ai.definePrompt({
   name: 'predictIdleTimePrompt',
   input: {schema: PredictIdleTimeInputSchema},
   output: {schema: PredictIdleTimeOutputSchema},
-  prompt: `You are an AI assistant that predicts the idle time of a motorcycle based on its current status, type, filial, and last movement date.
+  prompt: `Você é um assistente de IA que prevê o tempo ocioso de uma motocicleta com base em seu status atual, tipo, filial e data da última movimentação.
 
-  Analyze historical data and current trends to estimate how long the motorcycle will remain idle.
-  Provide a predicted idle time in days and a detailed reasoning behind the prediction, including identified trends.
+  Analise dados históricos e tendências atuais para estimar por quanto tempo a motocicleta permanecerá ociosa.
+  Forneça um tempo ocioso previsto em dias e uma justificativa detalhada para a previsão, incluindo tendências identificadas.
 
-  Motorcycle Status: {{{status}}}
-  Motorcycle Type: {{{type}}}
-  Branch (Filial): {{{filial}}}
-  Last Movement Date: {{{data_ultima_mov}}}
+  Status da Motocicleta: {{{status}}}
+  Tipo da Motocicleta: {{{type}}}
+  Filial: {{{filial}}}
+  Data da Última Movimentação: {{{data_ultima_mov}}}
 
-  Respond with the predicted idle time in days and the reasoning behind the prediction:
+  Responda com o tempo ocioso previsto em dias e a justificativa para a previsão:
   `,
 });
 

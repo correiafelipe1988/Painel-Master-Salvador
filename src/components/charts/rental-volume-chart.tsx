@@ -5,12 +5,13 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Responsive
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import type { RentalDataPoint } from "@/lib/types";
 import { ChartContainer, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { useEffect, useState } from "react";
 
-const mockRentalData: RentalDataPoint[] = Array.from({ length: 30 }, (_, i) => {
+const generateMockRentalData = (): RentalDataPoint[] => Array.from({ length: 30 }, (_, i) => {
   const date = new Date();
   date.setDate(date.getDate() - (29 - i));
   return {
-    date: date.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }), // YYYY-MM-DD
+    date: date.toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
     nova: Math.floor(Math.random() * 15) + 3,
     usada: Math.floor(Math.random() * 10) + 2,
   };
@@ -18,31 +19,59 @@ const mockRentalData: RentalDataPoint[] = Array.from({ length: 30 }, (_, i) => {
 
 const chartConfig = {
   nova: {
-    label: "New Bikes",
+    label: "Motos Novas",
     color: "hsl(var(--chart-1))",
   },
   usada: {
-    label: "Used Bikes",
+    label: "Motos Usadas",
     color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
 
 export function RentalVolumeChart() {
+  const [data, setData] = useState<RentalDataPoint[]>([]);
+
+  useEffect(() => {
+    setData(generateMockRentalData());
+  }, []);
+  
+  if (!data.length) {
+    return (
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="font-headline">Motocicletas Alugadas Diariamente</CardTitle>
+          <CardDescription>Volume nos últimos 30 dias (Novas vs. Usadas)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground">
+            Carregando dados do gráfico...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="font-headline">Daily Rented Motorcycles</CardTitle>
-        <CardDescription>Volume over the last 30 days (New vs. Used)</CardDescription>
+        <CardTitle className="font-headline">Motocicletas Alugadas Diariamente</CardTitle>
+        <CardDescription>Volume nos últimos 30 dias (Novas vs. Usadas)</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[350px] w-full">
           <ChartContainer config={chartConfig} className="h-full w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockRentalData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+              <BarChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="date" 
-                  tickFormatter={(tick) => new Date(tick).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(tick) => {
+                    const dateParts = tick.split('/');
+                    if (dateParts.length === 3) {
+                      return `${dateParts[0]}/${dateParts[1]}`; // Dia/Mês
+                    }
+                    return tick;
+                  }}
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
                 />
@@ -55,8 +84,8 @@ export function RentalVolumeChart() {
                   content={<ChartTooltipContent indicator="dot" />}
                 />
                 <Legend wrapperStyle={{paddingTop: '20px'}}/>
-                <Bar dataKey="nova" name="New Bikes" stackId="a" fill="var(--color-nova)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="usada" name="Used Bikes" stackId="a" fill="var(--color-usada)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="nova" name="Motos Novas" stackId="a" fill="var(--color-nova)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="usada" name="Motos Usadas" stackId="a" fill="var(--color-usada)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>

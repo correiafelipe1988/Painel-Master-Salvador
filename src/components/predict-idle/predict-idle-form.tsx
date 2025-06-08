@@ -28,13 +28,13 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const formSchema = z.object({
   status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao'], {
-    required_error: "Status is required.",
+    required_error: "O status é obrigatório.",
   }),
   type: z.enum(['nova', 'usada'], {
-    required_error: "Type is required.",
+    required_error: "O tipo é obrigatório.",
   }),
-  filial: z.string().min(1, "Branch is required."),
-  data_ultima_mov: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format."),
+  filial: z.string().min(1, "A filial é obrigatória."),
+  data_ultima_mov: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A data deve estar no formato AAAA-MM-DD."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -52,21 +52,20 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
       status: "active",
       type: "nova",
       filial: "",
-      data_ultima_mov: new Date().toISOString().split('T')[0], // Default to today
+      data_ultima_mov: new Date().toISOString().split('T')[0], 
     },
   });
 
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
-    onPredictionResult(null); // Clear previous results
+    onPredictionResult(null); 
     try {
       const input: PredictIdleTimeInput = values;
       const result = await predictIdleTime(input);
       onPredictionResult(result);
     } catch (error) {
-      console.error("Error predicting idle time:", error);
-      // You might want to show an error toast or message to the user here
-      onPredictionResult({ predictedIdleTimeDays: -1, reasoning: "Error fetching prediction." }); // Indicate error
+      console.error("Erro ao prever tempo ocioso:", error);
+      onPredictionResult({ predictedIdleTimeDays: -1, reasoning: "Erro ao buscar a previsão." }); 
     } finally {
       setIsLoading(false);
     }
@@ -83,19 +82,19 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Motorcycle Status</FormLabel>
+                    <FormLabel>Status da Motocicleta</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
+                          <SelectValue placeholder="Selecione o status" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inadimplente">Delinquent</SelectItem>
-                        <SelectItem value="recolhida">Recovered</SelectItem>
-                        <SelectItem value="relocada">Relocated</SelectItem>
-                        <SelectItem value="manutencao">Maintenance</SelectItem>
+                        <SelectItem value="active">Ativa</SelectItem>
+                        <SelectItem value="inadimplente">Inadimplente</SelectItem>
+                        <SelectItem value="recolhida">Recolhida</SelectItem>
+                        <SelectItem value="relocada">Relocada</SelectItem>
+                        <SelectItem value="manutencao">Manutenção</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -108,16 +107,16 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Motorcycle Type</FormLabel>
+                    <FormLabel>Tipo da Motocicleta</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="nova">New</SelectItem>
-                        <SelectItem value="usada">Used</SelectItem>
+                        <SelectItem value="nova">Nova</SelectItem>
+                        <SelectItem value="usada">Usada</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -130,9 +129,9 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
                 name="filial"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Branch (Filial)</FormLabel>
+                    <FormLabel>Filial</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Salvador Centro" {...field} />
+                      <Input placeholder="Ex: Salvador Centro" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -144,11 +143,11 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
                 name="data_ultima_mov"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Movement Date</FormLabel>
+                    <FormLabel>Data da Última Movimentação</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
-                    <FormDescription>Format: YYYY-MM-DD</FormDescription>
+                    <FormDescription>Formato: AAAA-MM-DD</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -159,10 +158,10 @@ export function PredictIdleForm({ onPredictionResult }: PredictIdleFormProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Predicting...
+                  Prevendo...
                 </>
               ) : (
-                "Predict Idle Time"
+                "Prever Tempo Ocioso"
               )}
             </Button>
           </form>

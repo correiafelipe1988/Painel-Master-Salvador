@@ -21,12 +21,12 @@ interface MotorcycleFiltersProps {
 }
 
 const statusOptions: { value: MotorcycleStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Statuses' },
-  { value: 'active', label: 'Active' },
-  { value: 'inadimplente', label: 'Delinquent' },
-  { value: 'recolhida', label: 'Recovered' },
-  { value: 'relocada', label: 'Relocated' },
-  { value: 'manutencao', label: 'Maintenance' },
+  { value: 'all', label: 'Todos os Status' },
+  { value: 'active', label: 'Ativa' },
+  { value: 'inadimplente', label: 'Inadimplente' },
+  { value: 'recolhida', label: 'Recolhida' },
+  { value: 'relocada', label: 'Relocada' },
+  { value: 'manutencao', label: 'Manutenção' },
 ];
 
 export function MotorcycleFilters({ onFilterChange, initialFilters }: MotorcycleFiltersProps) {
@@ -44,7 +44,7 @@ export function MotorcycleFilters({ onFilterChange, initialFilters }: Motorcycle
           <Label htmlFor="status-filter" className="text-sm font-medium">Status</Label>
           <Select value={status} onValueChange={(value) => setStatus(value as MotorcycleStatus | 'all')}>
             <SelectTrigger id="status-filter" className="w-full">
-              <SelectValue placeholder="Select status" />
+              <SelectValue placeholder="Selecione o status" />
             </SelectTrigger>
             <SelectContent>
               {statusOptions.map(option => (
@@ -58,7 +58,7 @@ export function MotorcycleFilters({ onFilterChange, initialFilters }: Motorcycle
         
         <div className="md:col-span-1 lg:col-span-1">
           <Label htmlFor="idle-time-filter" className="text-sm font-medium">
-            Min. Idle Time (days): {idleTime}
+            Tempo Mín. Ocioso (dias): {idleTime}
           </Label>
           <Slider
             id="idle-time-filter"
@@ -73,7 +73,7 @@ export function MotorcycleFilters({ onFilterChange, initialFilters }: Motorcycle
         
         <div className="flex items-end space-x-2">
           <Button onClick={handleApplyFilters} className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Search className="mr-2 h-4 w-4" /> Apply Filters
+            <Search className="mr-2 h-4 w-4" /> Aplicar Filtros
           </Button>
         </div>
       </div>

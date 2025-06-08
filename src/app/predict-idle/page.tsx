@@ -17,8 +17,8 @@ export default function PredictIdlePage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Predictive Idle Time Tool"
-        description="Use AI to estimate motorcycle idle time based on various factors."
+        title="Ferramenta Preditiva de Tempo Ocioso"
+        description="Use IA para estimar o tempo ocioso de motocicletas com base em diversos fatores."
       />
       <PredictIdleForm onPredictionResult={handlePredictionResult} />
       {predictionResult !== null && <PredictionResult result={predictionResult} />}

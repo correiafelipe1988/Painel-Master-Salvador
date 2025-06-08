@@ -4,40 +4,40 @@ import { TrendingUp, Bike, Users, Wrench, Clock, CheckCircle } from "lucide-reac
 
 const kpiData: Kpi[] = [
   {
-    title: "Avg Delinquency % (Month)",
+    title: "% Méd. Inadimplência (Mês)",
     value: "12.5%",
     icon: TrendingUp,
-    description: "+2.1% from last month",
+    description: "+2.1% desde o último mês",
     color: "text-destructive",
   },
   {
-    title: "Recovered Today",
+    title: "Recuperadas Hoje",
     value: "15",
     icon: Bike,
-    description: "Updated moments ago",
+    description: "Atualizado agora há pouco",
     color: "text-primary",
   },
   {
-    title: "Avg. Relocation Time",
-    value: "3.2 Days",
+    title: "Tempo Méd. Relocação",
+    value: "3.2 Dias",
     icon: Clock,
-    description: "Based on last 50 relocations",
+    description: "Baseado nas últimas 50 relocações",
   },
   {
-    title: "Idle >7 Days",
+    title: "Ociosas >7 Dias",
     value: "8",
-    icon: Users, // Using Users as a placeholder, could be a more specific icon
-    description: "Needs attention",
+    icon: Users, 
+    description: "Requer atenção",
     color: "text-accent",
   },
   {
-    title: "Available for Rent",
+    title: "Disponíveis para Aluguel",
     value: "42",
     icon: CheckCircle,
     color: "text-green-600",
   },
   {
-    title: "In Maintenance",
+    title: "Em Manutenção",
     value: "5",
     icon: Wrench,
   },

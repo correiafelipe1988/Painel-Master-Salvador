@@ -21,10 +21,10 @@ import { Home, ListFilter, Cpu, QrCode, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: Home },
-  { href: "/motorcycles", label: "Motorcycles", icon: ListFilter },
-  { href: "/predict-idle", label: "Predict Idle Time", icon: Cpu },
-  { href: "/qr-scanner", label: "QR Scanner", icon: QrCode },
+  { href: "/", label: "Painel", icon: Home },
+  { href: "/motorcycles", label: "Motocicletas", icon: ListFilter },
+  { href: "/predict-idle", label: "Prever Tempo Ocioso", icon: Cpu },
+  { href: "/qr-scanner", label: "Leitor QR", icon: QrCode },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -45,7 +45,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.label}>
-                <Link href={item.href}>
+                <Link href={item.href} legacyBehavior={false}>
                   <SidebarMenuButton
                     isActive={pathname === item.href}
                     tooltip={item.label}
@@ -62,7 +62,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <Separator className="my-2 bg-sidebar-border" />
           <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
             <Settings className="h-5 w-5" />
-            <span>Settings</span>
+            <span>Configurações</span>
           </Button>
         </SidebarFooter>
       </Sidebar>

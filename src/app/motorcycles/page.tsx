@@ -19,7 +19,7 @@ export default function MotorcyclesPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Motorcycle Management" description="View, filter, and manage your motorcycle fleet." />
+      <PageHeader title="Gerenciamento de Motocicletas" description="Visualize, filtre e gerencie sua frota de motocicletas." />
       <MotorcycleFilters onFilterChange={handleFilterChange} initialFilters={filters} />
       <MotorcycleList filters={filters} />
     </DashboardLayout>

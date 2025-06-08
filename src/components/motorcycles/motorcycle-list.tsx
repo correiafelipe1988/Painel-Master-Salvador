@@ -32,12 +32,25 @@ const mockMotorcycles: Motorcycle[] = [
 
 const getStatusBadgeVariant = (status: MotorcycleStatus) => {
   switch (status) {
-    case 'active': return 'default'; // default is primary, which is blue
+    case 'active': return 'default';
     case 'inadimplente': return 'destructive';
-    case 'manutencao': return 'secondary'; // using secondary which is light blue/gray
-    case 'recolhida': return 'outline'; // outline uses foreground
-    case 'relocada': return 'default'; // another variant might be needed, using default for now
+    case 'manutencao': return 'secondary';
+    case 'recolhida': return 'outline'; 
+    case 'relocada': return 'default'; 
     default: return 'outline';
+  }
+};
+
+const translateStatus = (status: MotorcycleStatus): string => {
+  switch (status) {
+    case 'active': return 'Ativa';
+    case 'inadimplente': return 'Inadimplente';
+    case 'manutencao': return 'Manutenção';
+    case 'recolhida': return 'Recolhida';
+    case 'relocada': return 'Relocada';
+    default:
+      const s = status as string;
+      return s.charAt(0).toUpperCase() + s.slice(1);
   }
 };
 
@@ -61,10 +74,9 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
   }, [filters]);
 
   if (!clientMounted) {
-    // Render a loading state or null to avoid hydration mismatch
     return (
       <div className="mt-4 text-center text-muted-foreground">
-        Loading motorcycle data...
+        Carregando dados das motocicletas...
       </div>
     );
   }
@@ -73,10 +85,10 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
     <div className="bg-card p-4 rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-foreground">
-          {`Motorcycles (${filteredMotorcycles.length} matching)`}
+          {`Motocicletas (${filteredMotorcycles.length} encontradas)`}
         </h3>
         <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" /> Export Data
+          <Download className="mr-2 h-4 w-4" /> Exportar Dados
         </Button>
       </div>
       <div className="overflow-x-auto">
@@ -84,20 +96,20 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
           <TableHeader>
             <TableRow>
               <TableHead>QR</TableHead>
-              <TableHead>Code</TableHead>
+              <TableHead>Código</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Branch</TableHead>
-              <TableHead>Last Movement</TableHead>
-              <TableHead>Idle (Days)</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Filial</TableHead>
+              <TableHead>Últ. Movimento</TableHead>
+              <TableHead>Ociosa (Dias)</TableHead>
+              <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredMotorcycles.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground">
-                  No motorcycles match the current filters.
+                  Nenhuma motocicleta corresponde aos filtros atuais.
                 </TableCell>
               </TableRow>
             ) : (
@@ -107,7 +119,7 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
                     {moto.qrCodeUrl && (
                       <Image 
                         src={moto.qrCodeUrl} 
-                        alt={`QR for ${moto.code}`} 
+                        alt={`QR para ${moto.code}`} 
                         width={30} 
                         height={30} 
                         className="rounded"
@@ -117,13 +129,13 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
                   </TableCell>
                   <TableCell className="font-medium">{moto.code}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(moto.status)} className="capitalize">
-                      {moto.status.replace('_', ' ')}
+                    <Badge variant={getStatusBadgeVariant(moto.status)}>
+                      {translateStatus(moto.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="capitalize">{moto.type}</TableCell>
                   <TableCell>{moto.filial}</TableCell>
-                  <TableCell>{new Date(moto.data_ultima_mov).toLocaleDateString()}</TableCell>
+                  <TableCell>{new Date(moto.data_ultima_mov).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>{moto.tempo_ocioso_dias}</TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -133,9 +145,9 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Mark Recovered</DropdownMenuItem>
-                        <DropdownMenuItem>Mark Relocated</DropdownMenuItem>
-                        <DropdownMenuItem>Mark Maintenance</DropdownMenuItem>
+                        <DropdownMenuItem>Marcar como Recolhida</DropdownMenuItem>
+                        <DropdownMenuItem>Marcar como Relocada</DropdownMenuItem>
+                        <DropdownMenuItem>Marcar para Manutenção</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

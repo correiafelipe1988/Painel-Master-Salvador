@@ -23,7 +23,7 @@ export function PredictionResult({ result }: PredictionResultProps) {
             <CheckCircle2 className="h-6 w-6 text-primary" />
           )}
           <CardTitle className={`font-headline ${isError ? 'text-destructive' : 'text-primary'}`}>
-            {isError ? "Prediction Error" : "Prediction Result"}
+            {isError ? "Erro na Previsão" : "Resultado da Previsão"}
           </CardTitle>
         </div>
       </CardHeader>
@@ -33,15 +33,15 @@ export function PredictionResult({ result }: PredictionResultProps) {
         ) : (
           <>
             <div>
-              <CardDescription>Predicted Idle Time</CardDescription>
+              <CardDescription>Tempo Ocioso Previsto</CardDescription>
               <p className="text-2xl font-semibold text-primary">
-                {result.predictedIdleTimeDays} days
+                {result.predictedIdleTimeDays} dias
               </p>
             </div>
             <div>
               <div className="flex items-center gap-1 mb-1">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                <CardDescription>Reasoning & Trends</CardDescription>
+                <CardDescription>Justificativa e Tendências</CardDescription>
               </div>
               <p className="text-sm text-foreground bg-muted p-3 rounded-md leading-relaxed">
                 {result.reasoning}
