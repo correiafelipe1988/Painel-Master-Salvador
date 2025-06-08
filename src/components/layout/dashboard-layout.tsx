@@ -18,7 +18,6 @@ import {
   SidebarInset,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-// import { MotorcycleIcon as AppMotorcycleIcon } from "@/components/icons/motorcycle-icon"; // Ícone antigo não é mais usado aqui
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +30,7 @@ const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
   { href: "/motorcycles", label: "Gestão de Motos", subLabel: "Frota completa", icon: ListFilter },
   // { href: "/inadimplencia", label: "Inadimplência", subLabel: "Controle de atrasos", icon: AlertTriangle }, // Comentado conforme PRD
-  // { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users }, // Comentado conforme PRD
+  { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
   { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: Users }, // Usando Users como placeholder
   { href: "/qr-scanner", label: "Leitor QR", subLabel: "Escanear códigos", icon: ListFilter }, // Usando ListFilter como placeholder
