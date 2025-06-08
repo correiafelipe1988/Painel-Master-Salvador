@@ -14,6 +14,9 @@ export interface ChartDataPoint {
   count: number;
 }
 
+// RentalDataPoint não é mais estritamente necessário para RentalVolumeChart,
+// pois ele agora usa ChartDataPoint. Mantendo caso seja usado em outro lugar,
+// ou pode ser removido se não for.
 export interface RentalDataPoint {
   date: string;
   nova: number;
@@ -59,4 +62,3 @@ export type MotorcyclePageFilters = {
   model: string | 'all';
   searchTerm: string;
 };
-

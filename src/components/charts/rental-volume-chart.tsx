@@ -2,21 +2,17 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts"
-import type { RentalDataPoint } from "@/lib/types";
+import type { ChartDataPoint } from "@/lib/types"; // Alterado de RentalDataPoint para ChartDataPoint
 import { ChartContainer, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 const chartConfig = {
-  nova: {
-    label: "Motos Novas",
-    color: "hsl(var(--chart-1))",
-  },
-  usada: {
-    label: "Motos Usadas",
-    color: "hsl(var(--chart-2))",
+  count: { // Alterado para refletir uma única contagem
+    label: "Alugadas",
+    color: "hsl(var(--chart-2))", // Usando a cor que era para 'usada' como exemplo
   },
 } satisfies ChartConfig;
 
-export function RentalVolumeChart({ data }: { data: RentalDataPoint[] | null}) {
+export function RentalVolumeChart({ data }: { data: ChartDataPoint[] | null}) { // Prop data agora é ChartDataPoint[]
   if (!data || data.length === 0) {
     return (
       <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
@@ -58,19 +54,11 @@ export function RentalVolumeChart({ data }: { data: RentalDataPoint[] | null}) {
               cursor={{ fill: 'hsl(var(--accent) / 0.1)' }}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <Bar dataKey="nova" name="Motos Novas" stackId="a" fill="var(--color-nova)" radius={[2, 2, 0, 0]} barSize={6}>
-              <LabelList 
-                dataKey="nova" 
-                position="center" 
-                style={{ fontSize: '9px', fill: 'hsl(var(--primary-foreground))' }} 
-                formatter={(value: number) => value > 0 ? value : null} 
-              />
-            </Bar>
-            <Bar dataKey="usada" name="Motos Usadas" stackId="a" fill="var(--color-usada)" radius={[2, 2, 0, 0]} barSize={6}>
-              <LabelList 
-                dataKey="usada" 
-                position="center" 
-                style={{ fontSize: '9px', fill: 'hsl(var(--primary-foreground))' }} 
+            <Bar dataKey="count" nameKey="Alugadas" fill="var(--color-count)" radius={[2, 2, 0, 0]} barSize={12}>
+              <LabelList
+                dataKey="count"
+                position="top" // Alterado para 'top'
+                style={{ fontSize: '10px', fill: 'hsl(var(--foreground))' }} // Estilo do rótulo
                 formatter={(value: number) => value > 0 ? value : null}
               />
             </Bar>
