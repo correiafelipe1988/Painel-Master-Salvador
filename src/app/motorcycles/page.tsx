@@ -54,6 +54,14 @@ export default function MotorcyclesPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    setMotorcycles(prevMotos =>
+      prevMotos.map(moto =>
+        moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+      )
+    );
+  }, []); // Roda uma vez após a montagem inicial
+
   const handleFilterChange = useCallback((newFilters: MotorcyclePageFilters) => {
     setFilters(newFilters);
   }, []);
@@ -200,19 +208,16 @@ export default function MotorcyclesPage() {
 
   const parseCSV = (csvText: string): Motorcycle[] => {
     let cleanedCsvText = csvText;
-    // Remove BOM (Byte Order Mark) if present
     if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
       cleanedCsvText = cleanedCsvText.substring(1);
     }
   
-    // Split lines more robustly (handles \r\n, \r, \n) and trim each line
     const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
   
-    if (lines.length < 2) { // Need header and at least one data line
+    if (lines.length < 2) { 
       throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
     }
     
-    // Robust line parsing function
     const parseCsvLine = (line: string): string[] => {
       const result: string[] = [];
       let currentField = '';
@@ -220,39 +225,36 @@ export default function MotorcyclesPage() {
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
-          // Handle escaped quotes ("")
           if (inQuotes && i + 1 < line.length && line[i+1] === '"') {
             currentField += '"'; 
-            i++; // Skip next quote
+            i++; 
           } else {
-            inQuotes = !inQuotes; // Toggle quote state
+            inQuotes = !inQuotes; 
           }
-        } else if (char === ';' && !inQuotes) { // Changed delimiter from ',' to ';'
+        } else if (char === ';' && !inQuotes) { 
           result.push(currentField.trim());
           currentField = '';
         } else {
           currentField += char;
         }
       }
-      result.push(currentField.trim()); // Add the last field
+      result.push(currentField.trim()); 
       return result;
     };
     
-    // Normalize headers: lowercase, trim, and replace multiple spaces with a single space
     const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
     const headers = parseCsvLine(lines[0]).map(normalizeHeader);
     
-    // Helper to find header index by checking multiple possible names
     const findHeaderIndex = (possibleNames: string[]): number => {
       for (const name of possibleNames) {
-        // `name` is already normalized (lowercase, single space) from the possibleNames array
         const index = headers.indexOf(name); 
         if (index !== -1) return index;
       }
       return -1;
     };
 
-    const placaIndex = findHeaderIndex(['placa', 'codigo']);
+    const possiblePlacaNames = ['placa', 'codigo'];
+    const placaIndex = findHeaderIndex(possiblePlacaNames);
 
     if (placaIndex === -1) {
       throw new Error("CSV inválido: Coluna 'placa' ou 'codigo' não encontrada. Cabeçalhos detectados (normalizados): " + headers.join(' | '));
@@ -264,18 +266,18 @@ export default function MotorcyclesPage() {
   
     const modelIndex = findHeaderIndex(['model', 'modelo']);
     const statusIndex = findHeaderIndex(['status']);
-    const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto', 'tipo']); // Added "tipo"
+    const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto', 'tipo']);
     const franqueadoIndex = findHeaderIndex(['franqueado', 'filial']);
-    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentação']); // Added "última movimentação"
-    const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias', 'dias parado']); // Added "dias parado"
-    const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']); // For CS field
-    const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']); // Added "valor diária"
+    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentação']);
+    const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias', 'dias parado']);
+    const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']);
+    const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']);
   
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
       
       const placa = placaIndex !== -1 ? values[placaIndex] : undefined;
-      if (!placa) continue; // Skip row if placa is missing
+      if (!placa) continue; 
   
       const statusRaw = statusIndex !== -1 ? values[statusIndex] : undefined;
       const statusValue = statusRaw ? normalizeHeader(statusRaw) as MotorcycleStatus : undefined;
@@ -290,9 +292,9 @@ export default function MotorcyclesPage() {
         status: statusValue && allowedStatus.includes(statusValue) ? statusValue : undefined,
         type: typeValue && allowedType.includes(typeValue) ? typeValue : undefined,
         franqueado: franqueadoIndex !== -1 && values[franqueadoIndex] ? values[franqueadoIndex] : undefined,
-        data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined, // Assuming date is already YYYY-MM-DD
+        data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined, 
         tempo_ocioso_dias: tempoOciosoDiasIndex !== -1 && values[tempoOciosoDiasIndex] ? parseInt(values[tempoOciosoDiasIndex], 10) || undefined : undefined,
-        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, // CS field
+        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, 
         valorDiaria: valorDiariaIndex !== -1 && values[valorDiariaIndex] ? parseFloat(values[valorDiariaIndex].replace(',', '.')) || undefined : undefined,
       };
       motorcyclesArray.push(moto);
@@ -313,17 +315,15 @@ export default function MotorcyclesPage() {
         try {
           const importedMotorcycles = parseCSV(text);
           if (importedMotorcycles.length > 0) {
-            setMotorcycles(prev => [...prev, ...importedMotorcycles]); 
+            setMotorcycles(prev => [...prev, ...importedMotorcycles].map(moto => moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto )); 
             toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
           } else {
-            // Updated error message to be more specific
             toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
           }
         } catch (error: any) {
           console.error("Erro ao importar CSV:", error);
           toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido.", variant: "destructive" });
         } finally {
-          // Clear the file input so the same file can be selected again if needed
           if (fileInputRef.current) {
             fileInputRef.current.value = ""; 
           }
@@ -331,14 +331,13 @@ export default function MotorcyclesPage() {
       };
       reader.onerror = () => {
           toast({ title: "Erro ao ler arquivo", description: "Ocorreu um erro ao tentar ler o arquivo.", variant: "destructive" });
-           // Clear the file input on error as well
            if (fileInputRef.current) {
             fileInputRef.current.value = ""; 
           }
       };
-      reader.readAsText(file); // Or readAsText(file, 'ISO-8859-1') or 'UTF-8' depending on encoding
+      reader.readAsText(file); 
     }
-  }, [toast]); // Added parseCSV to dependencies, as it's defined outside but used inside.
+  }, [toast]); 
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -368,7 +367,7 @@ export default function MotorcyclesPage() {
       </Button>
       <AlertDialog open={isDeleteAllAlertOpen} onOpenChange={setIsDeleteAllAlertOpen}>
         <AlertDialogTrigger asChild>
-          <Button variant="destructive">
+          <Button variant="destructive" onClick={() => setIsDeleteAllAlertOpen(true)}>
             <Trash2 className="mr-2 h-4 w-4" />
             Excluir Todos
           </Button>
@@ -429,3 +428,4 @@ export default function MotorcyclesPage() {
     
 
     
+
