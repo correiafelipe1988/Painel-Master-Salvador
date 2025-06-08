@@ -1,10 +1,9 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { MotorcycleStatus, MotorcycleType } from '@/lib/types';
+import type { MotorcycleStatus } from '@/lib/types';
 import { Search, SlidersHorizontal, QrCode } from 'lucide-react';
 import type { MotorcyclePageFilters } from '@/app/motorcycles/page';
 
@@ -49,6 +48,14 @@ export function MotorcycleFilters({ onFilterChange, initialFilters }: Motorcycle
     onFilterChange({ searchTerm, status, model });
   }, [searchTerm, status, model, onFilterChange]);
 
+  const handleStatusChange = useCallback((value: string) => {
+    setStatus(value as MotorcycleStatus | 'all');
+  }, []); // setStatus de useState é estável
+
+  const handleModelChange = useCallback((value: string) => {
+    setModel(value);
+  }, []); // setModel de useState é estável
+
   return (
     <div className="mb-6 p-6 border rounded-lg bg-card shadow-lg">
       <div className="flex items-center mb-4">
@@ -66,9 +73,9 @@ export function MotorcycleFilters({ onFilterChange, initialFilters }: Motorcycle
             className="pl-10 w-full"
           />
         </div>
-        
+
         <div>
-          <Select value={status} onValueChange={(value) => setStatus(value as MotorcycleStatus | 'all')}>
+          <Select value={status} onValueChange={handleStatusChange}>
             <SelectTrigger id="status-filter" className="w-full">
               <SelectValue placeholder="Todos os Status" />
             </SelectTrigger>
@@ -83,7 +90,7 @@ export function MotorcycleFilters({ onFilterChange, initialFilters }: Motorcycle
         </div>
 
         <div>
-          <Select value={model} onValueChange={(value) => setModel(value)}>
+          <Select value={model} onValueChange={handleModelChange}>
             <SelectTrigger id="model-filter" className="w-full">
               <SelectValue placeholder="Todos os Modelos" />
             </SelectTrigger>
@@ -96,7 +103,7 @@ export function MotorcycleFilters({ onFilterChange, initialFilters }: Motorcycle
             </SelectContent>
           </Select>
         </div>
-        
+
         <Button variant="outline" className="w-full lg:w-auto justify-center">
           <QrCode className="mr-2 h-4 w-4" />
           Escanear QR

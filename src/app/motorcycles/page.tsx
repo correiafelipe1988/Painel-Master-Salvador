@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { MotorcycleFilters } from "@/components/motorcycles/motorcycle-filters";
 import { MotorcycleList } from "@/components/motorcycles/motorcycle-list";
-import type { MotorcycleStatus, MotorcycleType } from '@/lib/types';
+import type { MotorcycleStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Plus } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/motorcycle-icon';
@@ -24,9 +24,9 @@ export default function MotorcyclesPage() {
     searchTerm: '',
   });
 
-  const handleFilterChange = (newFilters: MotorcyclePageFilters) => {
+  const handleFilterChange = useCallback((newFilters: MotorcyclePageFilters) => {
     setFilters(newFilters);
-  };
+  }, []); // setFilters de useState é estável, então o array de dependências vazio está ok.
 
   const pageActions = (
     <>
@@ -38,7 +38,7 @@ export default function MotorcyclesPage() {
         <Download className="mr-2 h-4 w-4" />
         Exportar CSV
       </Button>
-      <Button className="bg-green-600 hover:bg-green-700 text-white">
+      <Button> {/* Usará a cor primária do tema por padrão */}
         <Plus className="mr-2 h-4 w-4" />
         Nova Moto
       </Button>
@@ -47,8 +47,8 @@ export default function MotorcyclesPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader 
-        title="Gestão de Motos" 
+      <PageHeader
+        title="Gestão de Motos"
         description="Controle completo da frota"
         icon={MotorcycleIcon}
         iconContainerClassName="bg-primary"
