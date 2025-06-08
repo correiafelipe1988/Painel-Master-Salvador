@@ -63,56 +63,58 @@ export default function DashboardPage() {
   useEffect(() => {
     setIsLoading(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
-      const updatedMotorcycles = motosFromDB.map(moto =>
-        moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
-      );
-      setAllMotorcycles(updatedMotorcycles);
+      if (Array.isArray(motosFromDB)) {
+        const updatedMotorcycles = motosFromDB.map(moto =>
+          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+        );
+        setAllMotorcycles(updatedMotorcycles);
+      } else {
+        console.warn("Data from subscribeToMotorcycles (dashboard page) was not an array:", motosFromDB);
+        setAllMotorcycles([]); // Fallback to empty array
+      }
       setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (isLoading) return; // Não calcular KPIs e gráficos até que os dados sejam carregados
+    if (isLoading || !Array.isArray(allMotorcycles)) return; 
 
-    if (allMotorcycles.length > 0 || (allMotorcycles.length === 0 && dynamicKpiDataTop[0]?.value !== "0")) { 
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-      const motosAlugadasHojeCount = allMotorcycles.filter(
-        moto => moto.status === 'alugada' && moto.data_ultima_mov === todayStr
-      ).length;
+    const motosAlugadasHojeCount = allMotorcycles.filter(
+      moto => moto.status === 'alugada' && moto.data_ultima_mov === todayStr
+    ).length;
 
-      const motosRecuperadasHojeCount = allMotorcycles.filter(
-        moto => moto.status === 'recolhida' && moto.data_ultima_mov === todayStr
-      ).length;
+    const motosRecuperadasHojeCount = allMotorcycles.filter(
+      moto => moto.status === 'recolhida' && moto.data_ultima_mov === todayStr
+    ).length;
 
-      const motosRelocadasHojeCount = allMotorcycles.filter(
-        moto => moto.status === 'relocada' && moto.data_ultima_mov === todayStr
-      ).length;
+    const motosRelocadasHojeCount = allMotorcycles.filter(
+      moto => moto.status === 'relocada' && moto.data_ultima_mov === todayStr
+    ).length;
 
-      const motosParadas7DiasCount = allMotorcycles.filter(
-        moto => typeof moto.tempo_ocioso_dias === 'number' && moto.tempo_ocioso_dias >= 7
-      ).length;
+    const motosParadas7DiasCount = allMotorcycles.filter(
+      moto => typeof moto.tempo_ocioso_dias === 'number' && moto.tempo_ocioso_dias >= 7
+    ).length;
 
-      setDynamicKpiDataTop(prevKpis => prevKpis.map(kpi => {
-        if (kpi.title === "Motos Alugadas Hoje") {
-          return { ...kpi, value: motosAlugadasHojeCount.toString() };
-        }
-        if (kpi.title === "Motos Recuperadas Hoje") {
-          return { ...kpi, value: motosRecuperadasHojeCount.toString() };
-        }
-        if (kpi.title === "Motos Relocadas Hoje") {
-          return { ...kpi, value: motosRelocadasHojeCount.toString() };
-        }
-        if (kpi.title === "Motos Paradas +7 Dias") {
-          return { ...kpi, value: motosParadas7DiasCount.toString() };
-        }
-        return kpi;
-      }));
-    } else if (allMotorcycles.length === 0) {
-       setDynamicKpiDataTop(kpiDataTop.map(kpi => ({...kpi, value: kpi.title === "Motos Paradas +7 Dias" && kpi.value !== "0" ? kpi.value : "0"})));
-    }
-  }, [allMotorcycles, isLoading, dynamicKpiDataTop]);
+    setDynamicKpiDataTop(prevKpis => prevKpis.map(kpi => {
+      if (kpi.title === "Motos Alugadas Hoje") {
+        return { ...kpi, value: motosAlugadasHojeCount.toString() };
+      }
+      if (kpi.title === "Motos Recuperadas Hoje") {
+        return { ...kpi, value: motosRecuperadasHojeCount.toString() };
+      }
+      if (kpi.title === "Motos Relocadas Hoje") {
+        return { ...kpi, value: motosRelocadasHojeCount.toString() };
+      }
+      if (kpi.title === "Motos Paradas +7 Dias") {
+        return { ...kpi, value: motosParadas7DiasCount.toString() };
+      }
+      return kpi;
+    }));
+    
+  }, [allMotorcycles, isLoading]);
 
 
   const getLast30DaysMap = (valueFn: () => any = () => 0) => {
@@ -126,58 +128,49 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !Array.isArray(allMotorcycles)) return;
 
-    if (allMotorcycles.length === 0 && recoveryData !== null) {
-        setRecoveryData([]);
-        setRentalData([]);
-        setRelocatedData([]);
-        setTotalRentalsData([]);
-        return;
-    }
-    if (allMotorcycles.length > 0) {
-      const today = startOfDay(new Date());
-      const thirtyDaysAgo = subDays(today, 29);
+    const today = startOfDay(new Date());
+    const thirtyDaysAgo = subDays(today, 29);
 
-      const dailyRecoveryCounts = getLast30DaysMap(() => 0);
-      const dailyRentalCounts = getLast30DaysMap(() => 0);
-      const dailyRelocatedCounts = getLast30DaysMap(() => 0);
-      const dailyTotalRentalsCounts = getLast30DaysMap(() => 0);
+    const dailyRecoveryCounts = getLast30DaysMap(() => 0);
+    const dailyRentalCounts = getLast30DaysMap(() => 0);
+    const dailyRelocatedCounts = getLast30DaysMap(() => 0);
+    const dailyTotalRentalsCounts = getLast30DaysMap(() => 0);
 
-      allMotorcycles.forEach(moto => {
-        if (moto.data_ultima_mov) {
-          try {
-            const [year, month, day] = moto.data_ultima_mov.split('-').map(Number);
-            const movDate = startOfDay(new Date(year, month - 1, day)); 
+    allMotorcycles.forEach(moto => {
+      if (moto.data_ultima_mov) {
+        try {
+          const [year, month, day] = moto.data_ultima_mov.split('-').map(Number);
+          const movDate = startOfDay(new Date(year, month - 1, day)); 
 
-            if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
-              const formattedDate = format(movDate, 'dd/MM/yyyy');
+          if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
+            const formattedDate = format(movDate, 'dd/MM/yyyy');
 
-              if (moto.status === 'recolhida') {
-                dailyRecoveryCounts.set(formattedDate, (dailyRecoveryCounts.get(formattedDate) || 0) + 1);
-              }
-
-              if (moto.status === 'alugada') {
-                dailyRentalCounts.set(formattedDate, (dailyRentalCounts.get(formattedDate) || 0) + 1);
-                dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
-              }
-
-              if (moto.status === 'relocada') {
-                dailyRelocatedCounts.set(formattedDate, (dailyRelocatedCounts.get(formattedDate) || 0) + 1);
-                dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
-              }
-
+            if (moto.status === 'recolhida') {
+              dailyRecoveryCounts.set(formattedDate, (dailyRecoveryCounts.get(formattedDate) || 0) + 1);
             }
-          } catch (e) { console.error("Error parsing date for charts: ", moto.data_ultima_mov, e); }
-        }
-      });
-      setRecoveryData(Array.from(dailyRecoveryCounts, ([date, count]) => ({ date, count })));
-      setRentalData(Array.from(dailyRentalCounts, ([date, count]) => ({ date, count })));
-      setRelocatedData(Array.from(dailyRelocatedCounts, ([date, count]) => ({ date, count })));
-      setTotalRentalsData(Array.from(dailyTotalRentalsCounts, ([date, count]) => ({ date, count })));
 
-    }
-  }, [allMotorcycles, isLoading, recoveryData]); // Adicionado recoveryData para evitar loop se allMotorcycles for vazio e recoveryData não for nulo
+            if (moto.status === 'alugada') {
+              dailyRentalCounts.set(formattedDate, (dailyRentalCounts.get(formattedDate) || 0) + 1);
+              dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
+            }
+
+            if (moto.status === 'relocada') {
+              dailyRelocatedCounts.set(formattedDate, (dailyRelocatedCounts.get(formattedDate) || 0) + 1);
+              dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
+            }
+
+          }
+        } catch (e) { console.error("Error parsing date for charts: ", moto.data_ultima_mov, e); }
+      }
+    });
+    setRecoveryData(Array.from(dailyRecoveryCounts, ([date, count]) => ({ date, count })));
+    setRentalData(Array.from(dailyRentalCounts, ([date, count]) => ({ date, count })));
+    setRelocatedData(Array.from(dailyRelocatedCounts, ([date, count]) => ({ date, count })));
+    setTotalRentalsData(Array.from(dailyTotalRentalsCounts, ([date, count]) => ({ date, count })));
+
+  }, [allMotorcycles, isLoading]);
 
   if (isLoading) {
     return (

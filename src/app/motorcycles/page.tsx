@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-// import { usePathname } from 'next/navigation'; // Não é mais necessário para o reload
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { MotorcycleFilters } from "@/components/motorcycles/motorcycle-filters";
@@ -32,7 +31,7 @@ import {
   deleteMotorcycle,
   updateMotorcycleStatus as updateStatusInDB,
   importMotorcyclesBatch,
-  deleteAllMotorcycles as deleteAllFromDB,
+  deleteAllMotorcycles as deleteAllFromDB, // This might be re-enabled later with proper UI
 } from '@/lib/firebase/motorcycleService';
 
 export type MotorcyclePageFilters = {
@@ -50,20 +49,25 @@ export default function MotorcyclesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
   const [editingMotorcycle, setEditingMotorcycle] = useState<Motorcycle | null>(null);
-  const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false); // Mantido para a UI
+  const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isLoading, setIsLoading] = useState(true); // Para feedback de carregamento inicial
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
-      setMotorcycles(motosFromDB.map(moto => 
-        moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
-      ));
+      if (Array.isArray(motosFromDB)) {
+        setMotorcycles(motosFromDB.map(moto => 
+          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+        ));
+      } else {
+        console.warn("Data from subscribeToMotorcycles (motorcycles page) was not an array:", motosFromDB);
+        setMotorcycles([]); // Fallback to empty array
+      }
       setIsLoading(false);
     });
-    return () => unsubscribe(); // Limpar inscrição ao desmontar
+    return () => unsubscribe();
   }, []);
 
 
@@ -150,8 +154,10 @@ export default function MotorcyclesPage() {
   }, [toast]);
 
   const confirmDeleteAllMotorcycles = useCallback(async () => {
+    // Implement deleteAllFromDB if re-enabled and ensure it's handled carefully.
+    // For now, this button might be hidden or disabled.
     try {
-      await deleteAllFromDB();
+      await deleteAllFromDB(); // Assuming this function exists and works
       toast({
         variant: "destructive",
         title: "Todas as Motos Excluídas!",
@@ -421,6 +427,11 @@ export default function MotorcyclesPage() {
         <PlusCircle className="mr-2 h-4 w-4" />
         Nova Moto
       </Button>
+      {/* 
+        Temporarily hiding/disabling "Excluir Todos" as it needs careful implementation with Firestore.
+        Can be re-enabled once deleteAllFromDB is confirmed safe and efficient for Firestore.
+      */}
+      {/* 
       <AlertDialog open={isDeleteAllAlertOpen} onOpenChange={setIsDeleteAllAlertOpen}>
          <Button variant="destructive" onClick={() => setIsDeleteAllAlertOpen(true)}>
             <Trash2 className="mr-2 h-4 w-4" />
@@ -442,6 +453,7 @@ export default function MotorcyclesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      */}
     </>
   );
 
