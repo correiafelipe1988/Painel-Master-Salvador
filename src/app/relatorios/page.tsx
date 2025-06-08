@@ -8,7 +8,7 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart as PagePieIcon, CalendarDays as PageCalendarIcon, Users } from "lucide-react";
+import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart as PagePieIcon, CalendarDays as PageCalendarIcon, Users, Bike } from "lucide-react";
 import type { Motorcycle, Kpi, MotorcycleStatus, ChartDataPoint } from "@/lib/types";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { useToast } from "@/hooks/use-toast";
@@ -84,22 +84,30 @@ export default function RelatoriosPage() {
           (moto.data_ultima_mov && !existingMoto.data_ultima_mov)) {
         uniqueMotorcyclesByPlaca[moto.placa] = moto;
       } else if (!moto.data_ultima_mov && !existingMoto.data_ultima_mov) {
+         // Se ambas as datas não existem, e uma moto já existe para essa placa, mantém a existente.
+         // Isso pode acontecer se os dados forem importados sem data_ultima_mov e houver duplicatas.
+         // A primeira encontrada (pela ordem do Firestore) será mantida.
       }
     });
     const representativeMotorcycles = Object.values(uniqueMotorcyclesByPlaca);
     const totalUniqueMotorcycles = representativeMotorcycles.length;
 
-    const motosAlugadas = representativeMotorcycles.filter(m => m.status === 'alugada').length;
+    const motosAlugadasCount = representativeMotorcycles.filter(m => m.status === 'alugada').length;
+    const motosRelocadasCount = representativeMotorcycles.filter(m => m.status === 'relocada').length;
+    const totalLocacoesCount = motosAlugadasCount + motosRelocadasCount;
+
     const motosInadimplentes = representativeMotorcycles.filter(m => m.status === 'inadimplente').length;
     const percInadimplencia = totalUniqueMotorcycles > 0 ? (motosInadimplentes / totalUniqueMotorcycles) * 100 : 0;
-    const taxaAlugadas = totalUniqueMotorcycles > 0 ? (motosAlugadas / totalUniqueMotorcycles) * 100 : 0;
+    
+    const taxaLocacoes = totalUniqueMotorcycles > 0 ? (totalLocacoesCount / totalUniqueMotorcycles) * 100 : 0;
+    
     const valorPendente = representativeMotorcycles
       .filter(m => m.status === 'inadimplente' && typeof m.valorDiaria === 'number')
       .reduce((sum, moto) => sum + (moto.valorDiaria || 0), 0);
 
     setKpiData([
       { title: "Total de Motos Únicas", value: totalUniqueMotorcycles.toString(), icon: Users, description: "Frota ativa (placas únicas)", color: "text-blue-700", iconBgColor: "bg-blue-100", iconColor: "text-blue-700" },
-      { title: "Motos Alugadas", value: motosAlugadas.toString(), icon: BarChartBig, description: `Taxa de Ocupação: ${taxaAlugadas.toFixed(0)}%`, color: "text-green-700", iconBgColor: "bg-green-100", iconColor: "text-green-700" },
+      { title: "Total de Locações", value: totalLocacoesCount.toString(), icon: Bike, description: `Taxa de Ocupação: ${taxaLocacoes.toFixed(0)}%`, color: "text-green-700", iconBgColor: "bg-green-100", iconColor: "text-green-700" },
       { title: "% Inadimplência", value: `${percInadimplencia.toFixed(1)}%`, icon: Clock, description: "Percentual de inadimplentes", color: "text-red-700", iconBgColor: "bg-red-100", iconColor: "text-red-700" },
       { title: "Valor Pendente", value: `R$ ${valorPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Download, description: "Total de diárias em aberto", color: "text-orange-700", iconBgColor: "bg-orange-100", iconColor: "text-orange-700" },
     ]);
@@ -154,7 +162,7 @@ export default function RelatoriosPage() {
     setMonthlyRelocatedData(monthAbbreviations.map((m, i) => ({ month: m, count: relocatedCounts[i] })));
     setMonthlyTotalRentalsData(monthAbbreviations.map((m, i) => ({ month: m, count: totalRentalsCounts[i] })));
 
-    // Monthly Base Growth Chart Data (Opção B: Total Acumulado)
+    
     const firstEverMovementDateByPlaca: Record<string, Date> = {};
     allMotorcycles.forEach(moto => {
       if (moto.placa && moto.data_ultima_mov) {
