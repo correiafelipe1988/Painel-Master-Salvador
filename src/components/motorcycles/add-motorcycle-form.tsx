@@ -22,15 +22,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Save, XIcon } from "lucide-react";
+import { CalendarIcon, Save, XIcon, Edit, PlusCircle } from "lucide-react";
 import { MotorcycleIcon as TitleIcon } from '@/components/icons/motorcycle-icon';
 import type { Motorcycle, MotorcycleStatus, MotorcycleType } from "@/lib/types";
 import { DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format, isValid } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useEffect } from "react";
 
 const motorcycleStatusOptions: { value: MotorcycleStatus; label: string }[] = [
   { value: 'active', label: 'Disponível' },
@@ -51,39 +52,62 @@ const formSchema = z.object({
   model: z.string().optional(),
   type: z.enum(['nova', 'usada']).optional(),
   status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada']).optional(),
-  valorDiaria: z.coerce.number().positive("O valor da diária deve ser positivo.").optional().or(z.literal('')), // Permite string vazia para limpar
+  valorDiaria: z.coerce.number().positive("O valor da diária deve ser positivo.").optional().or(z.literal('')),
   data_ultima_mov: z.date().optional(),
-  tempo_ocioso_dias: z.coerce.number().min(0, "Os dias parado não podem ser negativos.").optional().or(z.literal('')), // Permite string vazia para limpar
+  tempo_ocioso_dias: z.coerce.number().min(0, "Os dias parado não podem ser negativos.").optional().or(z.literal('')),
   franqueado: z.string().optional(),
   qrCodeUrl: z.string().optional(), // CS é agora um texto livre
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
+const defaultFormValues: FormValues = {
+  placa: "",
+  model: "",
+  type: undefined,
+  status: undefined,
+  valorDiaria: undefined,
+  data_ultima_mov: undefined,
+  tempo_ocioso_dias: undefined,
+  franqueado: "",
+  qrCodeUrl: "",
+};
+
 interface AddMotorcycleFormProps {
   onSubmit: (data: Motorcycle) => void;
   onCancel: () => void;
+  initialData?: Motorcycle | null;
 }
 
-export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps) {
+export function AddMotorcycleForm({ onSubmit, onCancel, initialData }: AddMotorcycleFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      placa: "",
-      model: "",
-      type: undefined,
-      status: undefined,
-      valorDiaria: undefined,
-      data_ultima_mov: undefined,
-      tempo_ocioso_dias: undefined,
-      franqueado: "",
-      qrCodeUrl: "",
-    },
+    defaultValues: defaultFormValues,
   });
 
+  useEffect(() => {
+    if (initialData) {
+      const dataToReset: FormValues = {
+        placa: initialData.placa || "",
+        model: initialData.model || "",
+        type: initialData.type || undefined,
+        status: initialData.status || undefined,
+        valorDiaria: initialData.valorDiaria !== undefined ? initialData.valorDiaria : '',
+        // Convert string date from initialData to Date object for the calendar
+        data_ultima_mov: initialData.data_ultima_mov && isValid(parseISO(initialData.data_ultima_mov)) ? parseISO(initialData.data_ultima_mov) : undefined,
+        tempo_ocioso_dias: initialData.tempo_ocioso_dias !== undefined ? initialData.tempo_ocioso_dias : '',
+        franqueado: initialData.franqueado || "",
+        qrCodeUrl: initialData.qrCodeUrl || "",
+      };
+      form.reset(dataToReset);
+    } else {
+      form.reset(defaultFormValues);
+    }
+  }, [initialData, form]);
+
   function handleFormSubmit(values: FormValues) {
-    const newMotorcycle: Motorcycle = {
-      id: Date.now().toString(),
+    const motorcycleData: Motorcycle = {
+      id: initialData?.id || Date.now().toString(), // Use existing ID if editing
       placa: values.placa,
       model: values.model || undefined,
       type: values.type || undefined,
@@ -94,15 +118,17 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
       franqueado: values.franqueado || undefined,
       qrCodeUrl: values.qrCodeUrl || undefined,
     };
-    onSubmit(newMotorcycle);
+    onSubmit(motorcycleData);
   }
+  
+  const isEditing = !!initialData;
 
   return (
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center">
-          <TitleIcon className="mr-2 h-6 w-6 text-primary" />
-          Adicionar Nova Moto
+          {isEditing ? <Edit className="mr-2 h-6 w-6 text-primary" /> : <PlusCircle className="mr-2 h-6 w-6 text-primary" />}
+          {isEditing ? 'Editar Moto' : 'Adicionar Nova Moto'}
         </DialogTitle>
       </DialogHeader>
       <Form {...form}>
@@ -129,7 +155,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
                 <FormItem>
                   <FormLabel>Modelo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Honda Pop 110i" {...field} />
+                    <Input placeholder="Ex: Honda Pop 110i" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -141,7 +167,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />
@@ -166,7 +192,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o status" />
@@ -189,7 +215,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
                 <FormItem>
                   <FormLabel>Valor da Diária (R$)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="Ex: 35.00" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} value={field.value === undefined ? '' : field.value} />
+                    <Input type="number" placeholder="Ex: 35.00" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} value={field.value === undefined || field.value === null ? '' : field.value} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -247,7 +273,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
                 <FormItem>
                   <FormLabel>Dias Parado</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} value={field.value === undefined ? '' : field.value}/>
+                    <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} value={field.value === undefined || field.value === null ? '' : field.value}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -262,7 +288,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
               <FormItem>
                 <FormLabel>Franqueado Responsável</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nome do franqueado" {...field} />
+                  <Input placeholder="Nome do franqueado" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -271,12 +297,12 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
 
           <FormField
             control={form.control}
-            name="qrCodeUrl"
+            name="qrCodeUrl" // Este é o campo CS
             render={({ field }) => (
               <FormItem>
-                <FormLabel>CS (Código de Segurança/QR Link)</FormLabel>
+                <FormLabel>CS (Código de Segurança)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Identificador do CS (Ex: Nome do Cliente)" {...field} />
+                  <Input placeholder="Identificador do CS (Ex: Nome do Cliente)" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -292,7 +318,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
             </DialogClose>
             <Button type="submit">
               <Save className="mr-2 h-4 w-4" />
-              Salvar Moto
+              {isEditing ? 'Salvar Alterações' : 'Salvar Moto'}
             </Button>
           </DialogFooter>
         </form>
@@ -300,3 +326,5 @@ export function AddMotorcycleForm({ onSubmit, onCancel }: AddMotorcycleFormProps
     </>
   );
 }
+
+    

@@ -13,12 +13,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, QrCode } from 'lucide-react'; 
+import { MoreHorizontal, QrCode, Eye, Edit, Trash2, CheckCircle, XCircle, Bike, Wrench } from 'lucide-react'; 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import type { MotorcyclePageFilters } from '@/app/motorcycles/page';
 
@@ -69,9 +70,10 @@ interface MotorcycleListProps {
   motorcycles: Motorcycle[];
   onUpdateStatus: (motorcycleId: string, newStatus: MotorcycleStatus) => void;
   onDeleteMotorcycle: (motorcycleId: string) => void;
+  onEditMotorcycle: (motorcycle: Motorcycle) => void;
 }
 
-export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteMotorcycle }: MotorcycleListProps) {
+export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteMotorcycle, onEditMotorcycle }: MotorcycleListProps) {
   const [clientMounted, setClientMounted] = useState(false);
   useEffect(() => {
     setClientMounted(true);
@@ -133,7 +135,7 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
                 <TableRow key={moto.id}>
                   <TableCell>
                     {moto.qrCodeUrl ? (
-                      <span title={moto.qrCodeUrl} className="flex items-center gap-1 text-sm"> 
+                       <span title={moto.qrCodeUrl} className="flex items-center gap-1 text-sm">
                         <QrCode className="h-4 w-4 text-muted-foreground" />
                         {moto.qrCodeUrl}
                       </span>
@@ -163,16 +165,34 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => console.log('Ver Detalhes:', moto.id, moto)}>Ver Detalhes</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => console.log('Editar:', moto.id, moto)}>Editar</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'recolhida')}>Marcar como Recolhida</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'relocada')}>Marcar como Relocada</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'manutencao')}>Marcar para Manutenção</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => console.log('Ver Detalhes:', moto)}>
+                          <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEditMotorcycle(moto)}>
+                          <Edit className="mr-2 h-4 w-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'active')}>
+                          <CheckCircle className="mr-2 h-4 w-4 text-green-500" /> Marcar como Disponível
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'alugada')}>
+                          <Bike className="mr-2 h-4 w-4 text-sky-500" /> Marcar como Alugada
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'recolhida')}>
+                           <XCircle className="mr-2 h-4 w-4 text-gray-500" /> Marcar como Recolhida
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'relocada')}>
+                           <Bike className="mr-2 h-4 w-4 text-blue-500" /> Marcar como Relocada
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'manutencao')}>
+                          <Wrench className="mr-2 h-4 w-4 text-yellow-500" /> Marcar para Manutenção
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           onClick={() => onDeleteMotorcycle(moto.id)}
-                          className="text-destructive hover:!text-destructive hover:!bg-destructive/10 focus:!text-destructive focus:!bg-destructive/10"
+                          className="text-destructive hover:!text-destructive focus:!text-destructive !bg-transparent hover:!bg-destructive/10 focus:!bg-destructive/10"
                         >
-                          Excluir
+                          <Trash2 className="mr-2 h-4 w-4" /> Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -186,3 +206,5 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
     </div>
   );
 }
+
+    
