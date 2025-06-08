@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-// import Image from 'next/image'; // Removido pois não vamos mais gerar QR Code dinamicamente aqui
 import {
   Table,
   TableBody,
@@ -14,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, QrCode } from 'lucide-react'; // Adicionado QrCode para um placeholder visual
+import { MoreHorizontal, QrCode } from 'lucide-react'; 
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,10 +36,10 @@ const getStatusBadgeVariant = (status?: MotorcycleStatus) => {
 };
 
 const getStatusBadgeClassName = (status?: MotorcycleStatus) => {
-  if (!status) return 'bg-gray-200 text-gray-700 border-gray-400'; // Cor para status indefinido
+  if (!status) return 'bg-gray-200 text-gray-700 border-gray-400'; 
   switch (status) {
     case 'active': return 'bg-green-500 hover:bg-green-600 text-white border-green-500';
-    case 'alugada': return 'bg-sky-500 hover:bg-sky-600 text-white border-sky-500'; // Azul claro para alugada
+    case 'alugada': return 'bg-sky-500 hover:bg-sky-600 text-white border-sky-500'; 
     case 'inadimplente': return 'bg-red-500 hover:bg-red-600 text-white border-red-500';
     case 'manutencao': return 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500';
     case 'recolhida': return 'bg-gray-500 hover:bg-gray-600 text-white border-gray-500';
@@ -68,9 +67,11 @@ const translateStatus = (status?: MotorcycleStatus): string => {
 interface MotorcycleListProps {
   filters: MotorcyclePageFilters;
   motorcycles: Motorcycle[];
+  onUpdateStatus: (motorcycleId: string, newStatus: MotorcycleStatus) => void;
+  onDeleteMotorcycle: (motorcycleId: string) => void;
 }
 
-export function MotorcycleList({ filters, motorcycles }: MotorcycleListProps) {
+export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteMotorcycle }: MotorcycleListProps) {
   const [clientMounted, setClientMounted] = useState(false);
   useEffect(() => {
     setClientMounted(true);
@@ -162,12 +163,17 @@ export function MotorcycleList({ filters, motorcycles }: MotorcycleListProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver Detalhes</DropdownMenuItem>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem>Marcar como Recolhida</DropdownMenuItem>
-                        <DropdownMenuItem>Marcar como Relocada</DropdownMenuItem>
-                        <DropdownMenuItem>Marcar para Manutenção</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive hover:!bg-destructive/10">Excluir</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => console.log('Ver Detalhes:', moto.id, moto)}>Ver Detalhes</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => console.log('Editar:', moto.id, moto)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'recolhida')}>Marcar como Recolhida</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'relocada')}>Marcar como Relocada</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'manutencao')}>Marcar para Manutenção</DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onDeleteMotorcycle(moto.id)}
+                          className="text-destructive hover:!text-destructive hover:!bg-destructive/10 focus:!text-destructive focus:!bg-destructive/10"
+                        >
+                          Excluir
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

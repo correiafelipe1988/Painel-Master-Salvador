@@ -20,14 +20,13 @@ export type MotorcyclePageFilters = {
   searchTerm: string;
 };
 
-// Movido mockMotorcycles para o estado da página
 const initialMockMotorcycles: Motorcycle[] = [
-  { id: '1', placa: 'MOTO001', status: 'active', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-20', tempo_ocioso_dias: 2, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'XTZ 150 Crosser', valorDiaria: 75.00 },
-  { id: '2', placa: 'MOTO002', status: 'inadimplente', type: 'usada', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-10', tempo_ocioso_dias: 12, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'CG 160 Titan', valorDiaria: 60.50 },
-  { id: '3', placa: 'MOTO003', status: 'manutencao', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-15', tempo_ocioso_dias: 7, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'NMAX 160', valorDiaria: 80.00 },
-  { id: '4', placa: 'MOTO004', status: 'recolhida', type: 'usada', franqueado: 'Lauro de Freitas', data_ultima_mov: '2024-06-25', tempo_ocioso_dias: 27, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'PCX 150', valorDiaria: 70.00 },
-  { id: '5', placa: 'MOTO005', status: 'active', type: 'nova', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-22', tempo_ocioso_dias: 0, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'Factor 150', valorDiaria: 65.00 },
-  { id: '6', placa: 'MOTO006', status: 'relocada', type: 'usada', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'Biz 125', valorDiaria: 55.00 },
+  { id: '1', placa: 'MOTO001', model: 'XTZ 150 Crosser', status: 'active', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-20', tempo_ocioso_dias: 2, qrCodeUrl: 'LETICIA', valorDiaria: 75.00 },
+  { id: '2', placa: 'MOTO002', model: 'CG 160 Titan', status: 'inadimplente', type: 'usada', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-10', tempo_ocioso_dias: 12, qrCodeUrl: 'https://placehold.co/50x50.png', valorDiaria: 60.50 },
+  { id: '3', placa: 'MOTO003', model: 'NMAX 160', status: 'manutencao', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-15', tempo_ocioso_dias: 7, qrCodeUrl: 'https://placehold.co/50x50.png', valorDiaria: 80.00 },
+  { id: '4', placa: 'MOTO004', model: 'PCX 150', status: 'recolhida', type: 'usada', franqueado: 'Lauro de Freitas', data_ultima_mov: '2024-06-25', tempo_ocioso_dias: 27, qrCodeUrl: 'https://placehold.co/50x50.png', valorDiaria: 70.00 },
+  { id: '5', placa: 'MOTO005', model: 'Factor 150', status: 'active', type: 'nova', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-22', tempo_ocioso_dias: 0, qrCodeUrl: 'https://placehold.co/50x50.png', valorDiaria: 65.00 },
+  { id: '6', placa: 'MOTO006', model: 'Biz 125', status: 'relocada', type: 'usada', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'https://placehold.co/50x50.png', valorDiaria: 55.00 },
 ];
 
 
@@ -53,6 +52,30 @@ export default function MotorcyclesPage() {
       description: `A moto ${newMotorcycle.placa} foi adicionada com sucesso.`,
     });
   };
+
+  const handleUpdateMotorcycleStatus = useCallback((motorcycleId: string, newStatus: MotorcycleStatus) => {
+    setMotorcycles(prevMotorcycles =>
+      prevMotorcycles.map(moto =>
+        moto.id === motorcycleId ? { ...moto, status: newStatus } : moto
+      )
+    );
+    toast({
+      title: "Status Atualizado!",
+      description: `O status da moto foi atualizado para ${newStatus}.`,
+    });
+  }, [toast]);
+
+  const handleDeleteMotorcycle = useCallback((motorcycleId: string) => {
+    setMotorcycles(prevMotorcycles =>
+      prevMotorcycles.filter(moto => moto.id !== motorcycleId)
+    );
+    toast({
+      variant: "destructive",
+      title: "Moto Excluída!",
+      description: `A moto foi excluída com sucesso.`,
+    });
+  }, [toast]);
+
 
   const pageActions = (
     <>
@@ -91,7 +114,12 @@ export default function MotorcyclesPage() {
         actions={pageActions}
       />
       <MotorcycleFilters onFilterChange={handleFilterChange} initialFilters={filters} />
-      <MotorcycleList filters={filters} motorcycles={motorcycles} />
+      <MotorcycleList 
+        filters={filters} 
+        motorcycles={motorcycles} 
+        onUpdateStatus={handleUpdateMotorcycleStatus}
+        onDeleteMotorcycle={handleDeleteMotorcycle}
+      />
     </DashboardLayout>
   );
 }
