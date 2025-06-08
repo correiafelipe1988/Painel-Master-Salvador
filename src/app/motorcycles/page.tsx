@@ -20,8 +20,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog"; // Removido AlertDialogTrigger não utilizado diretamente aqui
 import { AddMotorcycleForm } from "@/components/motorcycles/add-motorcycle-form";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +39,7 @@ const initialMockMotorcycles: Motorcycle[] = [
   { id: '6', placa: 'MOTO006', model: 'Biz 125', status: 'relocada', type: 'usada', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'MOTO ROTA 7', valorDiaria: 55.00 },
 ];
 
+const LOCAL_STORAGE_KEY = 'motorcyclesData';
 
 export default function MotorcyclesPage() {
   const [filters, setFilters] = useState<MotorcyclePageFilters>({
@@ -48,19 +48,43 @@ export default function MotorcyclesPage() {
     searchTerm: '',
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>(initialMockMotorcycles);
+  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
   const [editingMotorcycle, setEditingMotorcycle] = useState<Motorcycle | null>(null);
   const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Carregar dados do LocalStorage na montagem inicial
   useEffect(() => {
-    setMotorcycles(prevMotos =>
-      prevMotos.map(moto =>
+    let loadedMotorcycles = initialMockMotorcycles;
+    try {
+      const storedMotorcycles = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (storedMotorcycles) {
+        loadedMotorcycles = JSON.parse(storedMotorcycles);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar motocicletas do localStorage:", error);
+      // Mantém initialMockMotorcycles em caso de erro
+    }
+    setMotorcycles(
+      loadedMotorcycles.map(moto =>
         moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
       )
     );
-  }, []); // Roda uma vez após a montagem inicial
+  }, []);
+
+  // Salvar dados no LocalStorage sempre que 'motorcycles' mudar
+  useEffect(() => {
+    // Evita salvar o estado inicial vazio antes do carregamento do localStorage
+    if (motorcycles.length > 0 || localStorage.getItem(LOCAL_STORAGE_KEY)) {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(motorcycles));
+      } catch (error) {
+        console.error("Erro ao salvar motocicletas no localStorage:", error);
+      }
+    }
+  }, [motorcycles]);
+
 
   const handleFilterChange = useCallback((newFilters: MotorcyclePageFilters) => {
     setFilters(newFilters);
@@ -147,13 +171,13 @@ export default function MotorcyclesPage() {
     }
 
     const headers = [
-      "id", "placa", "model", "status", "type", 
-      "franqueado", "data_ultima_mov", "tempo_ocioso_dias", 
+      "id", "placa", "model", "status", "type",
+      "franqueado", "data_ultima_mov", "tempo_ocioso_dias",
       "qrCodeUrl", "valorDiaria"
     ];
-    
+
     const csvRows = [
-      headers.join(','), 
+      headers.join(','),
       ...motorcycles.map(moto => {
         const escapeCsvCell = (cellData: any): string => {
           if (cellData === undefined || cellData === null) {
@@ -208,16 +232,16 @@ export default function MotorcyclesPage() {
 
   const parseCSV = (csvText: string): Motorcycle[] => {
     let cleanedCsvText = csvText;
-    if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
+    if (cleanedCsvText.charCodeAt(0) === 0xFEFF) { // BOM check
       cleanedCsvText = cleanedCsvText.substring(1);
     }
-  
+
     const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
-  
-    if (lines.length < 2) { 
+
+    if (lines.length < 2) {
       throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
     }
-    
+
     const parseCsvLine = (line: string): string[] => {
       const result: string[] = [];
       let currentField = '';
@@ -226,28 +250,28 @@ export default function MotorcyclesPage() {
         const char = line[i];
         if (char === '"') {
           if (inQuotes && i + 1 < line.length && line[i+1] === '"') {
-            currentField += '"'; 
-            i++; 
+            currentField += '"';
+            i++;
           } else {
-            inQuotes = !inQuotes; 
+            inQuotes = !inQuotes;
           }
-        } else if (char === ';' && !inQuotes) { 
+        } else if (char === ';' && !inQuotes) { // Changed delimiter to semicolon
           result.push(currentField.trim());
           currentField = '';
         } else {
           currentField += char;
         }
       }
-      result.push(currentField.trim()); 
+      result.push(currentField.trim());
       return result;
     };
-    
+
     const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
     const headers = parseCsvLine(lines[0]).map(normalizeHeader);
-    
+
     const findHeaderIndex = (possibleNames: string[]): number => {
       for (const name of possibleNames) {
-        const index = headers.indexOf(name); 
+        const index = headers.indexOf(name);
         if (index !== -1) return index;
       }
       return -1;
@@ -259,42 +283,45 @@ export default function MotorcyclesPage() {
     if (placaIndex === -1) {
       throw new Error("CSV inválido: Coluna 'placa' ou 'codigo' não encontrada. Cabeçalhos detectados (normalizados): " + headers.join(' | '));
     }
-  
+
     const motorcyclesArray: Motorcycle[] = [];
     const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'];
     const allowedType: MotorcycleType[] = ['nova', 'usada'];
-  
+
     const modelIndex = findHeaderIndex(['model', 'modelo']);
     const statusIndex = findHeaderIndex(['status']);
     const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto', 'tipo']);
     const franqueadoIndex = findHeaderIndex(['franqueado', 'filial']);
-    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentação']);
+    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentacao', 'ultima movimentacao']);
     const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias', 'dias parado']);
     const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']);
     const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']);
-  
+
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
-      
+
       const placa = placaIndex !== -1 ? values[placaIndex] : undefined;
-      if (!placa) continue; 
-  
+      if (!placa) continue;
+
       const statusRaw = statusIndex !== -1 ? values[statusIndex] : undefined;
-      const statusValue = statusRaw ? normalizeHeader(statusRaw) as MotorcycleStatus : undefined;
+      let statusValue = statusRaw ? normalizeHeader(statusRaw) as MotorcycleStatus : undefined;
+      if (statusValue && !allowedStatus.includes(statusValue)) statusValue = undefined; // Invalida se não estiver na lista
+      if (statusValue === undefined) statusValue = 'alugada'; // Default para 'alugada'
 
       const typeRaw = typeIndex !== -1 ? values[typeIndex] : undefined;
-      const typeValue = typeRaw ? normalizeHeader(typeRaw) as MotorcycleType : undefined;
-  
+      let typeValue = typeRaw ? normalizeHeader(typeRaw) as MotorcycleType : undefined;
+      if (typeValue && !allowedType.includes(typeValue)) typeValue = undefined;
+
       const moto: Motorcycle = {
-        id: `imported-${Date.now()}-${i}-${Math.random().toString(36).substring(7)}`, 
+        id: `imported-${Date.now()}-${i}-${Math.random().toString(36).substring(7)}`,
         placa: placa,
         model: modelIndex !== -1 && values[modelIndex] ? values[modelIndex] : undefined,
-        status: statusValue && allowedStatus.includes(statusValue) ? statusValue : undefined,
-        type: typeValue && allowedType.includes(typeValue) ? typeValue : undefined,
+        status: statusValue, // Já tem o default 'alugada' se status for inválido ou undefined
+        type: typeValue,
         franqueado: franqueadoIndex !== -1 && values[franqueadoIndex] ? values[franqueadoIndex] : undefined,
-        data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined, 
+        data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined,
         tempo_ocioso_dias: tempoOciosoDiasIndex !== -1 && values[tempoOciosoDiasIndex] ? parseInt(values[tempoOciosoDiasIndex], 10) || undefined : undefined,
-        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, 
+        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined,
         valorDiaria: valorDiariaIndex !== -1 && values[valorDiariaIndex] ? parseFloat(values[valorDiariaIndex].replace(',', '.')) || undefined : undefined,
       };
       motorcyclesArray.push(moto);
@@ -315,7 +342,7 @@ export default function MotorcyclesPage() {
         try {
           const importedMotorcycles = parseCSV(text);
           if (importedMotorcycles.length > 0) {
-            setMotorcycles(prev => [...prev, ...importedMotorcycles].map(moto => moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto )); 
+            setMotorcycles(prev => [...prev, ...importedMotorcycles].map(moto => moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto ));
             toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
           } else {
             toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
@@ -325,19 +352,19 @@ export default function MotorcyclesPage() {
           toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido.", variant: "destructive" });
         } finally {
           if (fileInputRef.current) {
-            fileInputRef.current.value = ""; 
+            fileInputRef.current.value = "";
           }
         }
       };
       reader.onerror = () => {
           toast({ title: "Erro ao ler arquivo", description: "Ocorreu um erro ao tentar ler o arquivo.", variant: "destructive" });
            if (fileInputRef.current) {
-            fileInputRef.current.value = ""; 
+            fileInputRef.current.value = "";
           }
       };
-      reader.readAsText(file); 
+      reader.readAsText(file);
     }
-  }, [toast]); 
+  }, [toast]);
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -350,12 +377,12 @@ export default function MotorcyclesPage() {
         <Upload className="mr-2 h-4 w-4" />
         Importar CSV
       </Button>
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
-        accept=".csv" 
-        style={{ display: 'none' }} 
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".csv"
+        style={{ display: 'none' }}
       />
       <Button variant="outline" onClick={handleExportCSV}>
         <Download className="mr-2 h-4 w-4" />
@@ -366,12 +393,10 @@ export default function MotorcyclesPage() {
         Nova Moto
       </Button>
       <AlertDialog open={isDeleteAllAlertOpen} onOpenChange={setIsDeleteAllAlertOpen}>
-        <AlertDialogTrigger asChild>
-          <Button variant="destructive" onClick={() => setIsDeleteAllAlertOpen(true)}>
+         <Button variant="destructive" onClick={() => setIsDeleteAllAlertOpen(true)}>
             <Trash2 className="mr-2 h-4 w-4" />
             Excluir Todos
           </Button>
-        </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
@@ -401,9 +426,9 @@ export default function MotorcyclesPage() {
         actions={pageActions}
       />
       <MotorcycleFilters onFilterChange={handleFilterChange} initialFilters={filters} />
-      <MotorcycleList 
-        filters={filters} 
-        motorcycles={motorcycles} 
+      <MotorcycleList
+        filters={filters}
+        motorcycles={motorcycles}
         onUpdateStatus={handleUpdateMotorcycleStatus}
         onDeleteMotorcycle={handleDeleteMotorcycle}
         onEditMotorcycle={handleOpenEditModal}
@@ -413,8 +438,8 @@ export default function MotorcyclesPage() {
         else setIsModalOpen(true);
       }}>
         <DialogContent className="sm:max-w-[625px]">
-          <AddMotorcycleForm 
-            onSubmit={handleSaveMotorcycle} 
+          <AddMotorcycleForm
+            onSubmit={handleSaveMotorcycle}
             onCancel={handleCloseModal}
             initialData={editingMotorcycle}
           />
@@ -423,9 +448,3 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
-    
-
-    
-
-    
-
