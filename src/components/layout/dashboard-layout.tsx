@@ -17,11 +17,11 @@ import {
   SidebarInset,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { MotorcycleIcon } from "@/components/icons/motorcycle-icon";
+import { MotorcycleIcon as AppMotorcycleIcon } from "@/components/icons/motorcycle-icon"; // Renomeado para evitar conflito
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package } from "lucide-react";
+import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon } from "lucide-react";
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
@@ -29,18 +29,20 @@ import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
   { href: "/motorcycles", label: "Gestão de Motos", subLabel: "Frota completa", icon: ListFilter },
-  { href: "/inadimplencia", label: "Inadimplência", subLabel: "Controle de atrasos", icon: AlertTriangle },
-  { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
+  // { href: "/inadimplencia", label: "Inadimplência", subLabel: "Controle de atrasos", icon: AlertTriangle }, // Comentado conforme PRD
+  // { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users }, // Comentado conforme PRD
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
+  { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: Users }, // Usando Users como placeholder
+  { href: "/qr-scanner", label: "Leitor QR", subLabel: "Escanear códigos", icon: ListFilter }, // Usando ListFilter como placeholder
 ];
 
 const initialStatusRapidoItems: StatusRapidoItemType[] = [
   { label: "Total de Motos", subLabel: "Placas únicas", count: 0, bgColor: "bg-slate-100", textColor: "text-slate-700", badgeTextColor: "text-slate-700", icon: Package },
-  { label: "Disponíveis", subLabel: "Motos prontas", count: 0, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700", statusKey: 'active' },
-  { label: "Alugadas", subLabel: "Em uso", count: 0, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700", statusKey: 'alugada' },
-  { label: "Relocadas", subLabel: "Em transferência", count: 0, bgColor: "bg-gray-100", textColor: "text-gray-700", badgeTextColor: "text-gray-700", statusKey: 'relocada' },
-  { label: "Manutenção", subLabel: "Em oficina", count: 0, bgColor: "bg-purple-100", textColor: "text-purple-700", badgeTextColor: "text-purple-700", statusKey: 'manutencao' },
-  { label: "Recolhidas", subLabel: "Aguardando", count: 0, bgColor: "bg-orange-100", textColor: "text-orange-700", badgeTextColor: "text-orange-700", statusKey: 'recolhida' },
+  { label: "Disponíveis", subLabel: "Motos prontas", count: 0, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700", statusKey: 'active', icon: CheckCircle2 },
+  { label: "Alugadas", subLabel: "Em uso", count: 0, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700", statusKey: 'alugada', icon: SidebarBikeIcon },
+  { label: "Relocadas", subLabel: "Em transferência", count: 0, bgColor: "bg-gray-100", textColor: "text-gray-700", badgeTextColor: "text-gray-700", statusKey: 'relocada', icon: MapPin },
+  { label: "Manutenção", subLabel: "Em oficina", count: 0, bgColor: "bg-purple-100", textColor: "text-purple-700", badgeTextColor: "text-purple-700", statusKey: 'manutencao', icon: Wrench },
+  { label: "Recolhidas", subLabel: "Aguardando", count: 0, bgColor: "bg-orange-100", textColor: "text-orange-700", badgeTextColor: "text-orange-700", statusKey: 'recolhida', icon: XCircle },
 ];
 
 
@@ -73,27 +75,50 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Etapa 1: Obter o registro mais recente para cada placa única
+    const uniqueMotorcyclesByPlaca: { [placa: string]: Motorcycle } = {};
+    allMotorcycles.forEach(moto => {
+      if (!moto.placa) return; // Ignorar motos sem placa
+
+      const existingMoto = uniqueMotorcyclesByPlaca[moto.placa];
+
+      if (!existingMoto) {
+        uniqueMotorcyclesByPlaca[moto.placa] = moto;
+      } else {
+        const existingDateStr = existingMoto.data_ultima_mov;
+        const currentDateStr = moto.data_ultima_mov;
+
+        // Comparar datas apenas se ambas existirem
+        if (currentDateStr && existingDateStr) {
+          if (new Date(currentDateStr) > new Date(existingDateStr)) {
+            uniqueMotorcyclesByPlaca[moto.placa] = moto; // Moto atual é mais recente
+          }
+        } else if (currentDateStr && !existingDateStr) {
+          uniqueMotorcyclesByPlaca[moto.placa] = moto; // Moto atual tem data, a existente não
+        }
+        // Se currentDateStr não existir, ou se ambas as datas forem iguais,
+        // a moto existente (primeira encontrada com aquela data ou sem data) é mantida.
+      }
+    });
+    const representativeMotorcycles = Object.values(uniqueMotorcyclesByPlaca);
+
+    // Etapa 2: Calcular contagens com base nas motocicletas representativas
     const counts: Record<MotorcycleStatus, number> = {
       active: 0,
       alugada: 0,
-      inadimplente: 0, // Not directly used in display list anymore, but structure kept
+      inadimplente: 0, // Mantido na estrutura, mas não exibido diretamente
       manutencao: 0,
       recolhida: 0,
       relocada: 0,
     };
 
-    const uniquePlacas = new Set<string>();
-
-    allMotorcycles.forEach(moto => {
-      if (moto.placa) {
-        uniquePlacas.add(moto.placa);
-      }
+    representativeMotorcycles.forEach(moto => {
       if (moto.status && counts[moto.status] !== undefined) {
         counts[moto.status]++;
       }
     });
     
-    const totalUniqueMotorcycles = uniquePlacas.size;
+    const totalUniqueMotorcycles = representativeMotorcycles.length;
 
     setDynamicStatusRapidoItems(
       initialStatusRapidoItems.map(item => {
@@ -114,7 +139,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sidebar>
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <MotorcycleIcon className="h-8 w-8 text-sidebar-primary" />
+            <AppMotorcycleIcon className="h-8 w-8 text-sidebar-primary" />
             <div>
               <h1 className="text-lg font-semibold text-sidebar-foreground font-headline leading-tight">
                 Master Salvador
@@ -195,3 +220,5 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    
