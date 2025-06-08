@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation'; // Importar usePathname
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { MotorcycleFilters } from "@/components/motorcycles/motorcycle-filters";
@@ -53,37 +54,65 @@ export default function MotorcyclesPage() {
   const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname(); // Obter o pathname atual
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
 
-  // Carregar dados do LocalStorage na montagem inicial
+
+  // Carregar dados do LocalStorage na montagem inicial ou quando o pathname mudar para /motorcycles
   useEffect(() => {
-    let loadedMotorcycles = initialMockMotorcycles;
-    try {
-      const storedMotorcycles = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (storedMotorcycles) {
-        loadedMotorcycles = JSON.parse(storedMotorcycles);
+    // Executar apenas se estivermos na página de motocicletas.
+    // Isso é uma segurança extra, embora o componente só deva montar para esta página.
+    if (pathname === '/motorcycles') {
+      let loadedMotorcycles: Motorcycle[];
+      try {
+        const storedMotorcycles = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (storedMotorcycles) {
+          loadedMotorcycles = JSON.parse(storedMotorcycles);
+        } else {
+          loadedMotorcycles = initialMockMotorcycles;
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(loadedMotorcycles));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar motocicletas do localStorage:", error);
+        loadedMotorcycles = initialMockMotorcycles;
+         try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(loadedMotorcycles));
+         } catch (saveError) {
+            console.error("Erro ao salvar mocks no localStorage após falha na carga:", saveError);
+         }
       }
-    } catch (error) {
-      console.error("Erro ao carregar motocicletas do localStorage:", error);
-      // Mantém initialMockMotorcycles em caso de erro
+      setMotorcycles(
+        loadedMotorcycles.map(moto =>
+          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+        )
+      );
+      if (!isInitialLoadComplete) {
+        setIsInitialLoadComplete(true);
+      }
     }
-    setMotorcycles(
-      loadedMotorcycles.map(moto =>
-        moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
-      )
-    );
-  }, []);
+  }, [pathname, isInitialLoadComplete]); // Adicionar pathname como dependência
 
-  // Salvar dados no LocalStorage sempre que 'motorcycles' mudar
+
+  // Salvar dados no LocalStorage sempre que 'motorcycles' mudar, após a carga inicial
   useEffect(() => {
+    if (!isInitialLoadComplete) {
+      return; 
+    }
     // Evita salvar o estado inicial vazio antes do carregamento do localStorage
-    if (motorcycles.length > 0 || localStorage.getItem(LOCAL_STORAGE_KEY)) {
+    // ou se motorcycles ainda não foi populado de forma significativa.
+    // A condição `motorcycles.length > 0` é para o caso de todos os itens serem excluídos.
+    // Se `localStorage.getItem(LOCAL_STORAGE_KEY)` for null, significa que os mocks foram usados
+    // e já salvos no useEffect de carga.
+    // Esta lógica garante que salvamos um array vazio se o usuário excluir tudo,
+    // e não apagamos o LS acidentalmente com um array vazio antes da carga.
+    if (motorcycles.length > 0 || (motorcycles.length === 0 && localStorage.getItem(LOCAL_STORAGE_KEY) !== null) ) {
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(motorcycles));
       } catch (error) {
         console.error("Erro ao salvar motocicletas no localStorage:", error);
       }
     }
-  }, [motorcycles]);
+  }, [motorcycles, isInitialLoadComplete]);
 
 
   const handleFilterChange = useCallback((newFilters: MotorcyclePageFilters) => {
@@ -255,7 +284,7 @@ export default function MotorcyclesPage() {
           } else {
             inQuotes = !inQuotes;
           }
-        } else if (char === ';' && !inQuotes) { // Changed delimiter to semicolon
+        } else if (char === ';' && !inQuotes) { // Delimitador ;
           result.push(currentField.trim());
           currentField = '';
         } else {
@@ -265,7 +294,7 @@ export default function MotorcyclesPage() {
       result.push(currentField.trim());
       return result;
     };
-
+    
     const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
     const headers = parseCsvLine(lines[0]).map(normalizeHeader);
 
@@ -297,6 +326,7 @@ export default function MotorcyclesPage() {
     const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']);
     const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']);
 
+
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
 
@@ -305,15 +335,15 @@ export default function MotorcyclesPage() {
 
       const statusRaw = statusIndex !== -1 ? values[statusIndex] : undefined;
       let statusValue = statusRaw ? normalizeHeader(statusRaw) as MotorcycleStatus : undefined;
-      if (statusValue && !allowedStatus.includes(statusValue)) statusValue = undefined; // Invalida se não estiver na lista
-      if (statusValue === undefined) statusValue = 'alugada'; // Default para 'alugada'
+      if (statusValue && !allowedStatus.includes(statusValue)) statusValue = undefined; 
+      if (statusValue === undefined) statusValue = 'alugada';
 
       const typeRaw = typeIndex !== -1 ? values[typeIndex] : undefined;
       let typeValue = typeRaw ? normalizeHeader(typeRaw) as MotorcycleType : undefined;
       if (typeValue && !allowedType.includes(typeValue)) typeValue = undefined;
 
       const dataUltimaMovValue = dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined;
-
+      
       const moto: Motorcycle = {
         id: `imported-${Date.now()}-${i}-${Math.random().toString(36).substring(7)}`,
         placa: placa,
@@ -344,7 +374,13 @@ export default function MotorcyclesPage() {
         try {
           const importedMotorcycles = parseCSV(text);
           if (importedMotorcycles.length > 0) {
-            setMotorcycles(prev => [...prev, ...importedMotorcycles].map(moto => moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto ));
+            // Garante que o status 'alugada' é aplicado aqui também, e que motorcycles é atualizado
+            // de forma que o useEffect de salvamento seja disparado com os dados corretos.
+            setMotorcycles(prev => 
+                [...prev, ...importedMotorcycles].map(moto => 
+                    moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto 
+                )
+            );
             toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
           } else {
             toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
@@ -366,7 +402,7 @@ export default function MotorcyclesPage() {
       };
       reader.readAsText(file);
     }
-  }, [toast]);
+  }, [toast]); // setMotorcycles não precisa ser dependência aqui pois é estável
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -451,4 +487,4 @@ export default function MotorcyclesPage() {
   );
 }
 
-    
+      
