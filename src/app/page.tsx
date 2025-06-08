@@ -2,17 +2,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link"; // Added import for Link
+import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { KpiSection, kpiDataTop, kpiDataBottom } from "@/components/dashboard/kpi-section";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { LineChart, CalendarDays } from "lucide-react"; 
+import { LineChart, CalendarDays, TrendingUp } from "lucide-react"; 
 import type { Motorcycle, MotorcycleStatus, Kpi } from "@/lib/types";
-import { format, isValid, parseISO, getMonth, getYear } from 'date-fns';
+import { format, isValid, parseISO, getMonth, getYear, subDays, eachDayOfInterval } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
+import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
+import { RentalVolumeChart, type MonthlyRentalDataPoint } from "@/components/charts/rental-volume-chart"; // Stays as MonthlyRentalDataPoint, we'll adapt
+import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
+import { TotalRentalsVolumeChart } from "@/components/charts/total-rentals-volume-chart";
+import type { ChartDataPoint } from "@/lib/types";
+
 
 const pageMonths = [
   { value: "0", label: "Janeiro" }, { value: "1", label: "Fevereiro" }, { value: "2", label: "Março" },
@@ -36,6 +43,11 @@ export default function DashboardPage() {
   
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<string>(currentFullYear.toString());
+
+  const [dailyRecoveryData, setDailyRecoveryData] = useState<ChartDataPoint[] | null>(null);
+  const [dailyRentalData, setDailyRentalData] = useState<MonthlyRentalDataPoint[] | null>(null);
+  const [dailyRelocatedData, setDailyRelocatedData] = useState<ChartDataPoint[] | null>(null);
+  const [dailyTotalRentalsData, setDailyTotalRentalsData] = useState<ChartDataPoint[] | null>(null);
 
 
   useEffect(() => {
@@ -122,7 +134,7 @@ export default function DashboardPage() {
     const motosFiltradasPeriodo = allMotorcycles.filter(moto => {
       if (!moto.data_ultima_mov) return false;
       try {
-        const movDate = parseISO(moto.data_ultima_mov);
+        const movDate = parseISO(moto.data_ultima_mov); // data_ultima_mov is YYYY-MM-DD
         return isValid(movDate) && getMonth(movDate) === numericMonth && getYear(movDate) === numericYear;
       } catch {
         return false;
@@ -152,8 +164,66 @@ export default function DashboardPage() {
 
   }, [allMotorcycles, isLoading, selectedMonth, selectedYear]);
 
+  // Update Daily Charts Data (Last 30 days)
+  useEffect(() => {
+    if (isLoading || !Array.isArray(allMotorcycles) || allMotorcycles.length === 0) {
+      // Set to empty array or null to show loading/no data state in charts
+      setDailyRecoveryData([]);
+      setDailyRentalData([]);
+      setDailyRelocatedData([]);
+      setDailyTotalRentalsData([]);
+      return;
+    }
 
-  if (isLoading) { 
+    const endDate = new Date();
+    const startDate = subDays(endDate, 29); // 30 days including today
+    const dateInterval = eachDayOfInterval({ start: startDate, end: endDate });
+
+    const dailyDatesFormatted = dateInterval.map(d => format(d, 'yyyy-MM-dd'));
+    const dailyDisplayDates = dateInterval.map(d => format(d, 'dd/MM', { locale: ptBR }));
+
+    const dailyRecoveryCounts: { [date: string]: number } = {};
+    const dailyRentalNovasCounts: { [date: string]: number } = {};
+    const dailyRentalUsadasCounts: { [date: string]: number } = {};
+    const dailyRelocatedCounts: { [date: string]: number } = {};
+    const dailyTotalRentalsCounts: { [date: string]: number } = {};
+
+    dailyDatesFormatted.forEach(dateStr => {
+      dailyRecoveryCounts[dateStr] = 0;
+      dailyRentalNovasCounts[dateStr] = 0;
+      dailyRentalUsadasCounts[dateStr] = 0;
+      dailyRelocatedCounts[dateStr] = 0;
+      dailyTotalRentalsCounts[dateStr] = 0;
+    });
+
+    allMotorcycles.forEach(moto => {
+      if (moto.data_ultima_mov && dailyDatesFormatted.includes(moto.data_ultima_mov)) {
+        const movDateStr = moto.data_ultima_mov;
+        if (moto.status === 'recolhida') {
+          dailyRecoveryCounts[movDateStr]++;
+        }
+        if (moto.status === 'alugada') {
+          if (moto.type === 'nova') dailyRentalNovasCounts[movDateStr]++;
+          else if (moto.type === 'usada') dailyRentalUsadasCounts[movDateStr]++;
+          else dailyRentalNovasCounts[movDateStr]++; // Default to nova if type undefined
+          dailyTotalRentalsCounts[movDateStr]++;
+        }
+        if (moto.status === 'relocada') {
+          dailyRelocatedCounts[movDateStr]++;
+          dailyTotalRentalsCounts[movDateStr]++;
+        }
+      }
+    });
+    
+    setDailyRecoveryData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyRecoveryCounts[dailyDatesFormatted[i]] })));
+    setDailyRentalData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, novas: dailyRentalNovasCounts[dailyDatesFormatted[i]], usadas: dailyRentalUsadasCounts[dailyDatesFormatted[i]] })));
+    setDailyRelocatedData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyRelocatedCounts[dailyDatesFormatted[i]] })));
+    setDailyTotalRentalsData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyTotalRentalsCounts[dailyDatesFormatted[i]] })));
+
+  }, [allMotorcycles, isLoading]);
+
+
+  if (isLoading && allMotorcycles.length === 0) { 
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center h-screen">
@@ -218,6 +288,79 @@ export default function DashboardPage() {
       <KpiSection kpis={dynamicKpiDataBottom} />
 
       <Separator className="my-8" />
+
+      {/* Daily Charts Section */}
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 mt-8">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-6 w-6 text-primary" />
+              <div>
+                <CardTitle className="font-headline">Volume Diário - Motos Recuperadas</CardTitle>
+                <CardDescription className="flex items-center gap-1 text-sm">
+                  <TrendingUp className="h-4 w-4" /> Últimos 30 dias
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RecoveryVolumeChart data={dailyRecoveryData} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-6 w-6 text-green-600" />
+               <div>
+                <CardTitle className="font-headline">Volume Diário - Motos Alugadas</CardTitle>
+                <CardDescription className="flex items-center gap-1 text-sm">
+                  <TrendingUp className="h-4 w-4" /> Últimos 30 dias (Novas vs. Usadas)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RentalVolumeChart data={dailyRentalData} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-6 w-6 text-orange-500" />
+              <div>
+                <CardTitle className="font-headline">Volume Diário - Motos Relocadas</CardTitle>
+                 <CardDescription className="flex items-center gap-1 text-sm">
+                  <TrendingUp className="h-4 w-4" /> Últimos 30 dias
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RelocatedVolumeChart data={dailyRelocatedData} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-6 w-6 text-teal-500" />
+               <div>
+                <CardTitle className="font-headline">Volume Diário - Total de Locações</CardTitle>
+                <CardDescription className="flex items-center gap-1 text-sm">
+                  <TrendingUp className="h-4 w-4" /> Últimos 30 dias (Alugadas + Relocadas)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <TotalRentalsVolumeChart data={dailyTotalRentalsData} />
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Separator className="my-8" />
       
       <Card className="shadow-lg">
         <CardHeader>
@@ -241,4 +384,6 @@ export default function DashboardPage() {
     </DashboardLayout>
   );
 }
+    
+
     
