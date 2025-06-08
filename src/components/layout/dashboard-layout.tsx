@@ -21,7 +21,7 @@ import { MotorcycleIcon } from "@/components/icons/motorcycle-icon";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package } from "lucide-react"; // Added Package for Total
+import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package } from "lucide-react";
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
 ];
 
 const initialStatusRapidoItems: StatusRapidoItemType[] = [
-  { label: "Total de Motos", subLabel: "Frota registrada", count: 0, bgColor: "bg-slate-100", textColor: "text-slate-700", badgeTextColor: "text-slate-700", icon: Package },
+  { label: "Total de Motos", subLabel: "Placas únicas", count: 0, bgColor: "bg-slate-100", textColor: "text-slate-700", badgeTextColor: "text-slate-700", icon: Package },
   { label: "Disponíveis", subLabel: "Motos prontas", count: 0, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700", statusKey: 'active' },
   { label: "Alugadas", subLabel: "Em uso", count: 0, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700", statusKey: 'alugada' },
   { label: "Relocadas", subLabel: "Em transferência", count: 0, bgColor: "bg-gray-100", textColor: "text-gray-700", badgeTextColor: "text-gray-700", statusKey: 'relocada' },
@@ -82,16 +82,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       relocada: 0,
     };
 
+    const uniquePlacas = new Set<string>();
+
     allMotorcycles.forEach(moto => {
+      if (moto.placa) {
+        uniquePlacas.add(moto.placa);
+      }
       if (moto.status && counts[moto.status] !== undefined) {
         counts[moto.status]++;
       }
     });
+    
+    const totalUniqueMotorcycles = uniquePlacas.size;
 
     setDynamicStatusRapidoItems(
       initialStatusRapidoItems.map(item => {
         if (item.label === "Total de Motos") {
-          return { ...item, count: allMotorcycles.length };
+          return { ...item, count: totalUniqueMotorcycles };
         }
         return {
           ...item,
