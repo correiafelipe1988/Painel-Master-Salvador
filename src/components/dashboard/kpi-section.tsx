@@ -1,3 +1,4 @@
+
 import type { Kpi } from "@/lib/types";
 import { KpiCard } from "./kpi-card";
 import { ArrowRightLeft, CheckCircle2, Bike, ChevronsRight, Wrench } from "lucide-react";
@@ -7,7 +8,7 @@ export const kpiDataTop: Kpi[] = [
   {
     title: "Motos Alugadas Hoje",
     value: "0",
-    icon: ArrowRightLeft,
+    icon: Bike, // Alterado de ArrowRightLeft para Bike
     description: "unidades",
     color: "text-blue-600", // Cor do valor
     iconBgColor: "bg-blue-500", // Cor de fundo da caixa do ícone
@@ -25,16 +26,16 @@ export const kpiDataTop: Kpi[] = [
   {
     title: "Motos Relocadas Hoje",
     value: "0",
-    icon: ChevronsRight, // Alterado de Bike para ChevronsRight
+    icon: ChevronsRight,
     description: "unidades",
     color: "text-gray-700",
-    iconBgColor: "bg-gray-200", // Fundo cinza claro para o ícone
-    iconColor: "text-gray-700", // Ícone cinza escuro
+    iconBgColor: "bg-gray-200", 
+    iconColor: "text-gray-700", 
   },
   {
     title: "Motos Paradas +7 Dias",
     value: "25",
-    icon: Bike, // Alterado de PackageAlert para Bike
+    icon: Bike, 
     description: "unidades",
     color: "text-orange-500",
     iconBgColor: "bg-orange-500",
@@ -74,7 +75,7 @@ export const kpiDataBottom: Kpi[] = [
   {
     title: "Motos Relocadas",
     value: "13",
-    icon: ChevronsRight, // Alterado de Users para ChevronsRight
+    icon: ChevronsRight, 
     description: "relocadas no período",
     color: "text-gray-700",
     iconBgColor: "bg-gray-200",
