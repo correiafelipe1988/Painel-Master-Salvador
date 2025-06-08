@@ -290,7 +290,7 @@ export default function MotorcyclesPage() {
 
     const findHeaderIndex = (possibleNames: string[]): number => {
       for (const name of possibleNames) {
-        const index = headers.indexOf(name);
+        const index = headers.indexOf(normalizeHeader(name)); // Normalize possibleNames too for safety
         if (index !== -1) return index;
       }
       return -1;
@@ -344,9 +344,12 @@ export default function MotorcyclesPage() {
           if (dateIsValidFns(dateObj)) {
             formattedDateStr = dateFormatFns(dateObj, 'yyyy-MM-dd');
           } else {
-            console.warn(`Falha ao parsear a data: "${rawDateStr}" do CSV.`);
+            console.error(`[CSV Import Erro Data] Falha ao parsear a data: "${rawDateStr}" do CSV. Formatos tentados: 'dd/MM/yyyy', 'yyyy-MM-dd'. A data não será importada para esta linha.`);
+            formattedDateStr = undefined; 
           }
         }
+      } else if (rawDateStr === '') {
+         formattedDateStr = undefined;
       }
       
       const moto: Motorcycle = {
@@ -489,3 +492,6 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
+
+
+    
