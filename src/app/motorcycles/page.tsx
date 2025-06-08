@@ -8,9 +8,20 @@ import { MotorcycleFilters } from "@/components/motorcycles/motorcycle-filters";
 import { MotorcycleList } from "@/components/motorcycles/motorcycle-list";
 import type { Motorcycle, MotorcycleStatus, MotorcycleType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Upload, Download, PlusCircle, Edit } from 'lucide-react';
+import { Upload, Download, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/motorcycle-icon';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { AddMotorcycleForm } from "@/components/motorcycles/add-motorcycle-form";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,6 +50,7 @@ export default function MotorcyclesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [motorcycles, setMotorcycles] = useState<Motorcycle[]>(initialMockMotorcycles);
   const [editingMotorcycle, setEditingMotorcycle] = useState<Motorcycle | null>(null);
+  const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -104,6 +116,16 @@ export default function MotorcyclesPage() {
       title: "Moto Excluída!",
       description: `A moto foi excluída com sucesso.`,
     });
+  }, [toast]);
+
+  const confirmDeleteAllMotorcycles = useCallback(() => {
+    setMotorcycles([]);
+    toast({
+      variant: "destructive",
+      title: "Todas as Motos Excluídas!",
+      description: "A lista de motocicletas foi limpa.",
+    });
+    setIsDeleteAllAlertOpen(false);
   }, [toast]);
 
   const handleExportCSV = useCallback(() => {
@@ -178,16 +200,19 @@ export default function MotorcyclesPage() {
 
   const parseCSV = (csvText: string): Motorcycle[] => {
     let cleanedCsvText = csvText;
+    // Remove BOM (Byte Order Mark) if present
     if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
       cleanedCsvText = cleanedCsvText.substring(1);
     }
   
+    // Split lines more robustly (handles \r\n, \r, \n) and trim each line
     const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
   
-    if (lines.length < 2) {
+    if (lines.length < 2) { // Need header and at least one data line
       throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
     }
     
+    // Robust line parsing function
     const parseCsvLine = (line: string): string[] => {
       const result: string[] = [];
       let currentField = '';
@@ -195,11 +220,12 @@ export default function MotorcyclesPage() {
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
+          // Handle escaped quotes ("")
           if (inQuotes && i + 1 < line.length && line[i+1] === '"') {
             currentField += '"'; 
-            i++; 
+            i++; // Skip next quote
           } else {
-            inQuotes = !inQuotes; 
+            inQuotes = !inQuotes; // Toggle quote state
           }
         } else if (char === ';' && !inQuotes) { // Changed delimiter from ',' to ';'
           result.push(currentField.trim());
@@ -208,13 +234,15 @@ export default function MotorcyclesPage() {
           currentField += char;
         }
       }
-      result.push(currentField.trim()); 
+      result.push(currentField.trim()); // Add the last field
       return result;
     };
     
+    // Normalize headers: lowercase, trim, and replace multiple spaces with a single space
     const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
     const headers = parseCsvLine(lines[0]).map(normalizeHeader);
     
+    // Helper to find header index by checking multiple possible names
     const findHeaderIndex = (possibleNames: string[]): number => {
       for (const name of possibleNames) {
         // `name` is already normalized (lowercase, single space) from the possibleNames array
@@ -236,18 +264,18 @@ export default function MotorcyclesPage() {
   
     const modelIndex = findHeaderIndex(['model', 'modelo']);
     const statusIndex = findHeaderIndex(['status']);
-    const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto', 'tipo']);
+    const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto', 'tipo']); // Added "tipo"
     const franqueadoIndex = findHeaderIndex(['franqueado', 'filial']);
-    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentação']);
-    const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias', 'dias parado']);
+    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentação']); // Added "última movimentação"
+    const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias', 'dias parado']); // Added "dias parado"
     const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']); // For CS field
-    const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']);
+    const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']); // Added "valor diária"
   
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
       
       const placa = placaIndex !== -1 ? values[placaIndex] : undefined;
-      if (!placa) continue; 
+      if (!placa) continue; // Skip row if placa is missing
   
       const statusRaw = statusIndex !== -1 ? values[statusIndex] : undefined;
       const statusValue = statusRaw ? normalizeHeader(statusRaw) as MotorcycleStatus : undefined;
@@ -262,9 +290,9 @@ export default function MotorcyclesPage() {
         status: statusValue && allowedStatus.includes(statusValue) ? statusValue : undefined,
         type: typeValue && allowedType.includes(typeValue) ? typeValue : undefined,
         franqueado: franqueadoIndex !== -1 && values[franqueadoIndex] ? values[franqueadoIndex] : undefined,
-        data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined, 
+        data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined, // Assuming date is already YYYY-MM-DD
         tempo_ocioso_dias: tempoOciosoDiasIndex !== -1 && values[tempoOciosoDiasIndex] ? parseInt(values[tempoOciosoDiasIndex], 10) || undefined : undefined,
-        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, 
+        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, // CS field
         valorDiaria: valorDiariaIndex !== -1 && values[valorDiariaIndex] ? parseFloat(values[valorDiariaIndex].replace(',', '.')) || undefined : undefined,
       };
       motorcyclesArray.push(moto);
@@ -288,12 +316,14 @@ export default function MotorcyclesPage() {
             setMotorcycles(prev => [...prev, ...importedMotorcycles]); 
             toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
           } else {
+            // Updated error message to be more specific
             toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
           }
         } catch (error: any) {
           console.error("Erro ao importar CSV:", error);
           toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido.", variant: "destructive" });
         } finally {
+          // Clear the file input so the same file can be selected again if needed
           if (fileInputRef.current) {
             fileInputRef.current.value = ""; 
           }
@@ -301,13 +331,14 @@ export default function MotorcyclesPage() {
       };
       reader.onerror = () => {
           toast({ title: "Erro ao ler arquivo", description: "Ocorreu um erro ao tentar ler o arquivo.", variant: "destructive" });
+           // Clear the file input on error as well
            if (fileInputRef.current) {
             fileInputRef.current.value = ""; 
           }
       };
-      reader.readAsText(file);
+      reader.readAsText(file); // Or readAsText(file, 'ISO-8859-1') or 'UTF-8' depending on encoding
     }
-  }, [toast]);
+  }, [toast]); // Added parseCSV to dependencies, as it's defined outside but used inside.
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -335,6 +366,29 @@ export default function MotorcyclesPage() {
         <PlusCircle className="mr-2 h-4 w-4" />
         Nova Moto
       </Button>
+      <AlertDialog open={isDeleteAllAlertOpen} onOpenChange={setIsDeleteAllAlertOpen}>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Excluir Todos
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente todas as
+              motocicletas da lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteAllAlertOpen(false)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteAllMotorcycles}>
+              Sim, excluir todos
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 
