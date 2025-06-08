@@ -12,7 +12,12 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function RecoveryVolumeChart({ data }: { data: ChartDataPoint[] | null }) {
+// Extended ChartDataPoint to include month string
+interface MonthlyChartDataPoint extends Omit<ChartDataPoint, 'date'> {
+  month: string; // Expect "Jan", "Fev", etc.
+}
+
+export function RecoveryVolumeChart({ data }: { data: MonthlyChartDataPoint[] | null }) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
@@ -28,14 +33,7 @@ export function RecoveryVolumeChart({ data }: { data: ChartDataPoint[] | null })
           <BarChart data={data} margin={{ top: 20, right: 10, left: -25, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
             <XAxis
-              dataKey="date"
-              tickFormatter={(tick) => {
-                const dateParts = tick.split('/');
-                if (dateParts.length === 3) {
-                  return `${dateParts[0]}/${dateParts[1]}`;
-                }
-                return tick;
-              }}
+              dataKey="month" // Use month string directly
               stroke="hsl(var(--muted-foreground))"
               fontSize={10}
               axisLine={false}

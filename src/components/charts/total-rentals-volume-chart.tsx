@@ -8,11 +8,15 @@ import { ChartContainer, ChartTooltipContent, type ChartConfig } from "@/compone
 const chartConfig = {
   count: {
     label: "Locações Total",
-    color: "hsl(var(--chart-5))", 
+    color: "hsl(var(--chart-5))", // New Green (Teal-ish)
   },
 } satisfies ChartConfig;
 
-export function TotalRentalsVolumeChart({ data }: { data: ChartDataPoint[] | null }) {
+interface MonthlyChartDataPoint extends Omit<ChartDataPoint, 'date'> {
+  month: string;
+}
+
+export function TotalRentalsVolumeChart({ data }: { data: MonthlyChartDataPoint[] | null }) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
@@ -28,14 +32,7 @@ export function TotalRentalsVolumeChart({ data }: { data: ChartDataPoint[] | nul
           <BarChart data={data} margin={{ top: 20, right: 10, left: -25, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
             <XAxis
-              dataKey="date"
-              tickFormatter={(tick) => {
-                const dateParts = tick.split('/');
-                if (dateParts.length === 3) {
-                  return `${dateParts[0]}/${dateParts[1]}`;
-                }
-                return tick;
-              }}
+              dataKey="month"
               stroke="hsl(var(--muted-foreground))"
               fontSize={10}
               axisLine={false}

@@ -5,31 +5,33 @@ import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { KpiSection, kpiDataTop, kpiDataBottom } from "@/components/dashboard/kpi-section";
 import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
-import { RentalVolumeChart } from "@/components/charts/rental-volume-chart";
+import { RentalVolumeChart, type MonthlyRentalDataPoint } from "@/components/charts/rental-volume-chart";
 import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
 import { TotalRentalsVolumeChart } from "@/components/charts/total-rentals-volume-chart";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, LineChart, BarChart3, PackagePlus, ChevronsRight, Activity } from "lucide-react";
+import { LineChart, CalendarDays, TrendingUp } from "lucide-react"; 
 import type { Motorcycle, MotorcycleStatus, ChartDataPoint, Kpi } from "@/lib/types";
-import { format, isValid, startOfDay, subDays } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 
 
-const months = [
+const pageMonths = [
   { value: "0", label: "Janeiro" }, { value: "1", label: "Fevereiro" }, { value: "2", label: "Março" },
   { value: "3", label: "Abril" }, { value: "4", label: "Maio" }, { value: "5", label: "Junho" },
   { value: "6", label: "Julho" }, { value: "7", label: "Agosto" }, { value: "8", label: "Setembro" },
   { value: "9", label: "Outubro" }, { value: "10", label: "Novembro" }, { value: "11", label: "Dezembro" },
 ];
 
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 5 }, (_, i) => ({
-  value: (currentYear - i).toString(),
-  label: (currentYear - i).toString(),
+const currentFullYear = new Date().getFullYear();
+const pageYears = Array.from({ length: 5 }, (_, i) => ({
+  value: (currentFullYear - i).toString(),
+  label: (currentFullYear - i).toString(),
 }));
+
+const monthAbbreviations = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 
 export default function DashboardPage() {
@@ -38,10 +40,10 @@ export default function DashboardPage() {
   const [dynamicKpiDataTop, setDynamicKpiDataTop] = useState<Kpi[]>(kpiDataTop);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [recoveryData, setRecoveryData] = useState<ChartDataPoint[] | null>(null);
-  const [rentalData, setRentalData] = useState<ChartDataPoint[] | null>(null);
-  const [relocatedData, setRelocatedData] = useState<ChartDataPoint[] | null>(null);
-  const [totalRentalsData, setTotalRentalsData] = useState<ChartDataPoint[] | null>(null);
+  const [monthlyRecoveryData, setMonthlyRecoveryData] = useState<ChartDataPoint[] | null>(null);
+  const [monthlyRentalData, setMonthlyRentalData] = useState<MonthlyRentalDataPoint[] | null>(null);
+  const [monthlyRelocatedData, setMonthlyRelocatedData] = useState<ChartDataPoint[] | null>(null);
+  const [monthlyTotalRentalsData, setMonthlyTotalRentalsData] = useState<ChartDataPoint[] | null>(null);
 
   useEffect(() => {
     const updateTimestamp = () => {
@@ -70,7 +72,7 @@ export default function DashboardPage() {
         setAllMotorcycles(updatedMotorcycles);
       } else {
         console.warn("Data from subscribeToMotorcycles (dashboard page) was not an array:", motosFromDB);
-        setAllMotorcycles([]); // Fallback to empty array
+        setAllMotorcycles([]);
       }
       setIsLoading(false);
     });
@@ -78,7 +80,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !Array.isArray(allMotorcycles)) return; 
+    if (isLoading || !Array.isArray(allMotorcycles)) return;
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -117,62 +119,63 @@ export default function DashboardPage() {
   }, [allMotorcycles, isLoading]);
 
 
-  const getLast30DaysMap = (valueFn: () => any = () => 0) => {
-    const map = new Map<string, any>();
-    const today = startOfDay(new Date());
-    for (let i = 29; i >= 0; i--) {
-      const date = subDays(today, i);
-      map.set(format(date, 'dd/MM/yyyy'), valueFn());
-    }
-    return map;
-  };
-
   useEffect(() => {
-    if (isLoading || !Array.isArray(allMotorcycles)) return;
+    if (isLoading || !Array.isArray(allMotorcycles) || allMotorcycles.length === 0) {
+      // Set empty state for charts if no data or loading
+      const emptyMonthlyData = monthAbbreviations.map(m => ({ month: m, count: 0 }));
+      const emptyMonthlyRentalData = monthAbbreviations.map(m => ({ month: m, novas: 0, usadas: 0 }));
+      setMonthlyRecoveryData(emptyMonthlyData);
+      setMonthlyRentalData(emptyMonthlyRentalData);
+      setMonthlyRelocatedData(emptyMonthlyData);
+      setMonthlyTotalRentalsData(emptyMonthlyData);
+      return;
+    }
 
-    const today = startOfDay(new Date());
-    const thirtyDaysAgo = subDays(today, 29);
+    const yearToProcess = new Date().getFullYear();
 
-    const dailyRecoveryCounts = getLast30DaysMap(() => 0);
-    const dailyRentalCounts = getLast30DaysMap(() => 0);
-    const dailyRelocatedCounts = getLast30DaysMap(() => 0);
-    const dailyTotalRentalsCounts = getLast30DaysMap(() => 0);
+    const recoveryCounts = Array(12).fill(0);
+    const rentalNovasCounts = Array(12).fill(0);
+    const rentalUsadasCounts = Array(12).fill(0);
+    const relocatedCounts = Array(12).fill(0);
+    const totalRentalsCounts = Array(12).fill(0);
 
     allMotorcycles.forEach(moto => {
       if (moto.data_ultima_mov) {
         try {
-          const [year, month, day] = moto.data_ultima_mov.split('-').map(Number);
-          const movDate = startOfDay(new Date(year, month - 1, day)); 
-
-          if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
-            const formattedDate = format(movDate, 'dd/MM/yyyy');
+          const movDate = parseISO(moto.data_ultima_mov); // data_ultima_mov is YYYY-MM-DD
+          if (isValid(movDate) && movDate.getFullYear() === yearToProcess) {
+            const monthIndex = movDate.getMonth(); // 0 for January, 11 for December
 
             if (moto.status === 'recolhida') {
-              dailyRecoveryCounts.set(formattedDate, (dailyRecoveryCounts.get(formattedDate) || 0) + 1);
+              recoveryCounts[monthIndex]++;
             }
-
             if (moto.status === 'alugada') {
-              dailyRentalCounts.set(formattedDate, (dailyRentalCounts.get(formattedDate) || 0) + 1);
-              dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
+              if (moto.type === 'nova') {
+                rentalNovasCounts[monthIndex]++;
+              } else if (moto.type === 'usada') {
+                rentalUsadasCounts[monthIndex]++;
+              } else { // Count as 'nova' if type is undefined for an alugada moto
+                rentalNovasCounts[monthIndex]++;
+              }
+              totalRentalsCounts[monthIndex]++;
             }
-
             if (moto.status === 'relocada') {
-              dailyRelocatedCounts.set(formattedDate, (dailyRelocatedCounts.get(formattedDate) || 0) + 1);
-              dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
+              relocatedCounts[monthIndex]++;
+              totalRentalsCounts[monthIndex]++;
             }
-
           }
-        } catch (e) { console.error("Error parsing date for charts: ", moto.data_ultima_mov, e); }
+        } catch (e) { console.error("Error parsing date for monthly charts: ", moto.data_ultima_mov, e); }
       }
     });
-    setRecoveryData(Array.from(dailyRecoveryCounts, ([date, count]) => ({ date, count })));
-    setRentalData(Array.from(dailyRentalCounts, ([date, count]) => ({ date, count })));
-    setRelocatedData(Array.from(dailyRelocatedCounts, ([date, count]) => ({ date, count })));
-    setTotalRentalsData(Array.from(dailyTotalRentalsCounts, ([date, count]) => ({ date, count })));
+
+    setMonthlyRecoveryData(monthAbbreviations.map((m, i) => ({ month: m, count: recoveryCounts[i] })));
+    setMonthlyRentalData(monthAbbreviations.map((m, i) => ({ month: m, novas: rentalNovasCounts[i], usadas: rentalUsadasCounts[i] })));
+    setMonthlyRelocatedData(monthAbbreviations.map((m, i) => ({ month: m, count: relocatedCounts[i] })));
+    setMonthlyTotalRentalsData(monthAbbreviations.map((m, i) => ({ month: m, count: totalRentalsCounts[i] })));
 
   }, [allMotorcycles, isLoading]);
 
-  if (isLoading) {
+  if (isLoading && !monthlyRecoveryData) { // Check one of the data states
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center h-screen">
@@ -181,6 +184,8 @@ export default function DashboardPage() {
       </DashboardLayout>
     );
   }
+  
+  const currentYearStr = new Date().getFullYear().toString();
 
   return (
     <DashboardLayout>
@@ -194,7 +199,7 @@ export default function DashboardPage() {
         </div>
         {currentTime && (
           <p className="text-sm text-muted-foreground flex items-center">
-            <CalendarDays className="h-4 w-4 mr-1.5" />
+            <CalendarDays className="h-4 w-4 mr-1.5" /> 
             Atualizado em {currentTime}
           </p>
         )}
@@ -214,17 +219,17 @@ export default function DashboardPage() {
                   <SelectValue placeholder="Mês" />
                 </SelectTrigger>
                 <SelectContent>
-                  {months.map(month => (
+                  {pageMonths.map(month => (
                     <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select defaultValue={currentYear.toString()}>
+              <Select defaultValue={currentFullYear.toString()}>
                 <SelectTrigger id="year-filter" className="w-full sm:w-[100px]">
                   <SelectValue placeholder="Ano" />
                 </SelectTrigger>
                 <SelectContent>
-                  {years.map(year => (
+                  {pageYears.map(year => (
                     <SelectItem key={year.value} value={year.value}>{year.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -242,63 +247,64 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <PackagePlus className="h-6 w-6 text-primary" />
+              <CalendarDays className="h-6 w-6 text-primary" />
               <div>
-                <CardTitle className="font-headline">Volume Diário - Motos Recuperadas</CardTitle>
-                <CardDescription>Últimos 30 dias (Status: Recolhida)</CardDescription>
+                <CardTitle className="font-headline">Volume Mensal - Motos Recuperadas ({currentYearStr})</CardTitle>
+                <CardDescription>Contagem mensal para o ano corrente (Status: Recolhida)</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <RecoveryVolumeChart data={recoveryData} />
+            <RecoveryVolumeChart data={monthlyRecoveryData} />
           </CardContent>
         </Card>
 
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-primary" />
+              <CalendarDays className="h-6 w-6 text-green-600" />
                <div>
-                <CardTitle className="font-headline">Volume Diário - Motos Alugadas</CardTitle>
-                <CardDescription>Últimos 30 dias (Total)</CardDescription>
+                <CardTitle className="font-headline">Volume Mensal - Motos Alugadas ({currentYearStr})</CardTitle>
+                <CardDescription>Novas vs. Usadas para o ano corrente</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <RentalVolumeChart data={rentalData} />
+            <RentalVolumeChart data={monthlyRentalData} />
           </CardContent>
         </Card>
 
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <ChevronsRight className="h-6 w-6 text-primary" />
+              <CalendarDays className="h-6 w-6 text-orange-500" />
               <div>
-                <CardTitle className="font-headline">Volume Diário - Motos Relocadas</CardTitle>
-                <CardDescription>Últimos 30 dias</CardDescription>
+                <CardTitle className="font-headline">Volume Mensal - Motos Relocadas ({currentYearStr})</CardTitle>
+                <CardDescription>Contagem mensal para o ano corrente</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <RelocatedVolumeChart data={relocatedData} />
+            <RelocatedVolumeChart data={monthlyRelocatedData} />
           </CardContent>
         </Card>
 
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Activity className="h-6 w-6 text-primary" />
+              <TrendingUp className="h-6 w-6 text-teal-500" />
                <div>
-                <CardTitle className="font-headline">Volume Diário - Locações Total</CardTitle>
-                <CardDescription>Últimos 30 dias (Alugadas + Relocadas)</CardDescription>
+                <CardTitle className="font-headline">Volume Total de Locações ({currentYearStr})</CardTitle>
+                <CardDescription>Alugadas + Relocadas para o ano corrente</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <TotalRentalsVolumeChart data={totalRentalsData} />
+            <TotalRentalsVolumeChart data={monthlyTotalRentalsData} />
           </CardContent>
         </Card>
       </div>
     </DashboardLayout>
   );
 }
+
