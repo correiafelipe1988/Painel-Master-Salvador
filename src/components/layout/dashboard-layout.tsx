@@ -21,7 +21,7 @@ import { MotorcycleIcon } from "@/components/icons/motorcycle-icon";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package } from "lucide-react"; // Added Package for Total
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
@@ -35,9 +35,10 @@ const navItems: NavItem[] = [
 ];
 
 const initialStatusRapidoItems: StatusRapidoItemType[] = [
+  { label: "Total de Motos", subLabel: "Frota registrada", count: 0, bgColor: "bg-slate-100", textColor: "text-slate-700", badgeTextColor: "text-slate-700", icon: Package },
   { label: "Disponíveis", subLabel: "Motos prontas", count: 0, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700", statusKey: 'active' },
   { label: "Alugadas", subLabel: "Em uso", count: 0, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700", statusKey: 'alugada' },
-  { label: "Inadimplentes", subLabel: "Atrasadas", count: 0, bgColor: "bg-red-100", textColor: "text-red-700", badgeTextColor: "text-red-700", statusKey: 'inadimplente' },
+  { label: "Relocadas", subLabel: "Em transferência", count: 0, bgColor: "bg-gray-100", textColor: "text-gray-700", badgeTextColor: "text-gray-700", statusKey: 'relocada' },
   { label: "Manutenção", subLabel: "Em oficina", count: 0, bgColor: "bg-purple-100", textColor: "text-purple-700", badgeTextColor: "text-purple-700", statusKey: 'manutencao' },
   { label: "Recolhidas", subLabel: "Aguardando", count: 0, bgColor: "bg-orange-100", textColor: "text-orange-700", badgeTextColor: "text-orange-700", statusKey: 'recolhida' },
 ];
@@ -53,7 +54,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setIsLoadingStatus(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
       if (Array.isArray(motosFromDB)) {
-        // Garantir que status undefined seja tratado como 'alugada'
         const updatedMotorcycles = motosFromDB.map(moto =>
           moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
         );
@@ -69,7 +69,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoadingStatus || !Array.isArray(allMotorcycles)) {
-      // Mantém as contagens em 0 ou o valor anterior enquanto carrega ou se não houver dados
       setDynamicStatusRapidoItems(prevItems => prevItems.map(item => ({ ...item, count: 0 })));
       return;
     }
@@ -77,24 +76,28 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const counts: Record<MotorcycleStatus, number> = {
       active: 0,
       alugada: 0,
-      inadimplente: 0,
+      inadimplente: 0, // Not directly used in display list anymore, but structure kept
       manutencao: 0,
       recolhida: 0,
-      relocada: 0, // Incluído para contagem completa, mesmo que não exibido por padrão
+      relocada: 0,
     };
 
     allMotorcycles.forEach(moto => {
-      // O status já deve ser 'alugada' por padrão se undefined, devido ao useEffect anterior
       if (moto.status && counts[moto.status] !== undefined) {
         counts[moto.status]++;
       }
     });
 
     setDynamicStatusRapidoItems(
-      initialStatusRapidoItems.map(item => ({
-        ...item,
-        count: counts[item.statusKey as MotorcycleStatus] || 0,
-      }))
+      initialStatusRapidoItems.map(item => {
+        if (item.label === "Total de Motos") {
+          return { ...item, count: allMotorcycles.length };
+        }
+        return {
+          ...item,
+          count: item.statusKey ? counts[item.statusKey as MotorcycleStatus] || 0 : 0,
+        };
+      })
     );
   }, [allMotorcycles, isLoadingStatus]);
 
@@ -141,9 +144,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <p className="px-2 py-1 text-xs font-semibold text-sidebar-foreground/70">STATUS RÁPIDO</p>
             {dynamicStatusRapidoItems.map((item) => (
               <div key={item.label} className={cn("flex items-center justify-between p-2.5 rounded-md", item.bgColor)}>
-                <div>
-                  <p className={cn("text-sm font-medium", item.textColor)}>{item.label}</p>
-                  <p className={cn("text-xs", item.textColor, "opacity-80")}>{item.subLabel}</p>
+                <div className="flex items-center gap-2">
+                  {item.icon && <item.icon className={cn("h-5 w-5", item.textColor, "opacity-70")} />}
+                  <div>
+                    <p className={cn("text-sm font-medium", item.textColor)}>{item.label}</p>
+                    <p className={cn("text-xs", item.textColor, "opacity-80")}>{item.subLabel}</p>
+                  </div>
                 </div>
                 <Badge variant="secondary" className={cn("bg-background/70 font-semibold", item.badgeTextColor)}>
                   {isLoadingStatus ? "..." : item.count}
@@ -174,7 +180,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
           <SidebarTrigger className="md:hidden" />
-          {/* Opcional: Breadcrumbs ou título da página aqui. A imagem de referência tem um cabeçalho mais elaborado na própria página. */}
         </header>
         <main className="flex-1 p-4 md:p-6 overflow-auto">
           {children}
