@@ -178,19 +178,16 @@ export default function MotorcyclesPage() {
 
   const parseCSV = (csvText: string): Motorcycle[] => {
     let cleanedCsvText = csvText;
-    // Remove BOM
     if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
       cleanedCsvText = cleanedCsvText.substring(1);
     }
   
-    // Normalize line endings and split into lines, trim each line, filter out empty lines
     const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
   
     if (lines.length < 2) {
       throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
     }
     
-    // Advanced CSV line parser
     const parseCsvLine = (line: string): string[] => {
       const result: string[] = [];
       let currentField = '';
@@ -198,31 +195,30 @@ export default function MotorcyclesPage() {
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
-          // If a quote is encountered and we are in quotes, and the next char is also a quote, it's an escaped quote
           if (inQuotes && i + 1 < line.length && line[i+1] === '"') {
-            currentField += '"'; // Add a single quote to the field
-            i++; // Skip the next quote
+            currentField += '"'; 
+            i++; 
           } else {
-            inQuotes = !inQuotes; // Toggle quote state
+            inQuotes = !inQuotes; 
           }
-        } else if (char === ',' && !inQuotes) {
+        } else if (char === ';' && !inQuotes) { // Changed delimiter from ',' to ';'
           result.push(currentField.trim());
           currentField = '';
         } else {
           currentField += char;
         }
       }
-      result.push(currentField.trim()); // Add the last field
+      result.push(currentField.trim()); 
       return result;
     };
     
-    // Normalize headers: toLowerCase, trim, and replace multiple spaces with a single space
     const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
     const headers = parseCsvLine(lines[0]).map(normalizeHeader);
     
     const findHeaderIndex = (possibleNames: string[]): number => {
       for (const name of possibleNames) {
-        const index = headers.indexOf(normalizeHeader(name));
+        // `name` is already normalized (lowercase, single space) from the possibleNames array
+        const index = headers.indexOf(name); 
         if (index !== -1) return index;
       }
       return -1;
@@ -240,12 +236,12 @@ export default function MotorcyclesPage() {
   
     const modelIndex = findHeaderIndex(['model', 'modelo']);
     const statusIndex = findHeaderIndex(['status']);
-    const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto']);
+    const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto', 'tipo']);
     const franqueadoIndex = findHeaderIndex(['franqueado', 'filial']);
-    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao']);
-    const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias']);
-    const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']);
-    const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria']);
+    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentação']);
+    const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias', 'dias parado']);
+    const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']); // For CS field
+    const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']);
   
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
@@ -289,7 +285,7 @@ export default function MotorcyclesPage() {
         try {
           const importedMotorcycles = parseCSV(text);
           if (importedMotorcycles.length > 0) {
-            setMotorcycles(prev => [...prev, ...importedMotorcycles]); // Consider merging or replacing based on placa if needed
+            setMotorcycles(prev => [...prev, ...importedMotorcycles]); 
             toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
           } else {
             toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
@@ -299,14 +295,14 @@ export default function MotorcyclesPage() {
           toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido.", variant: "destructive" });
         } finally {
           if (fileInputRef.current) {
-            fileInputRef.current.value = ""; // Reset file input
+            fileInputRef.current.value = ""; 
           }
         }
       };
       reader.onerror = () => {
           toast({ title: "Erro ao ler arquivo", description: "Ocorreu um erro ao tentar ler o arquivo.", variant: "destructive" });
            if (fileInputRef.current) {
-            fileInputRef.current.value = ""; // Reset file input
+            fileInputRef.current.value = ""; 
           }
       };
       reader.readAsText(file);
@@ -374,6 +370,8 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
+    
+
     
 
     
