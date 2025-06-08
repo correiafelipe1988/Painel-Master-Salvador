@@ -8,17 +8,18 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart as PagePieIcon, CalendarDays as PageCalendarIcon } from "lucide-react"; // Renomeado PieChart para PagePieIcon
-import type { Motorcycle, Kpi, MotorcycleStatus } from "@/lib/types";
+import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart as PagePieIcon, CalendarDays as PageCalendarIcon, Users } from "lucide-react";
+import type { Motorcycle, Kpi, MotorcycleStatus, ChartDataPoint } from "@/lib/types";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { useToast } from "@/hooks/use-toast";
-import { StatusDistributionChart, type StatusDistributionPieDataPoint } from "@/components/charts/status-distribution-chart"; // Atualizado tipo de dado
+import { StatusDistributionChart, type StatusDistributionPieDataPoint } from "@/components/charts/status-distribution-chart";
 import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
 import { RentalVolumeChart, type MonthlyRentalDataPoint } from "@/components/charts/rental-volume-chart";
 import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
 import { TotalRentalsVolumeChart } from "@/components/charts/total-rentals-volume-chart";
+import { BaseGrowthChart, type MonthlyBaseGrowthDataPoint } from "@/components/charts/base-growth-chart";
 import { translateMotorcycleStatus } from "@/lib/utils";
-import { parseISO, isValid, getYear, getMonth } from "date-fns";
+import { parseISO, isValid, getYear, getMonth, startOfMonth, endOfMonth } from "date-fns";
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => ({
@@ -43,13 +44,14 @@ export default function RelatoriosPage() {
   const [kpiData, setKpiData] = useState<Kpi[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
-  const [statusDistributionData, setStatusDistributionData] = useState<StatusDistributionPieDataPoint[] | null>(null); // Atualizado tipo de dado
+  const [statusDistributionData, setStatusDistributionData] = useState<StatusDistributionPieDataPoint[] | null>(null);
   const { toast } = useToast();
 
   const [monthlyRecoveryData, setMonthlyRecoveryData] = useState<ChartDataPoint[] | null>(null);
   const [monthlyRentalData, setMonthlyRentalData] = useState<MonthlyRentalDataPoint[] | null>(null);
   const [monthlyRelocatedData, setMonthlyRelocatedData] = useState<ChartDataPoint[] | null>(null);
   const [monthlyTotalRentalsData, setMonthlyTotalRentalsData] = useState<ChartDataPoint[] | null>(null);
+  const [monthlyBaseGrowthData, setMonthlyBaseGrowthData] = useState<MonthlyBaseGrowthDataPoint[] | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -71,7 +73,8 @@ export default function RelatoriosPage() {
   useEffect(() => {
     if (isLoading || !Array.isArray(allMotorcycles)) return;
 
-    // Logic for representative motorcycles (unique placa, most recent status)
+    const numericSelectedYear = parseInt(selectedYear, 10);
+
     const uniqueMotorcyclesByPlaca: { [placa: string]: Motorcycle } = {};
     allMotorcycles.forEach(moto => {
       if (!moto.placa) return;
@@ -81,16 +84,11 @@ export default function RelatoriosPage() {
           (moto.data_ultima_mov && !existingMoto.data_ultima_mov)) {
         uniqueMotorcyclesByPlaca[moto.placa] = moto;
       } else if (!moto.data_ultima_mov && !existingMoto.data_ultima_mov) {
-         // If both current and existing lack date, keep existing (first one encountered based on original order)
       }
     });
     const representativeMotorcycles = Object.values(uniqueMotorcyclesByPlaca);
     const totalUniqueMotorcycles = representativeMotorcycles.length;
 
-
-    const numericSelectedYear = parseInt(selectedYear, 10);
-
-    // KPIs calculation
     const motosAlugadas = representativeMotorcycles.filter(m => m.status === 'alugada').length;
     const motosInadimplentes = representativeMotorcycles.filter(m => m.status === 'inadimplente').length;
     const percInadimplencia = totalUniqueMotorcycles > 0 ? (motosInadimplentes / totalUniqueMotorcycles) * 100 : 0;
@@ -100,13 +98,12 @@ export default function RelatoriosPage() {
       .reduce((sum, moto) => sum + (moto.valorDiaria || 0), 0);
 
     setKpiData([
-      { title: "Total de Motos Únicas", value: totalUniqueMotorcycles.toString(), icon: TrendingUp, description: "Frota ativa (placas únicas)", color: "text-blue-700", iconBgColor: "bg-blue-100", iconColor: "text-blue-700" },
+      { title: "Total de Motos Únicas", value: totalUniqueMotorcycles.toString(), icon: Users, description: "Frota ativa (placas únicas)", color: "text-blue-700", iconBgColor: "bg-blue-100", iconColor: "text-blue-700" },
       { title: "Motos Alugadas", value: motosAlugadas.toString(), icon: BarChartBig, description: `Taxa de Ocupação: ${taxaAlugadas.toFixed(0)}%`, color: "text-green-700", iconBgColor: "bg-green-100", iconColor: "text-green-700" },
       { title: "% Inadimplência", value: `${percInadimplencia.toFixed(1)}%`, icon: Clock, description: "Percentual de inadimplentes", color: "text-red-700", iconBgColor: "bg-red-100", iconColor: "text-red-700" },
       { title: "Valor Pendente", value: `R$ ${valorPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Download, description: "Total de diárias em aberto", color: "text-orange-700", iconBgColor: "bg-orange-100", iconColor: "text-orange-700" },
     ]);
 
-    // Status Distribution Pie Chart Data
     const statusCounts: Record<string, number> = {};
     representativeMotorcycles.forEach(moto => {
       const statusKey = moto.status || 'N/Definido';
@@ -114,7 +111,7 @@ export default function RelatoriosPage() {
     });
 
     const pieData: StatusDistributionPieDataPoint[] = Object.entries(statusCounts)
-      .filter(([, count]) => count > 0) // Only include statuses with count > 0 for pie chart
+      .filter(([, count]) => count > 0)
       .map(([statusKey, count]) => ({
         name: translateMotorcycleStatus(statusKey as MotorcycleStatus | undefined),
         value: totalUniqueMotorcycles > 0 ? parseFloat(((count / totalUniqueMotorcycles) * 100).toFixed(1)) : 0,
@@ -123,15 +120,13 @@ export default function RelatoriosPage() {
     }));
     setStatusDistributionData(pieData);
 
-
-    // Monthly Charts Data (depende do ano selecionado, usa allMotorcycles para histórico)
     const recoveryCounts = Array(12).fill(0);
     const rentalNovasCounts = Array(12).fill(0);
     const rentalUsadasCounts = Array(12).fill(0);
     const relocatedCounts = Array(12).fill(0);
     const totalRentalsCounts = Array(12).fill(0);
 
-    allMotorcycles.forEach(moto => { // Histórico usa allMotorcycles
+    allMotorcycles.forEach(moto => {
       if (moto.data_ultima_mov) {
         try {
           const movDate = parseISO(moto.data_ultima_mov);
@@ -159,6 +154,44 @@ export default function RelatoriosPage() {
     setMonthlyRelocatedData(monthAbbreviations.map((m, i) => ({ month: m, count: relocatedCounts[i] })));
     setMonthlyTotalRentalsData(monthAbbreviations.map((m, i) => ({ month: m, count: totalRentalsCounts[i] })));
 
+    // Monthly Base Growth Chart Data (Opção B: Total Acumulado)
+    const firstEverMovementDateByPlaca: Record<string, Date> = {};
+    allMotorcycles.forEach(moto => {
+      if (moto.placa && moto.data_ultima_mov) {
+        try {
+          const movDate = parseISO(moto.data_ultima_mov);
+          if (isValid(movDate)) {
+            if (!firstEverMovementDateByPlaca[moto.placa] || movDate < firstEverMovementDateByPlaca[moto.placa]) {
+              firstEverMovementDateByPlaca[moto.placa] = movDate;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing date for base growth (firstEverMovementDateByPlaca): ", moto.data_ultima_mov, e);
+        }
+      }
+    });
+
+    let baseCountAtYearStart = 0;
+    Object.values(firstEverMovementDateByPlaca).forEach(date => {
+      if (getYear(date) < numericSelectedYear) {
+        baseCountAtYearStart++;
+      }
+    });
+    
+    const newMotosThisMonthCounts = Array(12).fill(0);
+    Object.entries(firstEverMovementDateByPlaca).forEach(([placa, date]) => {
+      if (getYear(date) === numericSelectedYear) {
+        const monthIndex = getMonth(date);
+        newMotosThisMonthCounts[monthIndex]++;
+      }
+    });
+
+    let cumulativeCountForChart = baseCountAtYearStart;
+    const newBaseGrowthData: MonthlyBaseGrowthDataPoint[] = monthAbbreviations.map((monthAbbr, index) => {
+      cumulativeCountForChart += newMotosThisMonthCounts[index];
+      return { month: monthAbbr, cumulativeCount: cumulativeCountForChart };
+    });
+    setMonthlyBaseGrowthData(newBaseGrowthData);
 
   }, [allMotorcycles, isLoading, selectedYear]);
 
@@ -237,12 +270,26 @@ export default function RelatoriosPage() {
               <PagePieIcon className="h-6 w-6 text-primary" />
               <div>
                 <CardTitle className="font-headline">Distribuição de Motos por Status (%)</CardTitle>
-                <CardDescription>Percentual de motocicletas únicas em cada status.</CardDescription>
+                <CardDescription>Percentual de motocicletas únicas em cada status ({selectedYear}).</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <StatusDistributionChart data={statusDistributionData} />
+          </CardContent>
+        </Card>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-6 w-6 text-primary" />
+              <div>
+                <CardTitle className="font-headline">Crescimento da Base de Motos ({selectedYear})</CardTitle>
+                <CardDescription>Contagem cumulativa de placas únicas por mês.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <BaseGrowthChart data={monthlyBaseGrowthData} />
           </CardContent>
         </Card>
       </div>
@@ -312,6 +359,4 @@ export default function RelatoriosPage() {
     </DashboardLayout>
   );
 }
-    
-
     

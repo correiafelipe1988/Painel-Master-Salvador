@@ -60,6 +60,7 @@ export interface StatusRapidoItem {
   badgeBgColor?: string;
   badgeTextColor?: string;
   statusKey?: MotorcycleStatus; // Adicionado para facilitar o mapeamento
+  icon?: React.ElementType; // Adicionado para ícones no StatusRapidoItem
 }
 
 export type MotorcyclePageFilters = {
@@ -69,3 +70,5 @@ export type MotorcyclePageFilters = {
   data_ultima_mov?: Date | null; // Adicionado para filtro de data
 };
 
+
+    
