@@ -1,3 +1,4 @@
+
 export interface Kpi {
   title: string;
   value: string;
@@ -31,6 +32,7 @@ export interface Motorcycle {
   data_ultima_mov: string; // YYYY-MM-DD
   tempo_ocioso_dias: number;
   qrCodeUrl?: string; // Optional: URL to the QR code image or data
+  model?: string; // Added model property
 }
 
 export interface NavItem {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -20,14 +21,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { MotorcyclePageFilters } from '@/app/motorcycles/page';
 
 const mockMotorcycles: Motorcycle[] = [
-  { id: '1', code: 'MOTO001', status: 'active', type: 'nova', filial: 'Salvador Centro', data_ultima_mov: '2024-07-20', tempo_ocioso_dias: 2, qrCodeUrl: 'https://placehold.co/50x50.png' },
-  { id: '2', code: 'MOTO002', status: 'inadimplente', type: 'usada', filial: 'Salvador Norte', data_ultima_mov: '2024-07-10', tempo_ocioso_dias: 12, qrCodeUrl: 'https://placehold.co/50x50.png' },
-  { id: '3', code: 'MOTO003', status: 'manutencao', type: 'nova', filial: 'Salvador Centro', data_ultima_mov: '2024-07-15', tempo_ocioso_dias: 7, qrCodeUrl: 'https://placehold.co/50x50.png' },
-  { id: '4', code: 'MOTO004', status: 'recolhida', type: 'usada', filial: 'Lauro de Freitas', data_ultima_mov: '2024-06-25', tempo_ocioso_dias: 27, qrCodeUrl: 'https://placehold.co/50x50.png' },
-  { id: '5', code: 'MOTO005', status: 'active', type: 'nova', filial: 'Salvador Norte', data_ultima_mov: '2024-07-22', tempo_ocioso_dias: 0, qrCodeUrl: 'https://placehold.co/50x50.png' },
-  { id: '6', code: 'MOTO006', status: 'relocada', type: 'usada', filial: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'https://placehold.co/50x50.png' },
+  { id: '1', code: 'MOTO001', status: 'active', type: 'nova', filial: 'Salvador Centro', data_ultima_mov: '2024-07-20', tempo_ocioso_dias: 2, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
+  { id: '2', code: 'MOTO002', status: 'inadimplente', type: 'usada', filial: 'Salvador Norte', data_ultima_mov: '2024-07-10', tempo_ocioso_dias: 12, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_y' },
+  { id: '3', code: 'MOTO003', status: 'manutencao', type: 'nova', filial: 'Salvador Centro', data_ultima_mov: '2024-07-15', tempo_ocioso_dias: 7, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
+  { id: '4', code: 'MOTO004', status: 'recolhida', type: 'usada', filial: 'Lauro de Freitas', data_ultima_mov: '2024-06-25', tempo_ocioso_dias: 27, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_z' },
+  { id: '5', code: 'MOTO005', status: 'active', type: 'nova', filial: 'Salvador Norte', data_ultima_mov: '2024-07-22', tempo_ocioso_dias: 0, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_y' },
+  { id: '6', code: 'MOTO006', status: 'relocada', type: 'usada', filial: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'https://placehold.co/50x50.png', model: 'model_x' },
 ];
 
 const getStatusBadgeVariant = (status: MotorcycleStatus) => {
@@ -55,7 +57,7 @@ const translateStatus = (status: MotorcycleStatus): string => {
 };
 
 interface MotorcycleListProps {
-  filters: { status: MotorcycleStatus | 'all'; idleTime: number };
+  filters: MotorcyclePageFilters;
 }
 
 export function MotorcycleList({ filters }: MotorcycleListProps) {
@@ -68,8 +70,14 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
   const filteredMotorcycles = useMemo(() => {
     return mockMotorcycles.filter(moto => {
       const statusMatch = filters.status === 'all' || moto.status === filters.status;
-      const idleTimeMatch = moto.tempo_ocioso_dias >= filters.idleTime;
-      return statusMatch && idleTimeMatch;
+      const modelMatch = filters.model === 'all' || moto.model === filters.model;
+      const searchTermMatch = filters.searchTerm === '' ||
+        moto.code.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        moto.filial.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        (moto.model && moto.model.toLowerCase().includes(filters.searchTerm.toLowerCase()));
+      // Add other fields to search if needed, e.g., moto.type
+      
+      return statusMatch && modelMatch && searchTermMatch;
     });
   }, [filters]);
 
@@ -87,9 +95,7 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
         <h3 className="text-lg font-semibold text-foreground">
           {`Motocicletas (${filteredMotorcycles.length} encontradas)`}
         </h3>
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" /> Exportar Dados
-        </Button>
+        {/* Button "Exportar Dados" moved to PageHeader */}
       </div>
       <div className="overflow-x-auto">
         <Table>
@@ -100,6 +106,7 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
               <TableHead>Status</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Filial</TableHead>
+              <TableHead>Modelo</TableHead>
               <TableHead>Últ. Movimento</TableHead>
               <TableHead>Ociosa (Dias)</TableHead>
               <TableHead>Ações</TableHead>
@@ -108,7 +115,7 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
           <TableBody>
             {filteredMotorcycles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground h-24">
                   Nenhuma motocicleta corresponde aos filtros atuais.
                 </TableCell>
               </TableRow>
@@ -135,6 +142,7 @@ export function MotorcycleList({ filters }: MotorcycleListProps) {
                   </TableCell>
                   <TableCell className="capitalize">{moto.type}</TableCell>
                   <TableCell>{moto.filial}</TableCell>
+                  <TableCell className="capitalize">{moto.model || 'N/A'}</TableCell>
                   <TableCell>{new Date(moto.data_ultima_mov).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>{moto.tempo_ocioso_dias}</TableCell>
                   <TableCell>
