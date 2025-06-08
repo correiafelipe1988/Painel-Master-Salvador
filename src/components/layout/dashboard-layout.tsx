@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image"; // Importar o componente Image
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -17,7 +18,7 @@ import {
   SidebarInset,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { MotorcycleIcon as AppMotorcycleIcon } from "@/components/icons/motorcycle-icon"; // Renomeado para evitar conflito
+// import { MotorcycleIcon as AppMotorcycleIcon } from "@/components/icons/motorcycle-icon"; // Ícone antigo não é mais usado aqui
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -75,10 +76,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Etapa 1: Obter o registro mais recente para cada placa única
     const uniqueMotorcyclesByPlaca: { [placa: string]: Motorcycle } = {};
     allMotorcycles.forEach(moto => {
-      if (!moto.placa) return; // Ignorar motos sem placa
+      if (!moto.placa) return; 
 
       const existingMoto = uniqueMotorcyclesByPlaca[moto.placa];
 
@@ -88,25 +88,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         const existingDateStr = existingMoto.data_ultima_mov;
         const currentDateStr = moto.data_ultima_mov;
 
-        // Comparar datas apenas se ambas existirem
         if (currentDateStr && existingDateStr) {
           if (new Date(currentDateStr) > new Date(existingDateStr)) {
-            uniqueMotorcyclesByPlaca[moto.placa] = moto; // Moto atual é mais recente
+            uniqueMotorcyclesByPlaca[moto.placa] = moto; 
           }
         } else if (currentDateStr && !existingDateStr) {
-          uniqueMotorcyclesByPlaca[moto.placa] = moto; // Moto atual tem data, a existente não
+          uniqueMotorcyclesByPlaca[moto.placa] = moto; 
         }
-        // Se currentDateStr não existir, ou se ambas as datas forem iguais,
-        // a moto existente (primeira encontrada com aquela data ou sem data) é mantida.
       }
     });
     const representativeMotorcycles = Object.values(uniqueMotorcyclesByPlaca);
 
-    // Etapa 2: Calcular contagens com base nas motocicletas representativas
     const counts: Record<MotorcycleStatus, number> = {
       active: 0,
       alugada: 0,
-      inadimplente: 0, // Mantido na estrutura, mas não exibido diretamente
+      inadimplente: 0, 
       manutencao: 0,
       recolhida: 0,
       relocada: 0,
@@ -139,7 +135,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sidebar>
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <AppMotorcycleIcon className="h-8 w-8 text-sidebar-primary" />
+            <Image
+              src="https://locagoraveiculos.com.br/storage/2023/08/GO-removebg-preview-2-300x252.png"
+              alt="GO Logo"
+              width={32} 
+              height={32} 
+              className="object-contain"
+            />
             <div>
               <h1 className="text-lg font-semibold text-sidebar-foreground font-headline leading-tight">
                 Master Salvador
@@ -220,5 +222,3 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
