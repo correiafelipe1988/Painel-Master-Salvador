@@ -20,7 +20,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Removido AlertDialogTrigger não utilizado diretamente aqui
+} from "@/components/ui/alert-dialog";
 import { AddMotorcycleForm } from "@/components/motorcycles/add-motorcycle-form";
 import { useToast } from "@/hooks/use-toast";
 
@@ -292,7 +292,7 @@ export default function MotorcyclesPage() {
     const statusIndex = findHeaderIndex(['status']);
     const typeIndex = findHeaderIndex(['type', 'tipomoto', 'tipo moto', 'tipo']);
     const franqueadoIndex = findHeaderIndex(['franqueado', 'filial']);
-    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentacao', 'ultima movimentacao']);
+    const dataUltimaMovIndex = findHeaderIndex(['data_ultima_mov', 'data ultima movimentacao', 'última movimentacao', 'ultima movimentacao', 'última movimentação']);
     const tempoOciosoDiasIndex = findHeaderIndex(['tempo_ocioso_dias', 'tempo ocioso dias', 'dias parado']);
     const qrCodeUrlIndex = findHeaderIndex(['qrcodeurl', 'cs']);
     const valorDiariaIndex = findHeaderIndex(['valordiaria', 'valor diaria', 'valor diária']);
@@ -312,14 +312,16 @@ export default function MotorcyclesPage() {
       let typeValue = typeRaw ? normalizeHeader(typeRaw) as MotorcycleType : undefined;
       if (typeValue && !allowedType.includes(typeValue)) typeValue = undefined;
 
+      const dataUltimaMovValue = dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined;
+
       const moto: Motorcycle = {
         id: `imported-${Date.now()}-${i}-${Math.random().toString(36).substring(7)}`,
         placa: placa,
         model: modelIndex !== -1 && values[modelIndex] ? values[modelIndex] : undefined,
-        status: statusValue, // Já tem o default 'alugada' se status for inválido ou undefined
+        status: statusValue, 
         type: typeValue,
         franqueado: franqueadoIndex !== -1 && values[franqueadoIndex] ? values[franqueadoIndex] : undefined,
-        data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined,
+        data_ultima_mov: typeof dataUltimaMovValue === 'string' && dataUltimaMovValue.trim() !== '' ? dataUltimaMovValue : undefined,
         tempo_ocioso_dias: tempoOciosoDiasIndex !== -1 && values[tempoOciosoDiasIndex] ? parseInt(values[tempoOciosoDiasIndex], 10) || undefined : undefined,
         qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined,
         valorDiaria: valorDiariaIndex !== -1 && values[valorDiariaIndex] ? parseFloat(values[valorDiariaIndex].replace(',', '.')) || undefined : undefined,
@@ -448,3 +450,5 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
+
+    
