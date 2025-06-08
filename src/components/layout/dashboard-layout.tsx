@@ -132,16 +132,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen>
       <Sidebar>
-        <SidebarHeader className="p-4 flex items-center justify-start"> {/* Alterado para flex e justify-start */}
+        <SidebarHeader className="p-4 flex items-center justify-start">
           <Link href="/" className="flex items-center">
             <Image
-              src="https://storage.googleapis.com/maker-studio-598d9.appspot.com/prompt_images/fec95123-b6d4-4a41-b0de-e2f42a66e632_0.png"
+              src="https://locagoraveiculos.com.br/storage/2023/08/GO-removebg-preview-2-300x252.png" 
               alt="Locagora Logo"
-              width={160} 
-              height={36} 
-              className="object-contain"
-              priority // Priorizar carregamento do logo
+              width={48} 
+              height={40} 
+              className="object-contain mr-2" 
+              priority
             />
+             <div>
+              <span className="font-bold text-lg text-sidebar-foreground">Dashboard Master</span>
+              <p className="text-xs text-sidebar-foreground/80">Salvador - Gestão de Locação</p>
+            </div>
           </Link>
         </SidebarHeader>
         <SidebarContent className="flex flex-col">
