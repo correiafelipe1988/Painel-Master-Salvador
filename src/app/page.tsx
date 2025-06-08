@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { CalendarDays, LineChart, BarChart3, PackagePlus, ChevronsRight, Activity } from "lucide-react";
-import type { Motorcycle, MotorcycleStatus, ChartDataPoint } from "@/lib/types"; // RentalDataPoint removida
+import type { Motorcycle, MotorcycleStatus, ChartDataPoint, Kpi } from "@/lib/types";
 import { parse, subDays, format, isValid, startOfDay } from 'date-fns';
 
 const LOCAL_STORAGE_KEY = 'motorcyclesData';
@@ -35,9 +35,10 @@ const years = Array.from({ length: 5 }, (_, i) => ({
 export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState('');
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
+  const [dynamicKpiDataTop, setDynamicKpiDataTop] = useState<Kpi[]>(kpiDataTop);
 
   const [recoveryData, setRecoveryData] = useState<ChartDataPoint[] | null>(null);
-  const [rentalData, setRentalData] = useState<ChartDataPoint[] | null>(null); // Agora usa ChartDataPoint
+  const [rentalData, setRentalData] = useState<ChartDataPoint[] | null>(null);
   const [relocatedData, setRelocatedData] = useState<ChartDataPoint[] | null>(null);
   const [totalRentalsData, setTotalRentalsData] = useState<ChartDataPoint[] | null>(null);
 
@@ -76,6 +77,48 @@ export default function DashboardPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (allMotorcycles.length > 0 || (allMotorcycles.length === 0 && dynamicKpiDataTop[0]?.value !== "0")) { // Condition to reset KPIs if motorcycles are cleared
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+      const motosAlugadasHojeCount = allMotorcycles.filter(
+        moto => moto.status === 'alugada' && moto.data_ultima_mov === todayStr
+      ).length;
+
+      const motosRecuperadasHojeCount = allMotorcycles.filter(
+        moto => moto.status === 'recolhida' && moto.data_ultima_mov === todayStr
+      ).length;
+
+      const motosRelocadasHojeCount = allMotorcycles.filter(
+        moto => moto.status === 'relocada' && moto.data_ultima_mov === todayStr
+      ).length;
+
+      const motosParadas7DiasCount = allMotorcycles.filter(
+        moto => typeof moto.tempo_ocioso_dias === 'number' && moto.tempo_ocioso_dias >= 7
+      ).length;
+
+      setDynamicKpiDataTop(prevKpis => prevKpis.map(kpi => {
+        if (kpi.title === "Motos Alugadas Hoje") {
+          return { ...kpi, value: motosAlugadasHojeCount.toString() };
+        }
+        if (kpi.title === "Motos Recuperadas Hoje") {
+          return { ...kpi, value: motosRecuperadasHojeCount.toString() };
+        }
+        if (kpi.title === "Motos Relocadas Hoje") {
+          return { ...kpi, value: motosRelocadasHojeCount.toString() };
+        }
+        if (kpi.title === "Motos Paradas +7 Dias") {
+          return { ...kpi, value: motosParadas7DiasCount.toString() };
+        }
+        return kpi;
+      }));
+    } else if (allMotorcycles.length === 0) {
+       // Reset KPIs to default if no motorcycles
+       setDynamicKpiDataTop(kpiDataTop.map(kpi => ({...kpi, value: kpi.title === "Motos Paradas +7 Dias" && kpi.value !== "0" ? kpi.value : "0"})));
+    }
+  }, [allMotorcycles]);
+
+
   const getLast30DaysMap = (valueFn: () => any = () => 0) => {
     const map = new Map<string, any>();
     const today = startOfDay(new Date());
@@ -99,14 +142,17 @@ export default function DashboardPage() {
       const thirtyDaysAgo = subDays(today, 29);
 
       const dailyRecoveryCounts = getLast30DaysMap(() => 0);
-      const dailyRentalCounts = getLast30DaysMap(() => 0); // Modificado: armazena contagem total
+      const dailyRentalCounts = getLast30DaysMap(() => 0);
       const dailyRelocatedCounts = getLast30DaysMap(() => 0);
       const dailyTotalRentalsCounts = getLast30DaysMap(() => 0);
 
       allMotorcycles.forEach(moto => {
         if (moto.data_ultima_mov) {
           try {
-            const movDate = parse(moto.data_ultima_mov, 'yyyy-MM-dd', new Date());
+            // Ensure moto.data_ultima_mov is treated as local time, not UTC
+            const [year, month, day] = moto.data_ultima_mov.split('-').map(Number);
+            const movDate = startOfDay(new Date(year, month - 1, day)); // month is 0-indexed
+
             if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
               const formattedDate = format(movDate, 'dd/MM/yyyy');
 
@@ -115,7 +161,7 @@ export default function DashboardPage() {
               }
 
               if (moto.status === 'alugada') {
-                dailyRentalCounts.set(formattedDate, (dailyRentalCounts.get(formattedDate) || 0) + 1); // Incrementa contagem total
+                dailyRentalCounts.set(formattedDate, (dailyRentalCounts.get(formattedDate) || 0) + 1);
                 dailyTotalRentalsCounts.set(formattedDate, (dailyTotalRentalsCounts.get(formattedDate) || 0) + 1);
               }
 
@@ -129,7 +175,7 @@ export default function DashboardPage() {
         }
       });
       setRecoveryData(Array.from(dailyRecoveryCounts, ([date, count]) => ({ date, count })));
-      setRentalData(Array.from(dailyRentalCounts, ([date, count]) => ({ date, count }))); // Modificado: usa contagem total
+      setRentalData(Array.from(dailyRentalCounts, ([date, count]) => ({ date, count })));
       setRelocatedData(Array.from(dailyRelocatedCounts, ([date, count]) => ({ date, count })));
       setTotalRentalsData(Array.from(dailyTotalRentalsCounts, ([date, count]) => ({ date, count })));
 
@@ -155,7 +201,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <KpiSection kpis={kpiDataTop} />
+      <KpiSection kpis={dynamicKpiDataTop} />
 
       <Card className="my-6 shadow">
         <CardContent className="p-4">
@@ -215,12 +261,12 @@ export default function DashboardPage() {
               <BarChart3 className="h-6 w-6 text-primary" />
                <div>
                 <CardTitle className="font-headline">Volume Diário - Motos Alugadas</CardTitle>
-                <CardDescription>Últimos 30 dias (Total)</CardDescription> {/* Descrição atualizada */}
+                <CardDescription>Últimos 30 dias (Total)</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <RentalVolumeChart data={rentalData} /> {/* Passa ChartDataPoint[] */}
+            <RentalVolumeChart data={rentalData} />
           </CardContent>
         </Card>
 
@@ -257,3 +303,5 @@ export default function DashboardPage() {
     </DashboardLayout>
   );
 }
+
+    
