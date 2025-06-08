@@ -143,8 +143,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               priority
             />
              <div>
-              <span className="font-bold text-lg text-sidebar-foreground">Dashboard Master</span>
-              <p className="text-xs text-sidebar-foreground/80">Salvador - Gestão de Locação</p>
+              <span className="font-bold text-lg text-sidebar-foreground">Master Salvador</span>
+              <p className="text-xs text-sidebar-foreground/80">Gestao de Locacao</p>
             </div>
           </Link>
         </SidebarHeader>
