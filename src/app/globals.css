@@ -34,7 +34,7 @@
 
     --chart-1: 208 40% 47%; /* Adjusted primary for charts - Used for Recuperadas */
     --chart-2: 217 89% 61%;  /* Blue for Alugadas chart (from image #4285F4) */
-    --chart-3: 197 37% 44%; /* Used for Relocadas */
+    --chart-3: 28 79% 57%; /* Orange - Used for Relocadas */
     --chart-4: 43 74% 56%;  /* Was Maintenance, now unused */
     --chart-5: 145 63% 50%;  /* New Green - Used for Locações Total */
 
@@ -83,7 +83,7 @@
 
     --chart-1: 208 40% 57%;
     --chart-2: 217 89% 65%; /* Lighter blue for Alugadas chart in dark mode */
-    --chart-3: 197 37% 54%;
+    --chart-3: 28 79% 62%; /* Lighter Orange for Relocadas chart in dark mode */
     --chart-4: 43 74% 66%;
     --chart-5: 145 63% 60%; /* Lighter Green for Locações Total in dark mode */
 
