@@ -8,9 +8,9 @@ import { MotorcycleFilters } from "@/components/motorcycles/motorcycle-filters";
 import { MotorcycleList } from "@/components/motorcycles/motorcycle-list";
 import type { Motorcycle, MotorcycleStatus, MotorcycleType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Upload, Download, PlusCircle } from 'lucide-react';
+import { Upload, Download, PlusCircle, Edit } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/motorcycle-icon';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { AddMotorcycleForm } from "@/components/motorcycles/add-motorcycle-form";
 import { useToast } from "@/hooks/use-toast";
 
@@ -91,7 +91,7 @@ export default function MotorcyclesPage() {
     );
     toast({
       title: "Status Atualizado!",
-      description: `O status da moto foi atualizado.`,
+      description: `O status da moto foi atualizado para ${newStatus}.`,
     });
   }, [toast]);
 
@@ -177,7 +177,14 @@ export default function MotorcyclesPage() {
   }, [motorcycles, toast]);
 
   const parseCSV = (csvText: string): Motorcycle[] => {
-    const lines = csvText.trim().split('\n').map(line => line.trim()).filter(line => line);
+    let cleanedCsvText = csvText;
+    // Remove BOM (Byte Order Mark) if present
+    if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
+      cleanedCsvText = cleanedCsvText.substring(1);
+    }
+    // Split lines more robustly (handles \r\n, \r, \n)
+    const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
+
     if (lines.length < 2) {
       throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
     }
@@ -206,11 +213,11 @@ export default function MotorcyclesPage() {
       return result;
     };
     
-    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase());
+    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim());
     const placaIndex = headers.indexOf('placa');
     
     if (placaIndex === -1) {
-      throw new Error("CSV inválido: Coluna 'placa' não encontrada. Cabeçalhos: " + headers.join(', '));
+      throw new Error("CSV inválido: Coluna 'placa' não encontrada. Cabeçalhos detectados: " + headers.join(' | '));
     }
   
     const motorcyclesArray: Motorcycle[] = [];
@@ -244,7 +251,7 @@ export default function MotorcyclesPage() {
         franqueado: franqueadoIndex !== -1 && values[franqueadoIndex] ? values[franqueadoIndex] : undefined,
         data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined, 
         tempo_ocioso_dias: tempoOciosoDiasIndex !== -1 && values[tempoOciosoDiasIndex] ? parseInt(values[tempoOciosoDiasIndex], 10) || undefined : undefined,
-        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined,
+        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, // CS
         valorDiaria: valorDiariaIndex !== -1 && values[valorDiariaIndex] ? parseFloat(values[valorDiariaIndex].replace(',', '.')) || undefined : undefined,
       };
       motorcyclesArray.push(moto);
@@ -346,3 +353,6 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
+
+
+    
