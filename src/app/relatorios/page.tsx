@@ -7,10 +7,14 @@ import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet } from "lucide-react";
-import type { Motorcycle, Kpi } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart } from "lucide-react";
+import type { Motorcycle, Kpi, MotorcycleStatus } from "@/lib/types";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { useToast } from "@/hooks/use-toast";
+import { StatusDistributionChart, type StatusDistributionDataPoint } from "@/components/charts/status-distribution-chart";
+import { translateMotorcycleStatus } from "@/lib/utils";
+
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => ({
@@ -18,11 +22,24 @@ const years = Array.from({ length: 5 }, (_, i) => ({
   label: (currentYear - i).toString(),
 }));
 
+// Mapeamento de status para cores do tema para o gráfico
+const statusColorsForChart: Record<string, string> = {
+  'active': 'hsl(var(--chart-5))',
+  'alugada': 'hsl(var(--chart-2))',
+  'inadimplente': 'hsl(var(--destructive))',
+  'manutencao': 'hsl(var(--chart-4))',
+  'recolhida': 'hsl(var(--chart-1))',
+  'relocada': 'hsl(var(--chart-3))',
+  'N/Definido': 'hsl(var(--muted-foreground))',
+};
+
+
 export default function RelatoriosPage() {
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
   const [kpiData, setKpiData] = useState<Kpi[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
+  const [statusDistributionData, setStatusDistributionData] = useState<StatusDistributionDataPoint[] | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -40,7 +57,7 @@ export default function RelatoriosPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !Array.isArray(allMotorcycles)) return;
 
     const totalMotos = allMotorcycles.length;
     const motosAlugadas = allMotorcycles.filter(m => m.status === 'alugada').length;
@@ -53,14 +70,12 @@ export default function RelatoriosPage() {
       .filter(m => m.status === 'inadimplente' && typeof m.valorDiaria === 'number')
       .reduce((sum, moto) => sum + (moto.valorDiaria || 0), 0);
 
-    // TODO: Implementar lógica de "vs mês anterior" quando houver dados históricos.
-    // Por enquanto, usando placeholders da imagem.
     setKpiData([
       {
         title: "Total de Motos",
         value: totalMotos.toString(),
         icon: TrendingUp,
-        description: "+5% vs mês anterior", // Placeholder
+        description: "+5% vs mês anterior", 
         color: "text-blue-700",
         iconBgColor: "bg-blue-100",
         iconColor: "text-blue-700",
@@ -69,7 +84,7 @@ export default function RelatoriosPage() {
         title: "Motos Alugadas",
         value: motosAlugadas.toString(),
         icon: BarChartBig,
-        description: `Taxa: ${taxaAlugadas.toFixed(0)}%`, // Calculado
+        description: `Taxa: ${taxaAlugadas.toFixed(0)}%`,
         color: "text-green-700",
         iconBgColor: "bg-green-100",
         iconColor: "text-green-700",
@@ -78,7 +93,7 @@ export default function RelatoriosPage() {
         title: "% Inadimplência",
         value: `${percInadimplencia.toFixed(1)}%`,
         icon: Clock,
-        description: "-2.1% vs mês anterior", // Placeholder
+        description: "-2.1% vs mês anterior", 
         color: "text-red-700",
         iconBgColor: "bg-red-100",
         iconColor: "text-red-700",
@@ -87,17 +102,30 @@ export default function RelatoriosPage() {
         title: "Valor Pendente",
         value: `R$ ${valorPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         icon: Download,
-        description: "-R$ 2.5k vs mês anterior", // Placeholder
+        description: "-R$ 2.5k vs mês anterior", 
         color: "text-orange-700",
         iconBgColor: "bg-orange-100",
         iconColor: "text-orange-700",
       },
     ]);
 
+    // Process data for StatusDistributionChart
+    const statusCounts: Record<string, number> = {};
+    allMotorcycles.forEach(moto => {
+      const statusKey = moto.status || 'N/Definido';
+      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+    });
+
+    const chartData = Object.entries(statusCounts).map(([status, count]) => ({
+      status: translateMotorcycleStatus(status as MotorcycleStatus | undefined),
+      count: count,
+      fill: statusColorsForChart[status as MotorcycleStatus || 'N/Definido'] || 'hsl(var(--muted-foreground))',
+    }));
+    setStatusDistributionData(chartData);
+
   }, [allMotorcycles, isLoading, selectedYear]);
 
   const handleExportExcel = () => {
-    // TODO: Implementar funcionalidade de exportação
     toast({
       title: "Funcionalidade em Desenvolvimento",
       description: "A exportação para Excel será implementada em breve.",
@@ -165,10 +193,24 @@ export default function RelatoriosPage() {
         ))}
       </div>
 
-      {/* Adicionar aqui futuros gráficos e tabelas de relatório */}
+      <Card className="mt-8 shadow-lg">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <PieChart className="h-6 w-6 text-primary" /> {/* Ícone para o novo gráfico */}
+            <div>
+              <CardTitle className="font-headline">Distribuição de Motos por Status</CardTitle>
+              <CardDescription>Contagem de motocicletas em cada status atual.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0"> {/* Ajustado padding para alinhar com outros gráficos */}
+          <StatusDistributionChart data={statusDistributionData} />
+        </CardContent>
+      </Card>
+
       <div className="mt-8 p-6 border rounded-lg bg-card shadow-lg min-h-[300px] flex items-center justify-center">
         <p className="text-muted-foreground">
-            Área reservada para gráficos e tabelas detalhadas dos relatórios.
+            Área reservada para mais gráficos e tabelas detalhadas dos relatórios.
             <br />
             (Em desenvolvimento)
         </p>
