@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link"; // Added import for Link
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { KpiSection, kpiDataTop, kpiDataBottom } from "@/components/dashboard/kpi-section";
 import { Separator } from "@/components/ui/separator";
