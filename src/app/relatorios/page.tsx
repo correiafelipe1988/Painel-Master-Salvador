@@ -8,13 +8,17 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart } from "lucide-react";
-import type { Motorcycle, Kpi, MotorcycleStatus } from "@/lib/types";
+import { BarChart3, TrendingUp, BarChartBig, Clock, Download, FileSpreadsheet, PieChart, CalendarDays as PageCalendarIcon } from "lucide-react";
+import type { Motorcycle, Kpi, MotorcycleStatus, ChartDataPoint } from "@/lib/types";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { useToast } from "@/hooks/use-toast";
 import { StatusDistributionChart, type StatusDistributionDataPoint } from "@/components/charts/status-distribution-chart";
+import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
+import { RentalVolumeChart, type MonthlyRentalDataPoint } from "@/components/charts/rental-volume-chart";
+import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
+import { TotalRentalsVolumeChart } from "@/components/charts/total-rentals-volume-chart";
 import { translateMotorcycleStatus } from "@/lib/utils";
-
+import { parseISO, isValid, getYear, getMonth } from "date-fns";
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => ({
@@ -22,7 +26,6 @@ const years = Array.from({ length: 5 }, (_, i) => ({
   label: (currentYear - i).toString(),
 }));
 
-// Mapeamento de status para cores do tema para o gráfico
 const statusColorsForChart: Record<string, string> = {
   'active': 'hsl(var(--chart-5))',
   'alugada': 'hsl(var(--chart-2))',
@@ -33,6 +36,7 @@ const statusColorsForChart: Record<string, string> = {
   'N/Definido': 'hsl(var(--muted-foreground))',
 };
 
+const monthAbbreviations = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export default function RelatoriosPage() {
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
@@ -42,11 +46,19 @@ export default function RelatoriosPage() {
   const [statusDistributionData, setStatusDistributionData] = useState<StatusDistributionDataPoint[] | null>(null);
   const { toast } = useToast();
 
+  const [monthlyRecoveryData, setMonthlyRecoveryData] = useState<ChartDataPoint[] | null>(null);
+  const [monthlyRentalData, setMonthlyRentalData] = useState<MonthlyRentalDataPoint[] | null>(null);
+  const [monthlyRelocatedData, setMonthlyRelocatedData] = useState<ChartDataPoint[] | null>(null);
+  const [monthlyTotalRentalsData, setMonthlyTotalRentalsData] = useState<ChartDataPoint[] | null>(null);
+
   useEffect(() => {
     setIsLoading(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
       if (Array.isArray(motosFromDB)) {
-        setAllMotorcycles(motosFromDB);
+         const updatedMotorcycles = motosFromDB.map(moto =>
+          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+        );
+        setAllMotorcycles(updatedMotorcycles);
       } else {
         console.warn("Data from subscribeToMotorcycles (relatorios page) was not an array:", motosFromDB);
         setAllMotorcycles([]);
@@ -59,69 +71,74 @@ export default function RelatoriosPage() {
   useEffect(() => {
     if (isLoading || !Array.isArray(allMotorcycles)) return;
 
+    const numericSelectedYear = parseInt(selectedYear, 10);
+
+    // KPIs calculation (geral, não depende do ano selecionado, exceto talvez para as descrições de tendência)
     const totalMotos = allMotorcycles.length;
     const motosAlugadas = allMotorcycles.filter(m => m.status === 'alugada').length;
     const motosInadimplentes = allMotorcycles.filter(m => m.status === 'inadimplente').length;
-
     const percInadimplencia = totalMotos > 0 ? (motosInadimplentes / totalMotos) * 100 : 0;
     const taxaAlugadas = totalMotos > 0 ? (motosAlugadas / totalMotos) * 100 : 0;
-
     const valorPendente = allMotorcycles
       .filter(m => m.status === 'inadimplente' && typeof m.valorDiaria === 'number')
       .reduce((sum, moto) => sum + (moto.valorDiaria || 0), 0);
 
     setKpiData([
-      {
-        title: "Total de Motos",
-        value: totalMotos.toString(),
-        icon: TrendingUp,
-        description: "+5% vs mês anterior", 
-        color: "text-blue-700",
-        iconBgColor: "bg-blue-100",
-        iconColor: "text-blue-700",
-      },
-      {
-        title: "Motos Alugadas",
-        value: motosAlugadas.toString(),
-        icon: BarChartBig,
-        description: `Taxa: ${taxaAlugadas.toFixed(0)}%`,
-        color: "text-green-700",
-        iconBgColor: "bg-green-100",
-        iconColor: "text-green-700",
-      },
-      {
-        title: "% Inadimplência",
-        value: `${percInadimplencia.toFixed(1)}%`,
-        icon: Clock,
-        description: "-2.1% vs mês anterior", 
-        color: "text-red-700",
-        iconBgColor: "bg-red-100",
-        iconColor: "text-red-700",
-      },
-      {
-        title: "Valor Pendente",
-        value: `R$ ${valorPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        icon: Download,
-        description: "-R$ 2.5k vs mês anterior", 
-        color: "text-orange-700",
-        iconBgColor: "bg-orange-100",
-        iconColor: "text-orange-700",
-      },
+      { title: "Total de Motos", value: totalMotos.toString(), icon: TrendingUp, description: "Frota ativa total", color: "text-blue-700", iconBgColor: "bg-blue-100", iconColor: "text-blue-700" },
+      { title: "Motos Alugadas", value: motosAlugadas.toString(), icon: BarChartBig, description: `Taxa de Ocupação: ${taxaAlugadas.toFixed(0)}%`, color: "text-green-700", iconBgColor: "bg-green-100", iconColor: "text-green-700" },
+      { title: "% Inadimplência", value: `${percInadimplencia.toFixed(1)}%`, icon: Clock, description: "Percentual de inadimplentes", color: "text-red-700", iconBgColor: "bg-red-100", iconColor: "text-red-700" },
+      { title: "Valor Pendente", value: `R$ ${valorPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Download, description: "Total de diárias em aberto", color: "text-orange-700", iconBgColor: "bg-orange-100", iconColor: "text-orange-700" },
     ]);
 
-    // Process data for StatusDistributionChart
+    // Status Distribution Chart (geral, não depende do ano selecionado)
     const statusCounts: Record<string, number> = {};
     allMotorcycles.forEach(moto => {
       const statusKey = moto.status || 'N/Definido';
       statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
     });
-
-    const chartData = Object.entries(statusCounts).map(([status, count]) => ({
+    const distData = Object.entries(statusCounts).map(([status, count]) => ({
       status: translateMotorcycleStatus(status as MotorcycleStatus | undefined),
       count: count,
       fill: statusColorsForChart[status as MotorcycleStatus || 'N/Definido'] || 'hsl(var(--muted-foreground))',
     }));
-    setStatusDistributionData(chartData);
+    setStatusDistributionData(distData);
+
+
+    // Monthly Charts Data (depende do ano selecionado)
+    const recoveryCounts = Array(12).fill(0);
+    const rentalNovasCounts = Array(12).fill(0);
+    const rentalUsadasCounts = Array(12).fill(0);
+    const relocatedCounts = Array(12).fill(0);
+    const totalRentalsCounts = Array(12).fill(0);
+
+    allMotorcycles.forEach(moto => {
+      if (moto.data_ultima_mov) {
+        try {
+          const movDate = parseISO(moto.data_ultima_mov);
+          if (isValid(movDate) && getYear(movDate) === numericSelectedYear) {
+            const monthIndex = getMonth(movDate); 
+
+            if (moto.status === 'recolhida') recoveryCounts[monthIndex]++;
+            if (moto.status === 'alugada') {
+              if (moto.type === 'nova') rentalNovasCounts[monthIndex]++;
+              else if (moto.type === 'usada') rentalUsadasCounts[monthIndex]++;
+              else rentalNovasCounts[monthIndex]++; // Default to nova if type undefined
+              totalRentalsCounts[monthIndex]++;
+            }
+            if (moto.status === 'relocada') {
+              relocatedCounts[monthIndex]++;
+              totalRentalsCounts[monthIndex]++; 
+            }
+          }
+        } catch (e) { console.error("Error parsing date for monthly charts (Relatorios): ", moto.data_ultima_mov, e); }
+      }
+    });
+
+    setMonthlyRecoveryData(monthAbbreviations.map((m, i) => ({ month: m, count: recoveryCounts[i] })));
+    setMonthlyRentalData(monthAbbreviations.map((m, i) => ({ month: m, novas: rentalNovasCounts[i], usadas: rentalUsadasCounts[i] })));
+    setMonthlyRelocatedData(monthAbbreviations.map((m, i) => ({ month: m, count: relocatedCounts[i] })));
+    setMonthlyTotalRentalsData(monthAbbreviations.map((m, i) => ({ month: m, count: totalRentalsCounts[i] })));
+
 
   }, [allMotorcycles, isLoading, selectedYear]);
 
@@ -135,7 +152,7 @@ export default function RelatoriosPage() {
   const pageActions = (
     <div className="flex items-center gap-2">
       <Select value={selectedYear} onValueChange={setSelectedYear}>
-        <SelectTrigger id="year-filter" className="w-[100px]">
+        <SelectTrigger id="year-filter" className="w-[120px]">
           <SelectValue placeholder="Ano" />
         </SelectTrigger>
         <SelectContent>
@@ -193,29 +210,86 @@ export default function RelatoriosPage() {
         ))}
       </div>
 
-      <Card className="mt-8 shadow-lg">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <PieChart className="h-6 w-6 text-primary" /> {/* Ícone para o novo gráfico */}
-            <div>
-              <CardTitle className="font-headline">Distribuição de Motos por Status</CardTitle>
-              <CardDescription>Contagem de motocicletas em cada status atual.</CardDescription>
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 mt-8">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PieChart className="h-6 w-6 text-primary" />
+              <div>
+                <CardTitle className="font-headline">Distribuição de Motos por Status</CardTitle>
+                <CardDescription>Contagem de motocicletas em cada status (geral).</CardDescription>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4 pt-0"> {/* Ajustado padding para alinhar com outros gráficos */}
-          <StatusDistributionChart data={statusDistributionData} />
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <StatusDistributionChart data={statusDistributionData} />
+          </CardContent>
+        </Card>
+      </div>
 
-      <div className="mt-8 p-6 border rounded-lg bg-card shadow-lg min-h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">
-            Área reservada para mais gráficos e tabelas detalhadas dos relatórios.
-            <br />
-            (Em desenvolvimento)
-        </p>
+      <div className="mt-8 grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PageCalendarIcon className="h-6 w-6 text-primary" />
+              <div>
+                <CardTitle className="font-headline">Volume Mensal - Motos Recuperadas ({selectedYear})</CardTitle>
+                <CardDescription>Contagem mensal para o ano selecionado (Status: Recolhida)</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RecoveryVolumeChart data={monthlyRecoveryData} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PageCalendarIcon className="h-6 w-6 text-green-600" />
+               <div>
+                <CardTitle className="font-headline">Volume Mensal - Motos Alugadas ({selectedYear})</CardTitle>
+                <CardDescription>Novas vs. Usadas para o ano selecionado</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RentalVolumeChart data={monthlyRentalData} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PageCalendarIcon className="h-6 w-6 text-orange-500" />
+              <div>
+                <CardTitle className="font-headline">Volume Mensal - Motos Relocadas ({selectedYear})</CardTitle>
+                <CardDescription>Contagem mensal para o ano selecionado</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RelocatedVolumeChart data={monthlyRelocatedData} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-6 w-6 text-teal-500" />
+               <div>
+                <CardTitle className="font-headline">Volume Total de Locações ({selectedYear})</CardTitle>
+                <CardDescription>Alugadas + Relocadas para o ano selecionado</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <TotalRentalsVolumeChart data={monthlyTotalRentalsData} />
+          </CardContent>
+        </Card>
       </div>
 
     </DashboardLayout>
   );
 }
+    
