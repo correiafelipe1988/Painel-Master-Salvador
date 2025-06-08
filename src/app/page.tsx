@@ -14,9 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { CalendarDays, LineChart, BarChart3, PackagePlus, ChevronsRight, Activity } from "lucide-react";
 import type { Motorcycle, MotorcycleStatus, ChartDataPoint, Kpi } from "@/lib/types";
-import { parse, subDays, format, isValid, startOfDay } from 'date-fns';
+import { format, isValid, startOfDay, subDays } from 'date-fns';
+import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 
-const LOCAL_STORAGE_KEY = 'motorcyclesData';
 
 const months = [
   { value: "0", label: "Janeiro" }, { value: "1", label: "Fevereiro" }, { value: "2", label: "Março" },
@@ -36,6 +36,7 @@ export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState('');
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
   const [dynamicKpiDataTop, setDynamicKpiDataTop] = useState<Kpi[]>(kpiDataTop);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [recoveryData, setRecoveryData] = useState<ChartDataPoint[] | null>(null);
   const [rentalData, setRentalData] = useState<ChartDataPoint[] | null>(null);
@@ -60,25 +61,21 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const storedMotorcycles = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (storedMotorcycles) {
-        const parsedMotorcycles: Motorcycle[] = JSON.parse(storedMotorcycles);
-        const updatedMotorcycles = parsedMotorcycles.map(moto =>
-          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
-        );
-        setAllMotorcycles(updatedMotorcycles);
-      } else {
-        setAllMotorcycles([]);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar motocicletas do localStorage para o dashboard:", error);
-      setAllMotorcycles([]);
-    }
+    setIsLoading(true);
+    const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
+      const updatedMotorcycles = motosFromDB.map(moto =>
+        moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+      );
+      setAllMotorcycles(updatedMotorcycles);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (allMotorcycles.length > 0 || (allMotorcycles.length === 0 && dynamicKpiDataTop[0]?.value !== "0")) { // Condition to reset KPIs if motorcycles are cleared
+    if (isLoading) return; // Não calcular KPIs e gráficos até que os dados sejam carregados
+
+    if (allMotorcycles.length > 0 || (allMotorcycles.length === 0 && dynamicKpiDataTop[0]?.value !== "0")) { 
       const todayStr = format(new Date(), 'yyyy-MM-dd');
 
       const motosAlugadasHojeCount = allMotorcycles.filter(
@@ -113,10 +110,9 @@ export default function DashboardPage() {
         return kpi;
       }));
     } else if (allMotorcycles.length === 0) {
-       // Reset KPIs to default if no motorcycles
        setDynamicKpiDataTop(kpiDataTop.map(kpi => ({...kpi, value: kpi.title === "Motos Paradas +7 Dias" && kpi.value !== "0" ? kpi.value : "0"})));
     }
-  }, [allMotorcycles]);
+  }, [allMotorcycles, isLoading, dynamicKpiDataTop]);
 
 
   const getLast30DaysMap = (valueFn: () => any = () => 0) => {
@@ -130,6 +126,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (isLoading) return;
+
     if (allMotorcycles.length === 0 && recoveryData !== null) {
         setRecoveryData([]);
         setRentalData([]);
@@ -149,9 +147,8 @@ export default function DashboardPage() {
       allMotorcycles.forEach(moto => {
         if (moto.data_ultima_mov) {
           try {
-            // Ensure moto.data_ultima_mov is treated as local time, not UTC
             const [year, month, day] = moto.data_ultima_mov.split('-').map(Number);
-            const movDate = startOfDay(new Date(year, month - 1, day)); // month is 0-indexed
+            const movDate = startOfDay(new Date(year, month - 1, day)); 
 
             if (isValid(movDate) && movDate >= thirtyDaysAgo && movDate <= today) {
               const formattedDate = format(movDate, 'dd/MM/yyyy');
@@ -180,8 +177,17 @@ export default function DashboardPage() {
       setTotalRentalsData(Array.from(dailyTotalRentalsCounts, ([date, count]) => ({ date, count })));
 
     }
-  }, [allMotorcycles]);
+  }, [allMotorcycles, isLoading, recoveryData]); // Adicionado recoveryData para evitar loop se allMotorcycles for vazio e recoveryData não for nulo
 
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center h-screen">
+          <p>Carregando dashboard...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -303,5 +309,3 @@ export default function DashboardPage() {
     </DashboardLayout>
   );
 }
-
-    

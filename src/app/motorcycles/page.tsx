@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+// import { usePathname } from 'next/navigation'; // Não é mais necessário para o reload
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { MotorcycleFilters } from "@/components/motorcycles/motorcycle-filters";
@@ -25,23 +25,21 @@ import {
 import { AddMotorcycleForm } from "@/components/motorcycles/add-motorcycle-form";
 import { useToast } from "@/hooks/use-toast";
 import { parse as dateParseFns, format as dateFormatFns, isValid as dateIsValidFns } from 'date-fns';
+import { 
+  subscribeToMotorcycles, 
+  addMotorcycle, 
+  updateMotorcycle, 
+  deleteMotorcycle,
+  updateMotorcycleStatus as updateStatusInDB,
+  importMotorcyclesBatch,
+  deleteAllMotorcycles as deleteAllFromDB,
+} from '@/lib/firebase/motorcycleService';
 
 export type MotorcyclePageFilters = {
   status: MotorcycleStatus | 'all';
   model: string | 'all';
   searchTerm: string;
 };
-
-const initialMockMotorcycles: Motorcycle[] = [
-  { id: '1', placa: 'MOTO001', model: 'XTZ 150 Crosser', status: 'active', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-20', tempo_ocioso_dias: 2, qrCodeUrl: 'LETICIA', valorDiaria: 75.00 },
-  { id: '2', placa: 'MOTO002', model: 'CG 160 Titan', status: 'inadimplente', type: 'usada', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-10', tempo_ocioso_dias: 12, qrCodeUrl: 'PEDRO ALMEIDA', valorDiaria: 60.50 },
-  { id: '3', placa: 'MOTO003', model: 'NMAX 160', status: 'manutencao', type: 'nova', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-15', tempo_ocioso_dias: 7, qrCodeUrl: 'FATIMA SILVA', valorDiaria: 80.00 },
-  { id: '4', placa: 'MOTO004', model: 'PCX 150', status: 'recolhida', type: 'usada', franqueado: 'Lauro de Freitas', data_ultima_mov: '2024-06-25', tempo_ocioso_dias: 27, qrCodeUrl: 'CLIENTE VIP 001', valorDiaria: 70.00 },
-  { id: '5', placa: 'MOTO005', model: 'Factor 150', status: 'active', type: 'nova', franqueado: 'Salvador Norte', data_ultima_mov: '2024-07-22', tempo_ocioso_dias: 0, qrCodeUrl: 'JOANA LIMA', valorDiaria: 65.00 },
-  { id: '6', placa: 'MOTO006', model: 'Biz 125', status: 'relocada', type: 'usada', franqueado: 'Salvador Centro', data_ultima_mov: '2024-07-18', tempo_ocioso_dias: 4, qrCodeUrl: 'MOTO ROTA 7', valorDiaria: 55.00 },
-];
-
-const LOCAL_STORAGE_KEY = 'motorcyclesData';
 
 export default function MotorcyclesPage() {
   const [filters, setFilters] = useState<MotorcyclePageFilters>({
@@ -52,83 +50,53 @@ export default function MotorcyclesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
   const [editingMotorcycle, setEditingMotorcycle] = useState<Motorcycle | null>(null);
-  const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false);
+  const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false); // Mantido para a UI
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pathname = usePathname();
-  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(true); // Para feedback de carregamento inicial
 
   useEffect(() => {
-    if (pathname === '/motorcycles') {
-      let loadedMotorcycles: Motorcycle[];
-      try {
-        const storedMotorcycles = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (storedMotorcycles) {
-          loadedMotorcycles = JSON.parse(storedMotorcycles);
-        } else {
-          loadedMotorcycles = initialMockMotorcycles;
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(loadedMotorcycles));
-        }
-      } catch (error) {
-        console.error("Erro ao carregar motocicletas do localStorage:", error);
-        loadedMotorcycles = initialMockMotorcycles;
-         try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(loadedMotorcycles));
-         } catch (saveError) {
-            console.error("Erro ao salvar mocks no localStorage após falha na carga:", saveError);
-         }
-      }
-      setMotorcycles(
-        loadedMotorcycles.map(moto =>
-          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
-        )
-      );
-      if (!isInitialLoadComplete) {
-        setIsInitialLoadComplete(true);
-      }
-    }
-  }, [pathname, isInitialLoadComplete]);
-
-
-  useEffect(() => {
-    if (!isInitialLoadComplete) {
-      return; 
-    }
-    if (motorcycles.length > 0 || (motorcycles.length === 0 && localStorage.getItem(LOCAL_STORAGE_KEY) !== null) ) {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(motorcycles));
-      } catch (error) {
-        console.error("Erro ao salvar motocicletas no localStorage:", error);
-      }
-    }
-  }, [motorcycles, isInitialLoadComplete]);
+    setIsLoading(true);
+    const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
+      setMotorcycles(motosFromDB.map(moto => 
+        moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
+      ));
+      setIsLoading(false);
+    });
+    return () => unsubscribe(); // Limpar inscrição ao desmontar
+  }, []);
 
 
   const handleFilterChange = useCallback((newFilters: MotorcyclePageFilters) => {
     setFilters(newFilters);
   }, []);
 
-  const handleSaveMotorcycle = useCallback((motorcycleData: Motorcycle) => {
-    if (editingMotorcycle) {
-      setMotorcycles(prevMotorcycles =>
-        prevMotorcycles.map(moto =>
-          moto.id === motorcycleData.id ? motorcycleData : moto
-        )
-      );
+  const handleSaveMotorcycle = useCallback(async (motorcycleData: Motorcycle) => {
+    const { id, ...dataToSave } = motorcycleData;
+    try {
+      if (editingMotorcycle && id) {
+        await updateMotorcycle(id, dataToSave);
+        toast({
+          title: "Moto Atualizada!",
+          description: `A moto ${motorcycleData.placa} foi atualizada com sucesso.`,
+        });
+      } else {
+        await addMotorcycle(dataToSave);
+        toast({
+          title: "Moto Adicionada!",
+          description: `A moto ${motorcycleData.placa} foi adicionada com sucesso.`,
+        });
+      }
+      setIsModalOpen(false);
+      setEditingMotorcycle(null);
+    } catch (error) {
+      console.error("Erro ao salvar moto:", error);
       toast({
-        title: "Moto Atualizada!",
-        description: `A moto ${motorcycleData.placa} foi atualizada com sucesso.`,
-      });
-    } else {
-      setMotorcycles(prevMotorcycles => [{ ...motorcycleData, id: `moto-${Date.now()}-${Math.random().toString(36).substring(7)}` }, ...prevMotorcycles]);
-      toast({
-        title: "Moto Adicionada!",
-        description: `A moto ${motorcycleData.placa} foi adicionada com sucesso.`,
+        title: "Erro ao Salvar",
+        description: "Não foi possível salvar a moto no banco de dados.",
+        variant: "destructive",
       });
     }
-    setIsModalOpen(false);
-    setEditingMotorcycle(null);
   }, [toast, editingMotorcycle]);
 
   const handleOpenAddModal = useCallback(() => {
@@ -146,37 +114,59 @@ export default function MotorcyclesPage() {
     setEditingMotorcycle(null);
   }, []);
 
-  const handleUpdateMotorcycleStatus = useCallback((motorcycleId: string, newStatus: MotorcycleStatus) => {
-    setMotorcycles(prevMotorcycles =>
-      prevMotorcycles.map(moto =>
-        moto.id === motorcycleId ? { ...moto, status: newStatus } : moto
-      )
-    );
-    toast({
-      title: "Status Atualizado!",
-      description: `O status da moto foi atualizado para ${newStatus}.`,
-    });
+  const handleUpdateMotorcycleStatus = useCallback(async (motorcycleId: string, newStatus: MotorcycleStatus) => {
+    try {
+      await updateStatusInDB(motorcycleId, newStatus);
+      toast({
+        title: "Status Atualizado!",
+        description: `O status da moto foi atualizado para ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      toast({
+        title: "Erro ao Atualizar Status",
+        description: "Não foi possível atualizar o status da moto.",
+        variant: "destructive",
+      });
+    }
   }, [toast]);
 
-  const handleDeleteMotorcycle = useCallback((motorcycleId: string) => {
-    setMotorcycles(prevMotorcycles =>
-      prevMotorcycles.filter(moto => moto.id !== motorcycleId)
-    );
-    toast({
-      variant: "destructive",
-      title: "Moto Excluída!",
-      description: `A moto foi excluída com sucesso.`,
-    });
+  const handleDeleteMotorcycle = useCallback(async (motorcycleId: string) => {
+    try {
+      await deleteMotorcycle(motorcycleId);
+      toast({
+        variant: "destructive",
+        title: "Moto Excluída!",
+        description: `A moto foi excluída com sucesso.`,
+      });
+    } catch (error) {
+      console.error("Erro ao excluir moto:", error);
+      toast({
+        title: "Erro ao Excluir",
+        description: "Não foi possível excluir a moto.",
+        variant: "destructive",
+      });
+    }
   }, [toast]);
 
-  const confirmDeleteAllMotorcycles = useCallback(() => {
-    setMotorcycles([]);
-    toast({
-      variant: "destructive",
-      title: "Todas as Motos Excluídas!",
-      description: "A lista de motocicletas foi limpa.",
-    });
-    setIsDeleteAllAlertOpen(false);
+  const confirmDeleteAllMotorcycles = useCallback(async () => {
+    try {
+      await deleteAllFromDB();
+      toast({
+        variant: "destructive",
+        title: "Todas as Motos Excluídas!",
+        description: "Todas as motocicletas foram removidas do banco de dados.",
+      });
+    } catch (error) {
+      console.error("Erro ao excluir todas as motos:", error);
+       toast({
+        variant: "destructive",
+        title: "Erro ao Excluir Tudo",
+        description: "Ocorreu um erro ao tentar excluir todas as motocicletas.",
+      });
+    } finally {
+      setIsDeleteAllAlertOpen(false);
+    }
   }, [toast]);
 
   const handleExportCSV = useCallback(() => {
@@ -249,7 +239,7 @@ export default function MotorcyclesPage() {
     }
   }, [motorcycles, toast]);
 
-  const parseCSV = (csvText: string): Motorcycle[] => {
+  const parseCSV = (csvText: string): Omit<Motorcycle, 'id'>[] => {
     let cleanedCsvText = csvText;
     if (cleanedCsvText.charCodeAt(0) === 0xFEFF) { 
       cleanedCsvText = cleanedCsvText.substring(1);
@@ -290,7 +280,7 @@ export default function MotorcyclesPage() {
 
     const findHeaderIndex = (possibleNames: string[]): number => {
       for (const name of possibleNames) {
-        const index = headers.indexOf(normalizeHeader(name)); // Normalize possibleNames too for safety
+        const index = headers.indexOf(normalizeHeader(name));
         if (index !== -1) return index;
       }
       return -1;
@@ -303,7 +293,7 @@ export default function MotorcyclesPage() {
       throw new Error("CSV inválido: Coluna 'placa' ou 'codigo' não encontrada. Cabeçalhos detectados (normalizados): " + headers.join(' | '));
     }
 
-    const motorcyclesArray: Motorcycle[] = [];
+    const motorcyclesArray: Omit<Motorcycle, 'id'>[] = [];
     const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'];
     const allowedType: MotorcycleType[] = ['nova', 'usada'];
 
@@ -352,8 +342,7 @@ export default function MotorcyclesPage() {
          formattedDateStr = undefined;
       }
       
-      const moto: Motorcycle = {
-        id: `imported-${Date.now()}-${i}-${Math.random().toString(36).substring(7)}`,
+      const moto: Omit<Motorcycle, 'id'> = {
         placa: placa,
         model: modelIndex !== -1 && values[modelIndex] ? values[modelIndex] : undefined,
         status: statusValue, 
@@ -369,31 +358,27 @@ export default function MotorcyclesPage() {
     return motorcyclesArray;
   };
 
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const text = e.target?.result as string;
         if (!text) {
           toast({ title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo.", variant: "destructive" });
           return;
         }
         try {
-          const importedMotorcycles = parseCSV(text);
-          if (importedMotorcycles.length > 0) {
-            setMotorcycles(prev => 
-                [...prev, ...importedMotorcycles].map(moto => 
-                    moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto 
-                )
-            );
-            toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
+          const importedMotorcyclesData = parseCSV(text);
+          if (importedMotorcyclesData.length > 0) {
+            await importMotorcyclesBatch(importedMotorcyclesData);
+            toast({ title: "Importação Concluída", description: `${importedMotorcyclesData.length} motocicletas foram importadas para o banco de dados.` });
           } else {
             toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
           }
         } catch (error: any) {
           console.error("Erro ao importar CSV:", error);
-          toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido.", variant: "destructive" });
+          toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido ou erro ao salvar no banco.", variant: "destructive" });
         } finally {
           if (fileInputRef.current) {
             fileInputRef.current.value = "";
@@ -446,7 +431,7 @@ export default function MotorcyclesPage() {
             <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação não pode ser desfeita. Isso excluirá permanentemente todas as
-              motocicletas da lista.
+              motocicletas do banco de dados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -459,6 +444,22 @@ export default function MotorcyclesPage() {
       </AlertDialog>
     </>
   );
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title="Gestão de Motos"
+          description="Controle completo da frota"
+          icon={MotorcycleIcon}
+          iconContainerClassName="bg-primary"
+        />
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando dados das motocicletas...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -492,6 +493,3 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
-
-
-    
