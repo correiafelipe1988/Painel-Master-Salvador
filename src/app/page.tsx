@@ -6,11 +6,13 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { KpiSection, kpiDataTop, kpiDataBottom } from "@/components/dashboard/kpi-section";
 import { RecoveryVolumeChart } from "@/components/charts/recovery-volume-chart";
 import { RentalVolumeChart } from "@/components/charts/rental-volume-chart";
+import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart";
+import { MaintenanceVolumeChart } from "@/components/charts/maintenance-volume-chart";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, LineChart, BarChart3, PackagePlus } from "lucide-react";
+import { CalendarDays, LineChart, BarChart3, PackagePlus, ChevronsRight, Wrench } from "lucide-react";
 
 // Mock data for filters - replace with actual logic if needed
 const months = [
@@ -110,7 +112,7 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <PackagePlus className="h-6 w-6 text-primary" /> {/* Ícone para Motos Recuperadas */}
+              <PackagePlus className="h-6 w-6 text-primary" />
               <div>
                 <CardTitle className="font-headline">Volume Diário - Motos Recuperadas</CardTitle>
                 <CardDescription>Últimos 30 dias</CardDescription>
@@ -125,7 +127,7 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-primary" /> {/* Ícone para Motos Alugadas */}
+              <BarChart3 className="h-6 w-6 text-primary" />
                <div>
                 <CardTitle className="font-headline">Volume Diário - Motos Alugadas</CardTitle>
                 <CardDescription>Últimos 30 dias (Novas vs. Usadas)</CardDescription>
@@ -134,6 +136,36 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <RentalVolumeChart />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ChevronsRight className="h-6 w-6 text-primary" /> 
+              <div>
+                <CardTitle className="font-headline">Volume Diário - Motos Relocadas</CardTitle>
+                <CardDescription>Últimos 30 dias</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RelocatedVolumeChart />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Wrench className="h-6 w-6 text-primary" />
+               <div>
+                <CardTitle className="font-headline">Volume Diário - Motos em Manutenção</CardTitle>
+                <CardDescription>Últimos 30 dias</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <MaintenanceVolumeChart />
           </CardContent>
         </Card>
       </div>
