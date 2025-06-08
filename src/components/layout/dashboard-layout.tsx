@@ -14,17 +14,29 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { MotorcycleIcon } from "@/components/icons/motorcycle-icon";
 import { Button } from "@/components/ui/button";
-import { Home, ListFilter, Cpu, QrCode, Settings } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, CalendarDays, LineChart } from "lucide-react";
+import type { NavItem, StatusRapidoItem } from "@/lib/types";
 
-const navItems = [
-  { href: "/", label: "Painel", icon: Home },
-  { href: "/motorcycles", label: "Motocicletas", icon: ListFilter },
-  { href: "/predict-idle", label: "Prever Tempo Ocioso", icon: Cpu },
-  { href: "/qr-scanner", label: "Leitor QR", icon: QrCode },
+const navItems: NavItem[] = [
+  { href: "/", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
+  { href: "/motorcycles", label: "Gestão de Motos", subLabel: "Frota completa", icon: ListFilter },
+  { href: "/inadimplencia", label: "Inadimplência", subLabel: "Controle de atrasos", icon: AlertTriangle },
+  { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
+  { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
+];
+
+const statusRapidoItems: StatusRapidoItem[] = [
+  { label: "Disponíveis", subLabel: "Motos prontas", count: 23, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700" },
+  { label: "Alugadas", subLabel: "Em uso", count: 255, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700" },
+  { label: "Inadimplentes", subLabel: "Atrasadas", count: 0, bgColor: "bg-red-100", textColor: "text-red-700", badgeTextColor: "text-red-700" },
+  { label: "Manutenção", subLabel: "Em oficina", count: 13, bgColor: "bg-purple-100", textColor: "text-purple-700", badgeTextColor: "text-purple-700" },
+  { label: "Recolhidas", subLabel: "Aguardando", count: 36, bgColor: "bg-orange-100", textColor: "text-orange-700", badgeTextColor: "text-orange-700" },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -34,45 +46,78 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen>
       <Sidebar>
         <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2.5">
             <MotorcycleIcon className="h-8 w-8 text-sidebar-primary" />
-            <h1 className="text-xl font-semibold text-sidebar-foreground font-headline">
-              MotoSight
-            </h1>
+            <div>
+              <h1 className="text-lg font-semibold text-sidebar-foreground font-headline leading-tight">
+                Master Salvador
+              </h1>
+              <p className="text-xs text-sidebar-foreground/80 leading-tight">Gestão de Locação</p>
+            </div>
           </Link>
         </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.label}>
-                <Link href={item.href} legacyBehavior={false}>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
+        <SidebarContent className="flex flex-col">
+          <div className="p-2">
+            <p className="px-2 py-1 text-xs font-semibold text-sidebar-foreground/70">NAVEGAÇÃO</p>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.label}>
+                  <Link href={item.href} passHref>
+                    <SidebarMenuButton
+                      isActive={pathname === item.href}
+                      tooltip={item.labelTooltip || item.label}
+                      className="h-auto py-1.5"
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <div className="flex flex-col items-start">
+                        <span>{item.label}</span>
+                        {item.subLabel && <span className="text-xs text-sidebar-foreground/70 -mt-0.5">{item.subLabel}</span>}
+                      </div>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </div>
+          <SidebarSeparator className="my-2" />
+          <div className="p-2 space-y-2">
+            <p className="px-2 py-1 text-xs font-semibold text-sidebar-foreground/70">STATUS RÁPIDO</p>
+            {statusRapidoItems.map((item) => (
+              <div key={item.label} className={cn("flex items-center justify-between p-2.5 rounded-md", item.bgColor)}>
+                <div>
+                  <p className={cn("text-sm font-medium", item.textColor)}>{item.label}</p>
+                  <p className={cn("text-xs", item.textColor, "opacity-80")}>{item.subLabel}</p>
+                </div>
+                <Badge variant="secondary" className={cn("bg-background/70 font-semibold", item.badgeTextColor)}>
+                  {item.count}
+                </Badge>
+              </div>
             ))}
-          </SidebarMenu>
+          </div>
         </SidebarContent>
-        <SidebarFooter className="p-4">
-          <Separator className="my-2 bg-sidebar-border" />
-          <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-            <Settings className="h-5 w-5" />
-            <span>Configurações</span>
-          </Button>
+        <SidebarFooter className="p-4 mt-auto">
+          <SidebarSeparator className="my-2 bg-sidebar-border" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="letter A" />
+                <AvatarFallback>A</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium text-sidebar-foreground">Admin</p>
+                <p className="text-xs text-sidebar-foreground/80">Salvador - BA</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
           <SidebarTrigger className="md:hidden" />
-          <div className="flex-1">
-            {/* Optional: Breadcrumbs or page title here */}
-          </div>
-          {/* Optional: User profile / actions here */}
+          {/* Opcional: Breadcrumbs ou título da página aqui. A imagem de referência tem um cabeçalho mais elaborado na própria página. */}
         </header>
         <main className="flex-1 p-4 md:p-6 overflow-auto">
           {children}

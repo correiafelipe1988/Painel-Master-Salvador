@@ -3,7 +3,9 @@ export interface Kpi {
   value: string;
   icon?: React.ElementType;
   description?: string;
-  color?: string;
+  color?: string; // Cor do texto principal do valor
+  iconBgColor?: string; // Cor de fundo da caixa do ícone
+  iconColor?: string; // Cor do ícone
 }
 
 export interface ChartDataPoint {
@@ -29,4 +31,22 @@ export interface Motorcycle {
   data_ultima_mov: string; // YYYY-MM-DD
   tempo_ocioso_dias: number;
   qrCodeUrl?: string; // Optional: URL to the QR code image or data
+}
+
+export interface NavItem {
+  href: string;
+  label: string;
+  subLabel?: string;
+  icon: React.ElementType;
+  labelTooltip?: string;
+}
+
+export interface StatusRapidoItem {
+  label: string;
+  subLabel: string;
+  count: number;
+  bgColor: string;
+  textColor: string;
+  badgeBgColor?: string;
+  badgeTextColor?: string;
 }

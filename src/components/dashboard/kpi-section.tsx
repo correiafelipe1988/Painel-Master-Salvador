@@ -1,52 +1,91 @@
 import type { Kpi } from "@/lib/types";
 import { KpiCard } from "./kpi-card";
-import { TrendingUp, Bike, Users, Wrench, Clock, CheckCircle } from "lucide-react";
+import { ArrowRightLeft, CheckCircle2, Bike, ChevronsRight, Wrench } from "lucide-react";
 
-const kpiData: Kpi[] = [
+// KPIs para a primeira linha (acima dos filtros)
+export const kpiDataTop: Kpi[] = [
   {
-    title: "% Méd. Inadimplência (Mês)",
-    value: "12.5%",
-    icon: TrendingUp,
-    description: "+2.1% desde o último mês",
-    color: "text-destructive",
+    title: "Motos Alugadas Hoje",
+    value: "0",
+    icon: ArrowRightLeft,
+    description: "unidades",
+    color: "text-blue-600", // Cor do valor
+    iconBgColor: "bg-blue-500", // Cor de fundo da caixa do ícone
+    iconColor: "text-white", // Cor do ícone
   },
   {
-    title: "Recuperadas Hoje",
-    value: "15",
-    icon: Bike,
-    description: "Atualizado agora há pouco",
-    color: "text-primary",
-  },
-  {
-    title: "Tempo Méd. Relocação",
-    value: "3.2 Dias",
-    icon: Clock,
-    description: "Baseado nas últimas 50 relocações",
-  },
-  {
-    title: "Ociosas >7 Dias",
-    value: "8",
-    icon: Users, 
-    description: "Requer atenção",
-    color: "text-accent",
-  },
-  {
-    title: "Disponíveis para Aluguel",
-    value: "42",
-    icon: CheckCircle,
+    title: "Motos Recuperadas Hoje",
+    value: "0",
+    icon: CheckCircle2,
+    description: "unidades",
     color: "text-green-600",
+    iconBgColor: "bg-green-500",
+    iconColor: "text-white",
   },
   {
-    title: "Em Manutenção",
-    value: "5",
-    icon: Wrench,
+    title: "Motos Relocadas Hoje",
+    value: "0",
+    icon: ChevronsRight, // Alterado de Bike para ChevronsRight
+    description: "unidades",
+    color: "text-gray-700",
+    iconBgColor: "bg-gray-200", // Fundo cinza claro para o ícone
+    iconColor: "text-gray-700", // Ícone cinza escuro
+  },
+  {
+    title: "Motos Paradas +7 Dias",
+    value: "25",
+    icon: Bike, // Alterado de PackageAlert para Bike
+    description: "unidades",
+    color: "text-orange-500",
+    iconBgColor: "bg-orange-500",
+    iconColor: "text-white",
   },
 ];
 
-export function KpiSection() {
+// KPIs para a segunda linha (abaixo dos filtros)
+export const kpiDataBottom: Kpi[] = [
+  {
+    title: "Motos Disponíveis",
+    value: "0",
+    icon: CheckCircle2,
+    description: "tornaram-se disponíveis no período",
+    color: "text-green-600",
+    iconBgColor: "bg-green-500",
+    iconColor: "text-white",
+  },
+  {
+    title: "Motos Alugadas",
+    value: "9",
+    icon: Bike,
+    description: "alugadas no período",
+    color: "text-blue-600",
+    iconBgColor: "bg-blue-500",
+    iconColor: "text-white",
+  },
+  {
+    title: "Em Manutenção",
+    value: "0",
+    icon: Wrench,
+    description: "entraram em manutenção no período",
+    color: "text-purple-600",
+    iconBgColor: "bg-purple-500",
+    iconColor: "text-white",
+  },
+  {
+    title: "Motos Relocadas",
+    value: "13",
+    icon: ChevronsRight, // Alterado de Users para ChevronsRight
+    description: "relocadas no período",
+    color: "text-gray-700",
+    iconBgColor: "bg-gray-200",
+    iconColor: "text-gray-700",
+  },
+];
+
+export function KpiSection({ kpis }: { kpis: Kpi[] }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 mb-6">
-      {kpiData.map((kpi) => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {kpis.map((kpi) => (
         <KpiCard key={kpi.title} {...kpi} />
       ))}
     </div>
