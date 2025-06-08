@@ -25,14 +25,15 @@ export type MotorcycleType = 'nova' | 'usada';
 
 export interface Motorcycle {
   id: string;
-  placa: string; // Alterado de code para placa
+  placa: string;
   status: MotorcycleStatus;
   type: MotorcycleType;
-  franqueado: string; // Alterado de filial para franqueado
+  franqueado: string;
   data_ultima_mov: string; // YYYY-MM-DD
   tempo_ocioso_dias: number;
-  qrCodeUrl?: string; // Mantido para dados, mas label na UI será CS
-  model?: string;
+  qrCodeUrl?: string; // Usado para CS
+  model: string; // Já existia, mas confirmado pela imagem
+  valorDiaria?: number; // Novo campo
 }
 
 export interface NavItem {
@@ -52,3 +53,9 @@ export interface StatusRapidoItem {
   badgeBgColor?: string;
   badgeTextColor?: string;
 }
+
+export type MotorcyclePageFilters = {
+  status: MotorcycleStatus | 'all';
+  model: string | 'all';
+  searchTerm: string;
+};
