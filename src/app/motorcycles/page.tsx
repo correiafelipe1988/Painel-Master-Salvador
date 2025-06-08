@@ -10,7 +10,7 @@ import type { Motorcycle, MotorcycleStatus, MotorcycleType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, PlusCircle, Edit } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/motorcycle-icon';
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AddMotorcycleForm } from "@/components/motorcycles/add-motorcycle-form";
 import { useToast } from "@/hooks/use-toast";
 
@@ -178,11 +178,9 @@ export default function MotorcyclesPage() {
 
   const parseCSV = (csvText: string): Motorcycle[] => {
     let cleanedCsvText = csvText;
-    // Remove BOM (Byte Order Mark) if present
     if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
       cleanedCsvText = cleanedCsvText.substring(1);
     }
-    // Split lines more robustly (handles \r\n, \r, \n)
     const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
 
     if (lines.length < 2) {
@@ -213,30 +211,49 @@ export default function MotorcyclesPage() {
       return result;
     };
     
-    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim());
-    const placaIndex = headers.indexOf('placa');
+    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim().replace(/\s+/g, ' ')); // Normalize spaces
     
+    let placaIndex = headers.indexOf('placa');
+    if (placaIndex === -1) placaIndex = headers.indexOf('codigo');
+
+
     if (placaIndex === -1) {
-      throw new Error("CSV inválido: Coluna 'placa' não encontrada. Cabeçalhos detectados: " + headers.join(' | '));
+      throw new Error("CSV inválido: Coluna 'placa' ou 'codigo' não encontrada. Cabeçalhos detectados: " + headers.join(' | '));
     }
   
     const motorcyclesArray: Motorcycle[] = [];
     const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'];
     const allowedType: MotorcycleType[] = ['nova', 'usada'];
   
-    const modelIndex = headers.indexOf('model');
-    const statusIndex = headers.indexOf('status');
-    const typeIndex = headers.indexOf('type');
-    const franqueadoIndex = headers.indexOf('franqueado');
-    const dataUltimaMovIndex = headers.indexOf('data_ultima_mov');
-    const tempoOciosoDiasIndex = headers.indexOf('tempo_ocioso_dias');
-    const qrCodeUrlIndex = headers.indexOf('qrcodeurl'); 
-    const valorDiariaIndex = headers.indexOf('valordiaria');
+    let modelIndex = headers.indexOf('model');
+    if (modelIndex === -1) modelIndex = headers.indexOf('modelo');
+
+    let statusIndex = headers.indexOf('status');
+    
+    let typeIndex = headers.indexOf('type');
+    if (typeIndex === -1) typeIndex = headers.indexOf('tipomoto');
+    if (typeIndex === -1) typeIndex = headers.indexOf('tipo moto');
+
+    let franqueadoIndex = headers.indexOf('franqueado');
+    if (franqueadoIndex === -1) franqueadoIndex = headers.indexOf('filial');
+
+    let dataUltimaMovIndex = headers.indexOf('data_ultima_mov');
+    if (dataUltimaMovIndex === -1) dataUltimaMovIndex = headers.indexOf('data ultima movimentacao');
+    
+    let tempoOciosoDiasIndex = headers.indexOf('tempo_ocioso_dias');
+    if (tempoOciosoDiasIndex === -1) tempoOciosoDiasIndex = headers.indexOf('tempo ocioso dias');
+
+    let qrCodeUrlIndex = headers.indexOf('qrcodeurl'); 
+    if (qrCodeUrlIndex === -1) qrCodeUrlIndex = headers.indexOf('cs');
+
+    let valorDiariaIndex = headers.indexOf('valordiaria');
+    if (valorDiariaIndex === -1) valorDiariaIndex = headers.indexOf('valor diaria');
+
   
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
       
-      const placa = values[placaIndex];
+      const placa = placaIndex !== -1 ? values[placaIndex] : undefined;
       if (!placa) continue; 
   
       const statusValue = statusIndex !== -1 ? values[statusIndex]?.toLowerCase() as MotorcycleStatus : undefined;
@@ -251,7 +268,7 @@ export default function MotorcyclesPage() {
         franqueado: franqueadoIndex !== -1 && values[franqueadoIndex] ? values[franqueadoIndex] : undefined,
         data_ultima_mov: dataUltimaMovIndex !== -1 && values[dataUltimaMovIndex] ? values[dataUltimaMovIndex] : undefined, 
         tempo_ocioso_dias: tempoOciosoDiasIndex !== -1 && values[tempoOciosoDiasIndex] ? parseInt(values[tempoOciosoDiasIndex], 10) || undefined : undefined,
-        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, // CS
+        qrCodeUrl: qrCodeUrlIndex !== -1 && values[qrCodeUrlIndex] ? values[qrCodeUrlIndex] : undefined, 
         valorDiaria: valorDiariaIndex !== -1 && values[valorDiariaIndex] ? parseFloat(values[valorDiariaIndex].replace(',', '.')) || undefined : undefined,
       };
       motorcyclesArray.push(moto);
@@ -275,7 +292,7 @@ export default function MotorcyclesPage() {
             setMotorcycles(prev => [...prev, ...importedMotorcycles]);
             toast({ title: "Importação Concluída", description: `${importedMotorcycles.length} motocicletas foram importadas.` });
           } else {
-            toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa'.", variant: "destructive" });
+            toast({ title: "Nenhuma moto para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos para 'placa' ou 'codigo'.", variant: "destructive" });
           }
         } catch (error: any) {
           toast({ title: "Erro ao importar CSV", description: error.message || "Formato de CSV inválido.", variant: "destructive" });
@@ -341,7 +358,10 @@ export default function MotorcyclesPage() {
         onDeleteMotorcycle={handleDeleteMotorcycle}
         onEditMotorcycle={handleOpenEditModal}
       />
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isModalOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) handleCloseModal();
+        else setIsModalOpen(true);
+      }}>
         <DialogContent className="sm:max-w-[625px]">
           <AddMotorcycleForm 
             onSubmit={handleSaveMotorcycle} 
@@ -353,6 +373,5 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
-
 
     
