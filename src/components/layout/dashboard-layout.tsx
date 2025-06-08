@@ -20,8 +20,9 @@ import { MotorcycleIcon } from "@/components/icons/motorcycle-icon";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, CalendarDays, LineChart } from "lucide-react";
+import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings } from "lucide-react";
 import type { NavItem, StatusRapidoItem } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
@@ -62,7 +63,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  <Link href={item.href} passHref>
+                  <Link href={item.href} legacyBehavior={false}>
                     <SidebarMenuButton
                       isActive={pathname === item.href}
                       tooltip={item.labelTooltip || item.label}
