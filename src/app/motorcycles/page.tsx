@@ -31,7 +31,7 @@ import {
   deleteMotorcycle,
   updateMotorcycleStatus as updateStatusInDB,
   importMotorcyclesBatch,
-  deleteAllMotorcycles as deleteAllFromDB, // This might be re-enabled later with proper UI
+  deleteAllMotorcycles as deleteAllFromDB,
 } from '@/lib/firebase/motorcycleService';
 
 export type MotorcyclePageFilters = {
@@ -58,12 +58,10 @@ export default function MotorcyclesPage() {
     setIsLoading(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
       if (Array.isArray(motosFromDB)) {
-        setMotorcycles(motosFromDB.map(moto => 
-          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
-        ));
+        setMotorcycles(motosFromDB);
       } else {
         console.warn("Data from subscribeToMotorcycles (motorcycles page) was not an array:", motosFromDB);
-        setMotorcycles([]); // Fallback to empty array
+        setMotorcycles([]); 
       }
       setIsLoading(false);
     });
@@ -93,11 +91,14 @@ export default function MotorcyclesPage() {
       }
       setIsModalOpen(false);
       setEditingMotorcycle(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar moto:", error);
+      const description = error.message 
+        ? `Detalhes: ${error.message}`
+        : "Não foi possível salvar a moto no banco de dados. Verifique o console para mais detalhes.";
       toast({
         title: "Erro ao Salvar",
-        description: "Não foi possível salvar a moto no banco de dados.",
+        description: description,
         variant: "destructive",
       });
     }
@@ -125,11 +126,14 @@ export default function MotorcyclesPage() {
         title: "Status Atualizado!",
         description: `O status da moto foi atualizado para ${newStatus}.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao atualizar status:", error);
+      const description = error.message
+        ? `Detalhes: ${error.message}`
+        : "Não foi possível atualizar o status da moto.";
       toast({
         title: "Erro ao Atualizar Status",
-        description: "Não foi possível atualizar o status da moto.",
+        description: description,
         variant: "destructive",
       });
     }
@@ -143,32 +147,33 @@ export default function MotorcyclesPage() {
         title: "Moto Excluída!",
         description: `A moto foi excluída com sucesso.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao excluir moto:", error);
+      const description = error.message
+        ? `Detalhes: ${error.message}`
+        : "Não foi possível excluir a moto.";
       toast({
         title: "Erro ao Excluir",
-        description: "Não foi possível excluir a moto.",
+        description: description,
         variant: "destructive",
       });
     }
   }, [toast]);
 
   const confirmDeleteAllMotorcycles = useCallback(async () => {
-    // Implement deleteAllFromDB if re-enabled and ensure it's handled carefully.
-    // For now, this button might be hidden or disabled.
     try {
-      await deleteAllFromDB(); // Assuming this function exists and works
+      await deleteAllFromDB(); 
       toast({
         variant: "destructive",
         title: "Todas as Motos Excluídas!",
         description: "Todas as motocicletas foram removidas do banco de dados.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao excluir todas as motos:", error);
        toast({
         variant: "destructive",
         title: "Erro ao Excluir Tudo",
-        description: "Ocorreu um erro ao tentar excluir todas as motocicletas.",
+        description: error.message || "Ocorreu um erro ao tentar excluir todas as motocicletas.",
       });
     } finally {
       setIsDeleteAllAlertOpen(false);
@@ -428,10 +433,6 @@ export default function MotorcyclesPage() {
         Nova Moto
       </Button>
       {/* 
-        Temporarily hiding/disabling "Excluir Todos" as it needs careful implementation with Firestore.
-        Can be re-enabled once deleteAllFromDB is confirmed safe and efficient for Firestore.
-      */}
-      {/* 
       <AlertDialog open={isDeleteAllAlertOpen} onOpenChange={setIsDeleteAllAlertOpen}>
          <Button variant="destructive" onClick={() => setIsDeleteAllAlertOpen(true)}>
             <Trash2 className="mr-2 h-4 w-4" />
@@ -505,3 +506,5 @@ export default function MotorcyclesPage() {
     </DashboardLayout>
   );
 }
+
+    
