@@ -550,13 +550,23 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
-      children, // Adicionado para capturar children
+      children,
       ...props
     },
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
+
+    const processedTooltip = React.useMemo(() => {
+      if (typeof tooltip === 'string' && tooltip.trim() !== '') {
+        return { children: tooltip } as React.ComponentProps<typeof TooltipContent>;
+      }
+      if (typeof tooltip === 'object' && tooltip !== null && 'children' in tooltip) {
+        return tooltip;
+      }
+      return null; // No valid tooltip content
+    }, [tooltip]);
 
     const button = (
       <Comp
@@ -571,28 +581,22 @@ const SidebarMenuButton = React.forwardRef<
       </Comp>
     )
 
-    const processedTooltip = React.useMemo(() => {
-      if (typeof tooltip === 'string') {
-        return { children: tooltip } as React.ComponentProps<typeof TooltipContent>;
-      }
-      return tooltip;
-    }, [tooltip]);
+    const shouldShowTooltip = state === "collapsed" && !isMobile && processedTooltip;
 
-    if (!processedTooltip) {
-      return button
+    if (shouldShowTooltip) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent
+            side="right"
+            align="center"
+            {...processedTooltip!} // Asserting non-null as per shouldShowTooltip logic
+          />
+        </Tooltip>
+      );
+    } else {
+      return button;
     }
-
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
-        <TooltipContent
-          side="right"
-          align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...processedTooltip}
-        />
-      </Tooltip>
-    )
   }
 )
 SidebarMenuButton.displayName = "SidebarMenuButton"
@@ -766,4 +770,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
