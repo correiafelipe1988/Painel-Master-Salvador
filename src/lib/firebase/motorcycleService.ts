@@ -18,21 +18,32 @@ import type { Motorcycle, MotorcycleStatus } from '@/lib/types';
 
 const motorcyclesCollectionRef = collection(db, 'motorcycles');
 
+// Helper function to remove undefined fields from an object
+function cleanDataForFirestore<T extends object>(data: T): Partial<T> {
+  const cleaned = { ...data }; // Create a shallow copy to modify
+  for (const key in cleaned) {
+    if (cleaned[key as keyof T] === undefined) {
+      delete cleaned[key as keyof T];
+    }
+  }
+  return cleaned;
+}
+
 const fromFirestore = (docData: any): Omit<Motorcycle, 'id'> => {
   const data = { ...docData };
   if (data.data_ultima_mov && data.data_ultima_mov instanceof Timestamp) {
     data.data_ultima_mov = data.data_ultima_mov.toDate().toISOString().split('T')[0];
   }
-  // Make sure these are numbers if they exist, otherwise undefined
+  
   if (data.valorDiaria !== undefined && data.valorDiaria !== null) {
     data.valorDiaria = Number(data.valorDiaria);
   } else {
-    delete data.valorDiaria;
+    delete data.valorDiaria; // Ensure it's not present if null/undefined from DB
   }
   if (data.tempo_ocioso_dias !== undefined && data.tempo_ocioso_dias !== null) {
     data.tempo_ocioso_dias = Number(data.tempo_ocioso_dias);
   } else {
-    delete data.tempo_ocioso_dias;
+    delete data.tempo_ocioso_dias; // Ensure it's not present
   }
 
   const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'];
@@ -43,10 +54,11 @@ const fromFirestore = (docData: any): Omit<Motorcycle, 'id'> => {
     data.status = 'alugada'; 
   }
 
-  // Ensure optional string fields are strings or undefined
   const optionalStringFields: (keyof Motorcycle)[] = ['model', 'type', 'franqueado', 'qrCodeUrl'];
   optionalStringFields.forEach(field => {
-    if (data[field] === null) data[field] = undefined;
+    if (data[field] === null || data[field] === undefined) {
+         delete data[field]; // Ensure it's not present if null/undefined
+    }
   });
   
   return data as Omit<Motorcycle, 'id'>;
@@ -72,15 +84,11 @@ export function subscribeToMotorcycles(
 export async function addMotorcycle(
   motorcycleData: Omit<Motorcycle, 'id'>
 ): Promise<string> {
-  const dataToSave = { ...motorcycleData };
+  let dataToSave = cleanDataForFirestore(motorcycleData);
 
-  // Ensure status has a default if not provided from form
   if (dataToSave.status === undefined) {
-    (dataToSave as Motorcycle).status = 'alugada'; // Default status
+    dataToSave.status = 'alugada'; 
   }
-  
-  // Firestore's addDoc naturally omits fields that are `undefined` in dataToSave.
-  // The form logic in AddMotorcycleForm.tsx already ensures optional empty strings become undefined.
   
   const docRef = await addDoc(motorcyclesCollectionRef, dataToSave);
   return docRef.id;
@@ -92,28 +100,19 @@ export async function updateMotorcycle(
 ): Promise<void> {
   const motorcycleDocRef = doc(db, 'motorcycles', id);
   
-  const rawDataToUpdate = { ...motorcycleData };
+  // The cleanDataForFirestore helper will remove undefined fields.
+  // For updates, Firestore treats undefined differently from null (null clears a field).
+  // The form logic should ensure empty optional fields become undefined.
+  const dataToUpdate = cleanDataForFirestore(motorcycleData);
 
-  // Firestore's updateDoc throws error for `undefined` values.
-  // We must filter them out. Null values are acceptable for clearing fields.
-  const cleanedDataToUpdate: { [key: string]: any } = {};
-  for (const key in rawDataToUpdate) {
-    if (Object.prototype.hasOwnProperty.call(rawDataToUpdate, key)) {
-      const typedKey = key as keyof typeof rawDataToUpdate;
-      if (rawDataToUpdate[typedKey] !== undefined) {
-        cleanedDataToUpdate[key] = rawDataToUpdate[typedKey];
-      }
-      // If an empty string for an optional field should remove it or set to null,
-      // that logic would be here or in the form.
-      // For example, if data_ultima_mov: "" should mean data_ultima_mov: null
-      if (key === 'data_ultima_mov' && cleanedDataToUpdate[key] === '') {
-         cleanedDataToUpdate[key] = null; // Or use deleteField() if you want to remove field
-      }
-    }
+  // Specific handling for data_ultima_mov if it was an empty string, convert to null or ensure it's removed if undefined
+  if (motorcycleData.data_ultima_mov === '') {
+    (dataToUpdate as Motorcycle).data_ultima_mov = undefined; // Let cleanDataForFirestore remove it
   }
 
-  if (Object.keys(cleanedDataToUpdate).length > 0) {
-    await updateDoc(motorcycleDocRef, cleanedDataToUpdate);
+
+  if (Object.keys(dataToUpdate).length > 0) {
+    await updateDoc(motorcycleDocRef, dataToUpdate);
   } else {
     console.log("Nenhum dado para atualizar para a moto:", id);
   }
@@ -130,26 +129,31 @@ export async function importMotorcyclesBatch(motorcycles: Omit<Motorcycle, 'id'>
   const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada'];
 
   motorcycles.forEach((moto) => {
-    const dataToSave = { ...moto };
+    let preProcessedMoto: Partial<Omit<Motorcycle, 'id'>> = { ...moto };
     
-    if (dataToSave.status === undefined || !allowedStatus.includes(dataToSave.status)) {
-      (dataToSave as Motorcycle).status = 'alugada'; 
+    if (preProcessedMoto.status === undefined || !allowedStatus.includes(preProcessedMoto.status as MotorcycleStatus)) {
+      preProcessedMoto.status = 'alugada'; 
     }
-    if (dataToSave.data_ultima_mov === '') {
-      (dataToSave as Motorcycle).data_ultima_mov = undefined;
+    if (preProcessedMoto.data_ultima_mov === '') {
+      preProcessedMoto.data_ultima_mov = undefined;
     }
 
-    // Ensure other optional fields are undefined if empty, so they are omitted by Firestore
      const optionalFields: (keyof Omit<Motorcycle, 'id' | 'placa' | 'status'>)[] = ['model', 'type', 'franqueado', 'qrCodeUrl', 'valorDiaria', 'tempo_ocioso_dias', 'data_ultima_mov'];
      optionalFields.forEach(field => {
-         if (dataToSave[field] === '') {
-            (dataToSave as any)[field] = undefined;
+         if (preProcessedMoto[field] === '' || preProcessedMoto[field] === null) { // Also handle explicit null from CSV parsing if any
+            (preProcessedMoto as any)[field] = undefined;
          }
      });
 
+    const dataToSaveInBatch = cleanDataForFirestore(preProcessedMoto);
+
+    // Ensure status has a default if it became undefined after cleaning
+    if (dataToSaveInBatch.status === undefined) {
+        dataToSaveInBatch.status = 'alugada';
+    }
 
     const newMotoRef = doc(motorcyclesCollectionRef);
-    batch.set(newMotoRef, dataToSave);
+    batch.set(newMotoRef, dataToSaveInBatch);
     addedMotorcycleIds.push(newMotoRef.id);
   });
   await batch.commit();
@@ -158,6 +162,7 @@ export async function importMotorcyclesBatch(motorcycles: Omit<Motorcycle, 'id'>
 
 export async function updateMotorcycleStatus(id: string, status: MotorcycleStatus): Promise<void> {
   const todayStr = new Date().toISOString().split('T')[0];
+  // updateMotorcycle already handles cleaning undefined fields
   await updateMotorcycle(id, { status, data_ultima_mov: todayStr });
 }
 
@@ -167,10 +172,8 @@ export async function deleteAllMotorcycles(): Promise<void> {
     return;
   }
   const batch = writeBatch(db);
-  snapshot.docs.forEach(docSingle => { // Renamed doc to docSingle to avoid conflict
+  snapshot.docs.forEach(docSingle => { 
     batch.delete(docSingle.ref);
   });
   await batch.commit();
 }
-
-    
