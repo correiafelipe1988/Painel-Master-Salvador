@@ -8,7 +8,7 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart3, TrendingUp, BarChartBig, Download, FileSpreadsheet, PieChart as PagePieIcon, CalendarDays as PageCalendarIcon, Users, Bike, CheckCircle2 } from "lucide-react";
+import { BarChart3, TrendingUp, BarChartBig, Download, FileSpreadsheet, PieChart as PagePieIcon, CalendarDays as PageCalendarIcon, Users, Bike, CheckCircle2, Wrench } from "lucide-react";
 import type { Motorcycle, Kpi, MotorcycleStatus, ChartDataPoint } from "@/lib/types";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { useToast } from "@/hooks/use-toast";
@@ -97,15 +97,13 @@ export default function RelatoriosPage() {
     const motosDisponiveisCount = representativeMotorcycles.filter(m => m.status === 'active').length;
     const taxaDisponibilidade = totalUniqueMotorcycles > 0 ? (motosDisponiveisCount / totalUniqueMotorcycles) * 100 : 0;
 
-    const valorPendente = representativeMotorcycles
-      .filter(m => m.status === 'inadimplente' && typeof m.valorDiaria === 'number')
-      .reduce((sum, moto) => sum + (moto.valorDiaria || 0), 0);
+    const motosEmManutencaoCount = representativeMotorcycles.filter(m => m.status === 'manutencao').length;
 
     setKpiData([
       { title: "Total de Motos Únicas", value: totalUniqueMotorcycles.toString(), icon: Users, description: "Frota ativa (placas únicas)", color: "text-blue-700", iconBgColor: "bg-blue-100", iconColor: "text-blue-700" },
       { title: "Total de Locações", value: totalLocacoesCount.toString(), icon: Bike, description: `Taxa de Ocupação: ${taxaLocacoes.toFixed(0)}%`, color: "text-green-700", iconBgColor: "bg-green-100", iconColor: "text-green-700" },
       { title: "Taxa de Disponibilidade", value: `${taxaDisponibilidade.toFixed(1)}%`, icon: CheckCircle2, description: "Percentual de motos disponíveis", color: "text-teal-700", iconBgColor: "bg-teal-100", iconColor: "text-teal-700" },
-      { title: "Valor Pendente", value: `R$ ${valorPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Download, description: "Total de diárias em aberto", color: "text-orange-700", iconBgColor: "bg-orange-100", iconColor: "text-orange-700" },
+      { title: "Motos em Manutenção", value: motosEmManutencaoCount.toString(), icon: Wrench, description: "Unidades em oficina", color: "text-purple-700", iconBgColor: "bg-purple-100", iconColor: "text-purple-700" },
     ]);
 
     const statusCounts: Record<string, number> = {};
@@ -158,29 +156,30 @@ export default function RelatoriosPage() {
     setMonthlyRelocatedData(monthAbbreviations.map((m, i) => ({ month: m, count: relocatedCounts[i] })));
     setMonthlyTotalRentalsData(monthAbbreviations.map((m, i) => ({ month: m, count: totalRentalsCounts[i] })));
 
+    
     const firstEverMovementDateByPlaca: Record<string, Date> = {};
     allMotorcycles.forEach(moto => {
-      if (moto.placa && moto.data_ultima_mov) {
-        try {
-          const movDate = parseISO(moto.data_ultima_mov);
-          if (isValid(movDate)) {
-            if (!firstEverMovementDateByPlaca[moto.placa] || movDate < firstEverMovementDateByPlaca[moto.placa]) {
-              firstEverMovementDateByPlaca[moto.placa] = movDate;
+        if (moto.placa && moto.data_ultima_mov) {
+            try {
+                const movDate = parseISO(moto.data_ultima_mov);
+                if (isValid(movDate)) {
+                    if (!firstEverMovementDateByPlaca[moto.placa] || movDate < firstEverMovementDateByPlaca[moto.placa]) {
+                        firstEverMovementDateByPlaca[moto.placa] = movDate;
+                    }
+                }
+            } catch (e) {
+                 console.error("Error parsing date for base growth (firstEverMovementDateByPlaca): ", moto.data_ultima_mov, e);
             }
-          }
-        } catch (e) {
-          console.error("Error parsing date for base growth (firstEverMovementDateByPlaca): ", moto.data_ultima_mov, e);
         }
-      }
     });
-    
+
     let baseCountAtStartOfYearSelected = 0;
     Object.values(firstEverMovementDateByPlaca).forEach(date => {
         if (getYear(date) < numericSelectedYear) {
             baseCountAtStartOfYearSelected++;
         }
     });
-
+    
     const newMotosThisMonthCounts = Array(12).fill(0);
     Object.entries(firstEverMovementDateByPlaca).forEach(([placa, date]) => {
         if (getYear(date) === numericSelectedYear) {
