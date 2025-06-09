@@ -18,10 +18,12 @@ interface FranchiseeFleetStatus {
     active: number; // Disponível
     manutencao: number;
     relocada: number;
-    recolhida: number;
-    inadimplente: number;
+    // Removido: recolhida e inadimplente
   };
   totalGeral: number;
+  percentLocadas: number;
+  percentManutencao: number;
+  percentDisponivel: number;
 }
 
 export default function FranqueadosPage() {
@@ -33,7 +35,6 @@ export default function FranqueadosPage() {
     setIsLoading(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
       if (Array.isArray(motosFromDB)) {
-        // Ensure status defaults to 'alugada' if undefined, consistent with other pages
         const updatedMotorcycles = motosFromDB.map(moto =>
           moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
         );
@@ -54,57 +55,66 @@ export default function FranqueadosPage() {
     }
 
     const franchiseeStats: Record<string, {
-      counts: { [K in MotorcycleStatus]: number } & { indefinido: number };
+      counts: { [K in Exclude<MotorcycleStatus, 'recolhida' | 'inadimplente'>]: number } & { indefinido: number }; // Exclui recolhida e inadimplente
       totalGeral: number;
     }> = {};
 
     allMotorcycles.forEach(moto => {
       const frNameTrimmed = moto.franqueado?.trim();
 
-      // Se o franqueado for nulo, indefinido, vazio ou explicitamente "Não Especificado", ignore esta moto.
       if (!frNameTrimmed || frNameTrimmed === "Não Especificado") {
         return; 
       }
       
-      const frName = frNameTrimmed; // Usar o nome do franqueado válido
+      const frName = frNameTrimmed;
 
       if (!franchiseeStats[frName]) {
         franchiseeStats[frName] = {
           counts: {
             active: 0,
             alugada: 0,
-            inadimplente: 0,
             manutencao: 0,
-            recolhida: 0,
             relocada: 0,
-            indefinido: 0, 
+            indefinido: 0,
+            // Não inicializa recolhida e inadimplente
           },
           totalGeral: 0,
         };
       }
 
       const status = moto.status;
-      if (status && franchiseeStats[frName].counts[status] !== undefined) {
+      // Somente contabiliza os status relevantes para a nova tabela
+      if (status && (status === 'active' || status === 'alugada' || status === 'manutencao' || status === 'relocada')) {
         franchiseeStats[frName].counts[status]++;
+      } else if (status && (status === 'recolhida' || status === 'inadimplente')) {
+        // Status removidos da exibição direta, mas ainda contam para o total geral
       } else {
         franchiseeStats[frName].counts.indefinido++;
-        console.warn(`Motorcycle ${moto.placa} has unexpected status: ${status} for franchisee ${frName}`);
+        console.warn(`Motorcycle ${moto.placa} has unexpected or irrelevant status: ${status} for franchisee ${frName}`);
       }
-      franchiseeStats[frName].totalGeral++;
+      franchiseeStats[frName].totalGeral++; // Total geral considera todas as motos do franqueado, independente do status visível
     });
 
-    const dataForTable: FranchiseeFleetStatus[] = Object.entries(franchiseeStats).map(([name, stats]) => ({
-      franqueadoName: name,
-      counts: {
-        alugada: stats.counts.alugada,
-        active: stats.counts.active,
-        manutencao: stats.counts.manutencao,
-        relocada: stats.counts.relocada,
-        recolhida: stats.counts.recolhida,
-        inadimplente: stats.counts.inadimplente,
-      },
-      totalGeral: stats.totalGeral,
-    })).sort((a, b) => b.totalGeral - a.totalGeral); 
+    const dataForTable: FranchiseeFleetStatus[] = Object.entries(franchiseeStats).map(([name, stats]) => {
+      const totalLocadasCount = stats.counts.alugada + stats.counts.relocada;
+      const percentLocadas = stats.totalGeral > 0 ? (totalLocadasCount / stats.totalGeral) * 100 : 0;
+      const percentManutencao = stats.totalGeral > 0 ? (stats.counts.manutencao / stats.totalGeral) * 100 : 0;
+      const percentDisponivel = stats.totalGeral > 0 ? (stats.counts.active / stats.totalGeral) * 100 : 0;
+      
+      return {
+        franqueadoName: name,
+        counts: {
+          alugada: stats.counts.alugada,
+          active: stats.counts.active,
+          manutencao: stats.counts.manutencao,
+          relocada: stats.counts.relocada,
+        },
+        totalGeral: stats.totalGeral,
+        percentLocadas,
+        percentManutencao,
+        percentDisponivel,
+      };
+    }).sort((a, b) => b.totalGeral - a.totalGeral); 
 
     setProcessedData(dataForTable);
 
@@ -152,9 +162,10 @@ export default function FranqueadosPage() {
                     <TableHead className="text-right">Disponível</TableHead>
                     <TableHead className="text-right">Manutenção</TableHead>
                     <TableHead className="text-right">Relocada</TableHead>
-                    <TableHead className="text-right">Recolhida</TableHead>
-                    <TableHead className="text-right">Inadimplente</TableHead>
                     <TableHead className="text-right font-semibold">Total Geral</TableHead>
+                    <TableHead className="text-right">% Locadas</TableHead>
+                    <TableHead className="text-right">% Manutenção</TableHead>
+                    <TableHead className="text-right">% Disponível</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -165,9 +176,10 @@ export default function FranqueadosPage() {
                       <TableCell className="text-right">{item.counts.active}</TableCell>
                       <TableCell className="text-right">{item.counts.manutencao}</TableCell>
                       <TableCell className="text-right">{item.counts.relocada}</TableCell>
-                      <TableCell className="text-right">{item.counts.recolhida}</TableCell>
-                      <TableCell className="text-right">{item.counts.inadimplente}</TableCell>
                       <TableCell className="text-right font-bold">{item.totalGeral}</TableCell>
+                      <TableCell className="text-right">{item.percentLocadas.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right">{item.percentManutencao.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right">{item.percentDisponivel.toFixed(1)}%</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
