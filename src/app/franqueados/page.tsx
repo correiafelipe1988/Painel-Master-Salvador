@@ -195,7 +195,18 @@ export default function FranqueadosPage() {
                       >
                         {item.percentLocadas.toFixed(1)}%
                       </TableCell>
-                      <TableCell className="text-right">{item.percentManutencao.toFixed(1)}%</TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right font-medium",
+                          item.percentManutencao > 5
+                            ? "bg-red-100 text-red-700"
+                            : item.percentManutencao >= 3
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-green-100 text-green-700"
+                        )}
+                      >
+                        {item.percentManutencao.toFixed(1)}%
+                      </TableCell>
                       <TableCell className="text-right">{item.percentDisponivel.toFixed(1)}%</TableCell>
                     </TableRow>
                   ))}
