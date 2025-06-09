@@ -171,7 +171,10 @@ export default function FranqueadosPage() {
                       <div className="text-xs text-muted-foreground">Meta &lt; 5%</div>
                       <div>Manutenção</div>
                     </TableHead>
-                    <TableHead className="text-right">% Disponível</TableHead>
+                    <TableHead className="text-right">
+                      <div className="text-xs text-muted-foreground">Meta &gt; 4,5%</div>
+                      <div>% Disponível</div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
