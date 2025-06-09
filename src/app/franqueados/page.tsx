@@ -173,7 +173,7 @@ export default function FranqueadosPage() {
                     </TableHead>
                     <TableHead className="text-right">
                       <div className="text-xs text-muted-foreground">Meta &gt; 4,5%</div>
-                      <div>% Disponível</div>
+                      <div>Disponível</div>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -210,7 +210,7 @@ export default function FranqueadosPage() {
                       >
                         {item.percentManutencao.toFixed(1)}%
                       </TableCell>
-                      <TableCell className="text-right">{item.percentDisponivel.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right font-medium">{item.percentDisponivel.toFixed(1)}%</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
