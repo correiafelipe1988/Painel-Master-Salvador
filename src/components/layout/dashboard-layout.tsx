@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, QrCode as SidebarQrCodeIcon } from "lucide-react";
+import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, TrendingUp } from "lucide-react";
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
   { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: Users }, // Usando Users como placeholder
-  { href: "/qr-scanner", label: "Leitor QR", subLabel: "Escanear códigos", icon: SidebarQrCodeIcon }, 
+  { href: "/indicadores", label: "Indicadores", subLabel: "Principais métricas", icon: TrendingUp },
 ];
 
 const initialStatusRapidoItems: StatusRapidoItemType[] = [
