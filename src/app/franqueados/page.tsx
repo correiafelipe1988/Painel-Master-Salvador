@@ -54,12 +54,20 @@ export default function FranqueadosPage() {
     }
 
     const franchiseeStats: Record<string, {
-      counts: { [K in MotorcycleStatus]: number } & { indefinido: number }; // Added 'indefinido' for safety
+      counts: { [K in MotorcycleStatus]: number } & { indefinido: number };
       totalGeral: number;
     }> = {};
 
     allMotorcycles.forEach(moto => {
-      const frName = moto.franqueado?.trim() || "Não Especificado";
+      const frNameTrimmed = moto.franqueado?.trim();
+
+      // Se o franqueado for nulo, indefinido, vazio ou explicitamente "Não Especificado", ignore esta moto.
+      if (!frNameTrimmed || frNameTrimmed === "Não Especificado") {
+        return; 
+      }
+      
+      const frName = frNameTrimmed; // Usar o nome do franqueado válido
+
       if (!franchiseeStats[frName]) {
         franchiseeStats[frName] = {
           counts: {
@@ -69,7 +77,7 @@ export default function FranqueadosPage() {
             manutencao: 0,
             recolhida: 0,
             relocada: 0,
-            indefinido: 0, // for unexpected or null statuses
+            indefinido: 0, 
           },
           totalGeral: 0,
         };
@@ -79,9 +87,8 @@ export default function FranqueadosPage() {
       if (status && franchiseeStats[frName].counts[status] !== undefined) {
         franchiseeStats[frName].counts[status]++;
       } else {
-        // Fallback for unexpected or null status, though motorcycleService should prevent this
         franchiseeStats[frName].counts.indefinido++;
-        console.warn(`Motorcycle ${moto.placa} has unexpected status: ${status}`);
+        console.warn(`Motorcycle ${moto.placa} has unexpected status: ${status} for franchisee ${frName}`);
       }
       franchiseeStats[frName].totalGeral++;
     });
@@ -97,7 +104,7 @@ export default function FranqueadosPage() {
         inadimplente: stats.counts.inadimplente,
       },
       totalGeral: stats.totalGeral,
-    })).sort((a, b) => b.totalGeral - a.totalGeral); // Sort by total, descending
+    })).sort((a, b) => b.totalGeral - a.totalGeral); 
 
     setProcessedData(dataForTable);
 
@@ -130,7 +137,7 @@ export default function FranqueadosPage() {
             <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg min-h-[300px] bg-muted/50">
               <Users className="h-24 w-24 text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-center">
-                Nenhum dado de franqueado encontrado.
+                Nenhum dado de franqueado válido encontrado.
                 <br />
                 Verifique se há motocicletas cadastradas com informações de franqueado.
               </p>
