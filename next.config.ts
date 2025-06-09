@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/storage/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.postimg.cc', // Added for Floc Grupo logo
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

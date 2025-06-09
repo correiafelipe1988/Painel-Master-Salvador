@@ -210,8 +210,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-          <SidebarTrigger className="md:hidden" />
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+          <div className="flex items-center">
+            <SidebarTrigger className="md:hidden" />
+            {/* Espaço para futuros elementos à esquerda, como breadcrumbs ou título da página, se necessário no header fixo */}
+          </div>
+          <div className="flex items-center">
+            <Image
+              src="https://i.postimg.cc/mDPMqGjT/logo-floc-azul-horizontal.png"
+              alt="Floc Grupo Logo"
+              width={144}
+              height={36}
+              className="object-contain"
+              priority
+            />
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6 overflow-auto">
           {children}
