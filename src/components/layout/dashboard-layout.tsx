@@ -217,10 +217,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center">
             <Image
-              src="https://i.postimg.cc/mDPMqGjT/logo-floc-azul-horizontal.png"
+              src="https://i.postimg.cc/yx9LJQpZ/logo.png"
               alt="Floc Grupo Logo"
-              width={144}
-              height={36}
+              width={144} 
+              height={36} 
               className="object-contain"
               priority
             />
