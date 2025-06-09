@@ -62,7 +62,7 @@ export default function FranqueadosPage() {
     allMotorcycles.forEach(moto => {
       const frNameTrimmed = moto.franqueado?.trim();
 
-      if (!frNameTrimmed || frNameTrimmed === "Não Especificado") {
+      if (!frNameTrimmed || frNameTrimmed === "Não Especificado" || frNameTrimmed === "") {
         return; 
       }
       
@@ -177,7 +177,18 @@ export default function FranqueadosPage() {
                       <TableCell className="text-right">{item.counts.manutencao}</TableCell>
                       <TableCell className="text-right">{item.counts.relocada}</TableCell>
                       <TableCell className="text-right font-bold">{item.totalGeral}</TableCell>
-                      <TableCell className="text-right">{item.percentLocadas.toFixed(1)}%</TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right font-medium",
+                          item.percentLocadas >= 91
+                            ? "bg-green-100 text-green-700"
+                            : item.percentLocadas >= 85
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700"
+                        )}
+                      >
+                        {item.percentLocadas.toFixed(1)}%
+                      </TableCell>
                       <TableCell className="text-right">{item.percentManutencao.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">{item.percentDisponivel.toFixed(1)}%</TableCell>
                     </TableRow>
