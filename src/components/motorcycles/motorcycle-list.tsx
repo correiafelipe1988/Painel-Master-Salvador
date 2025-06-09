@@ -134,20 +134,22 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
             ) : (
               filteredMotorcycles.map((moto) => {
                 let daysIdle: string | number = 'N/A';
-                if (moto.data_ultima_mov) {
-                  try {
-                    const lastMoveDate = parseISO(moto.data_ultima_mov);
-                    if (dateIsValid(lastMoveDate)) {
-                      const today = new Date();
-                      // Garante que as datas sejam comparadas sem a parte do horário, para evitar resultados parciais
-                      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                      const lastMoveDateMidnight = new Date(lastMoveDate.getFullYear(), lastMoveDate.getMonth(), lastMoveDate.getDate());
-                      
-                      daysIdle = differenceInCalendarDays(todayMidnight, lastMoveDateMidnight);
-                      if (daysIdle < 0) daysIdle = 0; // Se a data for futura por algum motivo, considerar 0 dias.
+                if (moto.status === 'manutencao' || moto.status === 'active') {
+                  if (moto.data_ultima_mov) {
+                    try {
+                      const lastMoveDate = parseISO(moto.data_ultima_mov);
+                      if (dateIsValid(lastMoveDate)) {
+                        const today = new Date();
+                        // Garante que as datas sejam comparadas sem a parte do horário, para evitar resultados parciais
+                        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                        const lastMoveDateMidnight = new Date(lastMoveDate.getFullYear(), lastMoveDate.getMonth(), lastMoveDate.getDate());
+                        
+                        daysIdle = differenceInCalendarDays(todayMidnight, lastMoveDateMidnight);
+                        if (daysIdle < 0) daysIdle = 0; // Se a data for futura por algum motivo, considerar 0 dias.
+                      }
+                    } catch (error) {
+                      console.error("Error parsing data_ultima_mov for idle calculation:", moto.data_ultima_mov, error);
                     }
-                  } catch (error) {
-                    console.error("Error parsing data_ultima_mov for idle calculation:", moto.data_ultima_mov, error);
                   }
                 }
 
@@ -227,3 +229,4 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
     </div>
   );
 }
+
