@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addRastreador } from "@/lib/firebase/rastreadorService";
+import { normalizeHeader } from "@/lib/utils"; // Importar normalizeHeader
 
+// Define a interface para garantir a tipagem correta dos dados.
 interface RastreadorData {
   cnpj: string;
   empresa: string;
@@ -27,9 +29,14 @@ export default function RastreadoresPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Analisa o texto de um arquivo CSV.
+   * A função foi corrigida para usar uma abordagem robusta.
+   */
   const parseCSV = (csvText: string): Omit<RastreadorData, 'id'>[] => {
     let cleanedCsvText = csvText;
-    if (cleanedCsvText.charCodeAt(0) === 0xFEFF) { // Remove BOM, if present
+    // Handle BOM
+    if (cleanedCsvText.charCodeAt(0) === 0xFEFF) {
       cleanedCsvText = cleanedCsvText.substring(1);
     }
 
@@ -39,6 +46,7 @@ export default function RastreadoresPage() {
       throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
     }
 
+    // Robust CSV line parser (semicolon as delimiter)
     const parseCsvLine = (line: string): string[] => {
       const result: string[] = [];
       let currentField = '';
@@ -62,56 +70,64 @@ export default function RastreadoresPage() {
       result.push(currentField.trim()); // Add the last field
       return result;
     };
-    
-    const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
-    const headers = parseCsvLine(lines[0]).map(normalizeHeader);
-    
+
+    const parsedHeaders = parseCsvLine(lines[0]).map(h => normalizeHeader(h)); // Normalize headers from CSV
+
     const requiredHeaders = ["cnpj", "empresa", "franqueado", "chassi", "placa", "rastreador", "tipo", "moto", "mes", "valor"];
-    const headerMap: { [key in keyof RastreadorData]?: number } = {};
-    
-    requiredHeaders.forEach(reqHeader => {
-      const index = headers.indexOf(normalizeHeader(reqHeader));
-      if (index === -1) {
-        throw new Error(`CSV inválido: O cabeçalho obrigatório "${reqHeader}" não foi encontrado. Cabeçalhos detectados: ${headers.join(', ')}`);
+    // requiredHeaders are already normalized (lowercase, no accents)
+
+    for (const reqHeader of requiredHeaders) {
+      if (!parsedHeaders.includes(reqHeader)) {
+        throw new Error(`CSV inválido: O cabeçalho obrigatório "${reqHeader}" não foi encontrado. Cabeçalhos detectados (normalizados): ${parsedHeaders.join(' | ')}`);
       }
-      headerMap[reqHeader as keyof RastreadorData] = index;
-    });
+    }
 
     const rastreadoresArray: Omit<RastreadorData, 'id'>[] = [];
+
+    // Create a map of required header (normalized) to its index in the parsed CSV headers
+    const headerIndexMap: { [key: string]: number } = {};
+    requiredHeaders.forEach(reqHeader => {
+      const index = parsedHeaders.indexOf(reqHeader);
+      if (index !== -1) {
+        headerIndexMap[reqHeader] = index;
+      }
+    });
+
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
-      const entry: Partial<RastreadorData> = {};
+      const entry: Partial<RastreadorData> = {}; // Use Partial for type safety
 
-      // Check if any required field is missing data in this row by checking its index
-      let skipRow = false;
-      for (const reqHeader of requiredHeaders) {
-          const reqHeaderKey = reqHeader as keyof RastreadorData;
-          if (headerMap[reqHeaderKey] === undefined || values[headerMap[reqHeaderKey]!] === undefined || values[headerMap[reqHeaderKey]!].trim() === '') {
-              // Only consider a row problematic if a *required* header's value is truly empty.
-              // For now, let's assume all fields are somewhat expected. If 'cnpj' is critical, check specifically.
-              if (reqHeaderKey === 'cnpj' && (values[headerMap[reqHeaderKey]!] === undefined || values[headerMap[reqHeaderKey]!].trim() === '')) {
-                console.warn(`Linha ${i+1} do CSV ignorada por falta de CNPJ.`);
-                skipRow = true;
-                break;
-              }
-          }
-      }
-      if (skipRow) continue;
-
-
-      (Object.keys(headerMap) as Array<keyof RastreadorData>).forEach(key => {
-        const index = headerMap[key];
+      requiredHeaders.forEach(reqHeader => {
+        const index = headerIndexMap[reqHeader];
         if (index !== undefined && index < values.length) {
-          entry[key] = values[index];
+          (entry as any)[reqHeader] = values[index];
         } else {
-          entry[key] = ""; // Default to empty string if column is missing for this row
+          (entry as any)[reqHeader] = ""; // Default to empty string if header is missing or value not present
         }
       });
-      rastreadoresArray.push(entry as Omit<RastreadorData, 'id'>);
+      
+      // Ensure all fields of RastreadorData are present, even if empty, before casting
+      const rastreadorEntry: Omit<RastreadorData, 'id'> = {
+        cnpj: entry.cnpj || "",
+        empresa: entry.empresa || "",
+        franqueado: entry.franqueado || "",
+        chassi: entry.chassi || "",
+        placa: entry.placa || "",
+        rastreador: entry.rastreador || "",
+        tipo: entry.tipo || "",
+        moto: entry.moto || "",
+        mes: entry.mes || "",
+        valor: entry.valor || "",
+      };
+      rastreadoresArray.push(rastreadorEntry);
     }
     return rastreadoresArray;
   };
 
+
+  /**
+   * Lida com a seleção do arquivo, lendo seu conteúdo e o processando.
+   */
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -121,32 +137,21 @@ export default function RastreadoresPage() {
     reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) {
-        toast({ title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo.", variant: "destructive" });
+        toast({ title: "Erro ao ler arquivo", variant: "destructive" });
         return;
       }
       
       try {
         const parsedData = parseCSV(text);
         if (parsedData.length === 0) {
-          toast({ title: "Nenhum dado para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos.", variant: "destructive" });
+          toast({ title: "Arquivo CSV vazio ou sem dados válidos", variant: "destructive" });
           return;
         }
 
+        // Usar um loop for...of para processar em lote pode ser mais eficiente, 
+        // mas para manter a simplicidade com addRastreador individual:
         for (const rastreadorData of parsedData) {
-          // Ensure all fields are present, even if empty, before sending to Firestore
-          const completeData: RastreadorData = {
-            cnpj: rastreadorData.cnpj || "",
-            empresa: rastreadorData.empresa || "",
-            franqueado: rastreadorData.franqueado || "",
-            chassi: rastreadorData.chassi || "",
-            placa: rastreadorData.placa || "",
-            rastreador: rastreadorData.rastreador || "",
-            tipo: rastreadorData.tipo || "",
-            moto: rastreadorData.moto || "",
-            mes: rastreadorData.mes || "",
-            valor: rastreadorData.valor || "",
-          };
-          await addRastreador(completeData);
+          await addRastreador(rastreadorData);
         }
         
         toast({
@@ -169,18 +174,17 @@ export default function RastreadoresPage() {
     
     reader.onerror = () => {
         toast({ title: "Erro ao tentar ler o arquivo.", variant: "destructive" });
-         if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
     };
     
     reader.readAsText(file);
   }, [toast]);
 
+  // Simula um clique no input de arquivo oculto.
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
 
+  // Define os botões a serem exibidos no cabeçalho.
   const pageActions = (
     <>
       <Button variant="outline" onClick={handleImportClick}>
@@ -191,7 +195,7 @@ export default function RastreadoresPage() {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".csv"
+        accept=".csv,text/csv" // Aceitar text/csv para maior compatibilidade
         className="hidden" 
       />
     </>
@@ -205,7 +209,12 @@ export default function RastreadoresPage() {
         actions={pageActions}
       />
       <div className="space-y-8">
-        <RastreadoresList />
+        {/*
+          RastreadoresList geralmente recebe os dados e funções de manipulação.
+          Por enquanto, a importação é feita diretamente na página.
+          Considerar refatorar para que RastreadoresList gerencie o estado se necessário.
+        */}
+        <RastreadoresList rastreadores={[]} onAddRastreador={async (data) => { await addRastreador(data);}} onDeleteRastreador={async (id) => { console.log("delete", id)}} onEditRastreador={(data) => console.log("edit", data)} />
       </div>
     </DashboardLayout>
   );

@@ -21,3 +21,7 @@ export const translateMotorcycleStatus = (status?: MotorcycleStatus): string => 
       return s.charAt(0).toUpperCase() + s.slice(1);
   }
 };
+
+export const normalizeHeader = (header: string) => {
+  return header.toLowerCase().trim().replace(/\s+/g, ' ').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
