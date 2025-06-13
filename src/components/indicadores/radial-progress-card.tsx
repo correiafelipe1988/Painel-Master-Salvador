@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 interface RadialProgressCardProps {
   title: string;
-  percentageValue: number;
+  percentageValue: number; // This is the value (0-150) that dictates the fill and the central text
   color: 'green' | 'yellow' | 'red';
   plannedValue: string;
   realizedValue: string;
@@ -15,17 +15,19 @@ interface RadialProgressCardProps {
 }
 
 const COLOR_MAP = {
-  green: 'hsl(var(--accent))', // Accent green from theme (e.g., #6DCC33)
-  yellow: 'hsl(45, 100%, 50%)', // Bright yellow (e.g., #FFC107)
-  red: 'hsl(var(--destructive))', // Destructive red from theme
-  gray: 'hsl(var(--muted))', // Muted color for the unfilled part
+  green: 'hsl(var(--accent))', 
+  yellow: 'hsl(45, 100%, 50%)', 
+  red: 'hsl(var(--destructive))', 
+  gray: 'hsl(var(--muted))', 
 };
 
 export function RadialProgressCard({ title, percentageValue, color, plannedValue, realizedValue, unit }: RadialProgressCardProps) {
-  const filledValue = Math.min(Math.max(0, percentageValue), 150); // Clamp between 0 and 150 for the gauge display
+  // Ensure percentageValue is for the display range 0-150
+  const displayPercentage = Math.min(Math.max(0, percentageValue), 150);
+  
   const data = [
-    { name: 'value', value: filledValue, fill: COLOR_MAP[color] },
-    { name: 'remaining', value: Math.max(0, 150 - filledValue), fill: COLOR_MAP.gray },
+    { name: 'value', value: displayPercentage, fill: COLOR_MAP[color] },
+    { name: 'remaining', value: Math.max(0, 150 - displayPercentage), fill: COLOR_MAP.gray },
   ];
 
   return (
@@ -34,7 +36,7 @@ export function RadialProgressCard({ title, percentageValue, color, plannedValue
         <CardTitle className="text-base font-semibold text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center p-3 pt-0">
-        <div className="relative w-48 h-[96px]"> {/* Approx 2:1 aspect ratio for semi-circle */}
+        <div className="relative w-48 h-[96px]"> {/* Semi-circle aspect ratio */}
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -43,8 +45,8 @@ export function RadialProgressCard({ title, percentageValue, color, plannedValue
                 cy="100%" 
                 startAngle={180}
                 endAngle={0}
-                innerRadius="65%" // Relative to outerRadius or chart dimension
-                outerRadius="95%" // Relative to outerRadius or chart dimension
+                innerRadius="65%" 
+                outerRadius="95%" 
                 paddingAngle={0}
                 dataKey="value"
                 stroke="none"
@@ -55,13 +57,14 @@ export function RadialProgressCard({ title, percentageValue, color, plannedValue
               </Pie>
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center top-[-15px]"> {/* Adjusted top for better centering */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center top-[-15px]">
             <span className={cn(
               "text-3xl font-bold",
               color === 'green' ? 'text-accent' :
-              color === 'yellow' ? 'text-yellow-500' : // Direct color as we don't have a theme var for this specific yellow
+              color === 'yellow' ? 'text-yellow-500' :
               color === 'red' ? 'text-destructive' : 'text-foreground'
             )}>
+              {/* The text displayed is the actual percentageValue, not the 0-150 scaled one */}
               {percentageValue.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
             <span className="text-sm text-muted-foreground">%</span>
