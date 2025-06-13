@@ -1,10 +1,10 @@
+
 // src/lib/firebase/config.ts
 import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
-// Para autenticação futura: import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, type Auth } from "firebase/auth"; // Importar getAuth e Auth
 
 // Suas variáveis de ambiente devem ser configuradas em um arquivo .env.local
-// Veja .env.example para o formato
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -16,7 +16,7 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 let db: Firestore;
-// let auth: Auth; // Para autenticação futura
+let auth: Auth; // Definir a variável auth
 
 if (getApps().length) {
   app = getApp();
@@ -25,6 +25,7 @@ if (getApps().length) {
 }
 
 db = getFirestore(app);
-// auth = getAuth(app); // Para autenticação futura
+// A inicialização e exportação do auth são restauradas
+auth = getAuth(app); 
 
-export { app, db /*, auth */ };
+export { app, db, auth }; // Exportar auth

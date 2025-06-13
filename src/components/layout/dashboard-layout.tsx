@@ -1,9 +1,8 @@
-
 "use client";
 
 import Link from "next/link";
 import Image from "next/image"; 
-import { usePathname, useRouter } from "next/navigation"; // Importar useRouter
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   SidebarProvider,
@@ -18,10 +17,9 @@ import {
   SidebarInset,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, AlertTriangle, Users, BarChart3, Settings, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, TrendingUp, LogOut } from "lucide-react"; // Adicionado LogOut
+import { LayoutDashboard, ListFilter, Users, BarChart3, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, TrendingUp } from "lucide-react";
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
@@ -29,6 +27,7 @@ import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
   { href: "/motorcycles", label: "Gestão de Motos", subLabel: "Frota completa", icon: ListFilter },
+  { href: "/rastreadores", label: "Rastreadores", subLabel: "Nossos rastreadores", icon: MapPin },
   { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
   { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: Users }, 
@@ -47,28 +46,11 @@ const initialStatusRapidoItems: StatusRapidoItemType[] = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter(); // Inicializar useRouter
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
   const [dynamicStatusRapidoItems, setDynamicStatusRapidoItems] = useState<StatusRapidoItemType[]>(initialStatusRapidoItems);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
 
   useEffect(() => {
-    // Verificar estado de login
-    if (typeof window !== "undefined") {
-      const isLoggedIn = localStorage.getItem("isLoggedIn");
-      if (isLoggedIn !== "true") {
-        router.replace("/login"); // Usar replace para não adicionar ao histórico
-      } else {
-        setIsCheckingAuth(false);
-      }
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (isCheckingAuth) return; // Não buscar dados se ainda estiver verificando auth ou redirecionando
-
     setIsLoadingStatus(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
       if (Array.isArray(motosFromDB)) {
@@ -83,10 +65,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setIsLoadingStatus(false);
     });
     return () => unsubscribe();
-  }, [isCheckingAuth]); // Adicionar isCheckingAuth como dependência
+  }, []);
 
   useEffect(() => {
-    if (isLoadingStatus || !Array.isArray(allMotorcycles) || isCheckingAuth) {
+    if (isLoadingStatus || !Array.isArray(allMotorcycles)) {
       setDynamicStatusRapidoItems(prevItems => prevItems.map(item => ({ ...item, count: 0 })));
       return;
     }
@@ -142,23 +124,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         };
       })
     );
-  }, [allMotorcycles, isLoadingStatus, isCheckingAuth]); // Adicionar isCheckingAuth como dependência
-
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("isLoggedIn");
-    }
-    router.replace("/login");
-  };
-
-  if (isCheckingAuth) {
-    // Pode mostrar um loader de tela cheia aqui se desejar
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Verificando autenticação...</p>
-      </div>
-    );
-  }
+  }, [allMotorcycles, isLoadingStatus]);
 
   return (
     <SidebarProvider defaultOpen>
@@ -234,9 +200,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <p className="text-xs text-sidebar-foreground/80">Salvador - BA</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleLogout} title="Sair">
-              <LogOut className="h-5 w-5" />
-            </Button>
           </div>
         </SidebarFooter>
       </Sidebar>

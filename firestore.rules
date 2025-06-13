@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    match /motorcycles/{motorcycleId} {
+      allow read, write: if true;
+    }
+
+    match /rastreadores/{rastreadorId} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth.uid == userId;
+      allow list, delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}

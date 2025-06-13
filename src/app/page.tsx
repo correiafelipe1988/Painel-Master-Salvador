@@ -20,7 +20,7 @@ import { RelocatedVolumeChart } from "@/components/charts/relocated-volume-chart
 import { TotalRentalsVolumeChart } from "@/components/charts/total-rentals-volume-chart";
 import type { ChartDataPoint } from "@/lib/types";
 
-
+// ... (constantes pageMonths e pageYears permanecem as mesmas)
 const pageMonths = [
   { value: "0", label: "Janeiro" }, { value: "1", label: "Fevereiro" }, { value: "2", label: "Março" },
   { value: "3", label: "Abril" }, { value: "4", label: "Maio" }, { value: "5", label: "Junho" },
@@ -34,6 +34,7 @@ const pageYears = Array.from({ length: 5 }, (_, i) => ({
   label: (currentFullYear - i).toString(),
 }));
 
+
 export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState('');
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
@@ -44,22 +45,19 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<string>(currentFullYear.toString());
 
-  const [dailyRecoveryData, setDailyRecoveryData] = useState<ChartDataPoint[] | null>(null);
-  const [dailyRentalData, setDailyRentalData] = useState<MonthlyRentalDataPoint[] | null>(null);
-  const [dailyRelocatedData, setDailyRelocatedData] = useState<ChartDataPoint[] | null>(null);
-  const [dailyTotalRentalsData, setDailyTotalRentalsData] = useState<ChartDataPoint[] | null>(null);
+  // Estado dos gráficos
+  const [dailyRecoveryData, setDailyRecoveryData] = useState<ChartDataPoint[]>([]);
+  const [dailyRentalData, setDailyRentalData] = useState<MonthlyRentalDataPoint[]>([]);
+  const [dailyRelocatedData, setDailyRelocatedData] = useState<ChartDataPoint[]>([]);
+  const [dailyTotalRentalsData, setDailyTotalRentalsData] = useState<ChartDataPoint[]>([]);
 
 
   useEffect(() => {
     const updateTimestamp = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
       }));
     };
     updateTimestamp();
@@ -71,12 +69,8 @@ export default function DashboardPage() {
     setIsLoading(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
       if (Array.isArray(motosFromDB)) {
-        const updatedMotorcycles = motosFromDB.map(moto =>
-          moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
-        );
-        setAllMotorcycles(updatedMotorcycles);
+        setAllMotorcycles(motosFromDB);
       } else {
-        console.warn("Data from subscribeToMotorcycles (dashboard page) was not an array:", motosFromDB);
         setAllMotorcycles([]);
       }
       setIsLoading(false);
@@ -84,47 +78,67 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, []);
 
-  // Update Top KPIs (Daily focus)
+  // Efeito para KPIs e Gráficos
   useEffect(() => {
-    if (isLoading || !Array.isArray(allMotorcycles)) return;
+    if (isLoading || !Array.isArray(allMotorcycles)) {
+        // Garante que os gráficos mostrem "carregando" se não houver dados
+        setDailyRecoveryData([]);
+        setDailyRentalData([]);
+        setDailyRelocatedData([]);
+        setDailyTotalRentalsData([]);
+        return;
+    };
 
+    // --- Lógica de KPIs ---
     const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const motosAlugadasHoje = allMotorcycles.filter(m => m.status === 'alugada' && m.data_ultima_mov === todayStr).length;
+    const motosRecuperadasHoje = allMotorcycles.filter(m => m.status === 'recolhida' && m.data_ultima_mov === todayStr).length;
+    const motosRelocadasHoje = allMotorcycles.filter(m => m.status === 'relocada' && m.data_ultima_mov === todayStr).length;
+    const motosParadas7Dias = allMotorcycles.filter(m => typeof m.tempo_ocioso_dias === 'number' && m.tempo_ocioso_dias >= 7).length;
 
-    const motosAlugadasHojeCount = allMotorcycles.filter(
-      moto => moto.status === 'alugada' && moto.data_ultima_mov === todayStr
-    ).length;
-
-    const motosRecuperadasHojeCount = allMotorcycles.filter(
-      moto => moto.status === 'recolhida' && moto.data_ultima_mov === todayStr
-    ).length;
-
-    const motosRelocadasHojeCount = allMotorcycles.filter(
-      moto => moto.status === 'relocada' && moto.data_ultima_mov === todayStr
-    ).length;
-
-    const motosParadas7DiasCount = allMotorcycles.filter(
-      moto => typeof moto.tempo_ocioso_dias === 'number' && moto.tempo_ocioso_dias >= 7
-    ).length;
-
-    setDynamicKpiDataTop(prevKpis => prevKpis.map(kpi => {
-      if (kpi.title === "Motos Alugadas Hoje") {
-        return { ...kpi, value: motosAlugadasHojeCount.toString() };
-      }
-      if (kpi.title === "Motos Recuperadas Hoje") {
-        return { ...kpi, value: motosRecuperadasHojeCount.toString() };
-      }
-      if (kpi.title === "Motos Relocadas Hoje") {
-        return { ...kpi, value: motosRelocadasHojeCount.toString() };
-      }
-      if (kpi.title === "Motos Paradas +7 Dias") {
-        return { ...kpi, value: motosParadas7DiasCount.toString() };
-      }
-      return kpi;
+    setDynamicKpiDataTop(prev => prev.map(kpi => {
+        if (kpi.title === "Motos Alugadas Hoje") return { ...kpi, value: motosAlugadasHoje.toString() };
+        if (kpi.title === "Motos Recuperadas Hoje") return { ...kpi, value: motosRecuperadasHoje.toString() };
+        if (kpi.title === "Motos Relocadas Hoje") return { ...kpi, value: motosRelocadasHoje.toString() };
+        if (kpi.title === "Motos Paradas +7 Dias") return { ...kpi, value: motosParadas7Dias.toString() };
+        return kpi;
     }));
-    
-  }, [allMotorcycles, isLoading]);
 
-  // Update Bottom KPIs (Period focus)
+    // --- Lógica de Gráficos (Últimos 30 dias) ---
+    const endDate = new Date();
+    const startDate = subDays(endDate, 29);
+    const dateInterval = eachDayOfInterval({ start: startDate, end: endDate });
+
+    const dailyData = dateInterval.map(date => {
+        const formattedDate = format(date, 'yyyy-MM-dd');
+        const displayDate = format(date, 'dd/MM');
+
+        const motosDoDia = allMotorcycles.filter(m => m.data_ultima_mov === formattedDate);
+
+        const recoveryCount = motosDoDia.filter(m => m.status === 'recolhida').length;
+        const rentalNovasCount = motosDoDia.filter(m => m.status === 'alugada' && (m.type === 'nova' || !m.type)).length;
+        const rentalUsadasCount = motosDoDia.filter(m => m.status === 'alugada' && m.type === 'usada').length;
+        const relocatedCount = motosDoDia.filter(m => m.status === 'relocada').length;
+        const totalRentalsCount = rentalNovasCount + rentalUsadasCount + relocatedCount;
+        
+        return {
+            displayDate,
+            recoveryCount,
+            rentalNovasCount,
+            rentalUsadasCount,
+            relocatedCount,
+            totalRentalsCount,
+        };
+    });
+
+    setDailyRecoveryData(dailyData.map(d => ({ month: d.displayDate, count: d.recoveryCount })));
+    setDailyRentalData(dailyData.map(d => ({ month: d.displayDate, novas: d.rentalNovasCount, usadas: d.rentalUsadasCount })));
+    setDailyRelocatedData(dailyData.map(d => ({ month: d.displayDate, count: d.relocatedCount })));
+    setDailyTotalRentalsData(dailyData.map(d => ({ month: d.displayDate, count: d.totalRentalsCount })));
+
+  }, [allMotorcycles, isLoading]);
+  
+  // Efeito para KPIs de período (separado para clareza)
   useEffect(() => {
     if (isLoading || !Array.isArray(allMotorcycles)) return;
 
@@ -132,100 +146,26 @@ export default function DashboardPage() {
     const numericYear = parseInt(selectedYear, 10);
 
     const motosFiltradasPeriodo = allMotorcycles.filter(moto => {
-      if (!moto.data_ultima_mov) return false;
-      try {
-        const movDate = parseISO(moto.data_ultima_mov); // data_ultima_mov is YYYY-MM-DD
-        return isValid(movDate) && getMonth(movDate) === numericMonth && getYear(movDate) === numericYear;
-      } catch {
-        return false;
-      }
+        if (!moto.data_ultima_mov) return false;
+        try {
+            const movDate = parseISO(moto.data_ultima_mov);
+            return isValid(movDate) && getMonth(movDate) === numericMonth && getYear(movDate) === numericYear;
+        } catch { return false; }
     });
-
-    const disponiveisPeriodo = motosFiltradasPeriodo.filter(m => m.status === 'active').length;
-    const alugadasPeriodo = motosFiltradasPeriodo.filter(m => m.status === 'alugada').length;
-    const manutencaoPeriodo = motosFiltradasPeriodo.filter(m => m.status === 'manutencao').length;
-    const relocadasPeriodo = motosFiltradasPeriodo.filter(m => m.status === 'relocada').length;
-
-    setDynamicKpiDataBottom(prevKpis => prevKpis.map(kpi => {
-      if (kpi.title === "Motos Disponíveis") {
-        return { ...kpi, value: disponiveisPeriodo.toString(), description: `disponíveis em ${pageMonths[numericMonth].label}/${numericYear}` };
-      }
-      if (kpi.title === "Motos Alugadas") {
-        return { ...kpi, value: alugadasPeriodo.toString(), description: `alugadas em ${pageMonths[numericMonth].label}/${numericYear}` };
-      }
-      if (kpi.title === "Em Manutenção") {
-        return { ...kpi, value: manutencaoPeriodo.toString(), description: `manutenção em ${pageMonths[numericMonth].label}/${numericYear}` };
-      }
-      if (kpi.title === "Motos Relocadas") {
-        return { ...kpi, value: relocadasPeriodo.toString(), description: `relocadas em ${pageMonths[numericMonth].label}/${numericYear}` };
-      }
-      return kpi;
+    
+    setDynamicKpiDataBottom(prev => prev.map(kpi => {
+        const desc = `em ${pageMonths[numericMonth].label}/${numericYear}`;
+        if (kpi.title === "Motos Disponíveis") return { ...kpi, value: motosFiltradasPeriodo.filter(m => m.status === 'active').length.toString(), description: desc };
+        if (kpi.title === "Motos Alugadas") return { ...kpi, value: motosFiltradasPeriodo.filter(m => m.status === 'alugada').length.toString(), description: desc };
+        if (kpi.title === "Em Manutenção") return { ...kpi, value: motosFiltradasPeriodo.filter(m => m.status === 'manutencao').length.toString(), description: desc };
+        if (kpi.title === "Motos Relocadas") return { ...kpi, value: motosFiltradasPeriodo.filter(m => m.status === 'relocada').length.toString(), description: desc };
+        return kpi;
     }));
 
   }, [allMotorcycles, isLoading, selectedMonth, selectedYear]);
 
-  // Update Daily Charts Data (Last 30 days)
-  useEffect(() => {
-    if (isLoading || !Array.isArray(allMotorcycles) || allMotorcycles.length === 0) {
-      setDailyRecoveryData([]);
-      setDailyRentalData([]);
-      setDailyRelocatedData([]);
-      setDailyTotalRentalsData([]);
-      return;
-    }
 
-    const endDate = new Date();
-    const startDate = subDays(endDate, 29); // 30 days including today
-    const dateInterval = eachDayOfInterval({ start: startDate, end: endDate });
-
-    const dailyDatesFormatted = dateInterval.map(d => format(d, 'yyyy-MM-dd'));
-    // Use 'dd/MM' for display, matching the ChartDataPoint type expectation for 'month' field in this context
-    const dailyDisplayDates = dateInterval.map(d => format(d, 'dd/MM', { locale: ptBR }));
-
-
-    const dailyRecoveryCounts: { [date: string]: number } = {};
-    const dailyRentalNovasCounts: { [date: string]: number } = {};
-    const dailyRentalUsadasCounts: { [date: string]: number } = {};
-    const dailyRelocatedCounts: { [date: string]: number } = {};
-    const dailyTotalRentalsCounts: { [date: string]: number } = {};
-
-    dailyDatesFormatted.forEach(dateStr => {
-      dailyRecoveryCounts[dateStr] = 0;
-      dailyRentalNovasCounts[dateStr] = 0;
-      dailyRentalUsadasCounts[dateStr] = 0;
-      dailyRelocatedCounts[dateStr] = 0;
-      dailyTotalRentalsCounts[dateStr] = 0;
-    });
-
-    allMotorcycles.forEach(moto => {
-      if (moto.data_ultima_mov && dailyDatesFormatted.includes(moto.data_ultima_mov)) {
-        const movDateStr = moto.data_ultima_mov;
-        if (moto.status === 'recolhida') {
-          dailyRecoveryCounts[movDateStr]++;
-        }
-        if (moto.status === 'alugada') {
-          if (moto.type === 'nova') dailyRentalNovasCounts[movDateStr]++;
-          else if (moto.type === 'usada') dailyRentalUsadasCounts[movDateStr]++;
-          else dailyRentalNovasCounts[movDateStr]++; 
-          dailyTotalRentalsCounts[movDateStr]++;
-        }
-        if (moto.status === 'relocada') {
-          dailyRelocatedCounts[movDateStr]++;
-          dailyTotalRentalsCounts[movDateStr]++;
-        }
-      }
-    });
-    
-    // For daily charts, the 'month' property of ChartDataPoint/MonthlyRentalDataPoint will hold 'dd/MM'
-    setDailyRecoveryData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyRecoveryCounts[dailyDatesFormatted[i]] })));
-    setDailyRentalData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, novas: dailyRentalNovasCounts[dailyDatesFormatted[i]], usadas: dailyRentalUsadasCounts[dailyDatesFormatted[i]] })));
-    setDailyRelocatedData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyRelocatedCounts[dailyDatesFormatted[i]] })));
-    setDailyTotalRentalsData(dailyDisplayDates.map((displayDate, i) => ({ month: displayDate, count: dailyTotalRentalsCounts[dailyDatesFormatted[i]] })));
-
-  }, [allMotorcycles, isLoading]);
-
-
-  if (isLoading && allMotorcycles.length === 0) { 
+  if (isLoading) { 
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center h-screen">
@@ -291,7 +231,6 @@ export default function DashboardPage() {
 
       <Separator className="my-8" />
 
-      {/* Daily Charts Section */}
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 mt-8">
         <Card className="shadow-lg">
           <CardHeader>
@@ -363,10 +302,6 @@ export default function DashboardPage() {
       </div>
       
       <Separator className="my-8" />
-      
-      {/* Próximos Passos Card Removido */}
-
     </DashboardLayout>
   );
 }
-    
