@@ -31,7 +31,6 @@ export default function RastreadoresPage() {
 
   /**
    * Analisa o texto de um arquivo CSV.
-   * A função foi corrigida para usar uma abordagem robusta.
    */
   const parseCSV = (csvText: string): Omit<RastreadorData, 'id'>[] => {
     let cleanedCsvText = csvText;
@@ -71,11 +70,18 @@ export default function RastreadoresPage() {
       return result;
     };
 
-    const parsedHeaders = parseCsvLine(lines[0]).map(h => normalizeHeader(h)); // Normalize headers from CSV
+    const parsedHeaders = parseCsvLine(lines[0]).map(h => normalizeHeader(h));
 
     const requiredHeaders = ["cnpj", "empresa", "franqueado", "chassi", "placa", "rastreador", "tipo", "moto", "mes", "valor"];
-    // requiredHeaders are already normalized (lowercase, no accents)
+    
+    // Verificar o número de colunas no cabeçalho
+    if (parsedHeaders.length !== requiredHeaders.length) {
+      throw new Error(
+        `CSV inválido: Número incorreto de colunas no cabeçalho. Esperado: ${requiredHeaders.length}, Encontrado: ${parsedHeaders.length}. Cabeçalhos detectados (normalizados): ${parsedHeaders.join(' | ')}`
+      );
+    }
 
+    // Verificar se todos os cabeçalhos obrigatórios estão presentes
     for (const reqHeader of requiredHeaders) {
       if (!parsedHeaders.includes(reqHeader)) {
         throw new Error(`CSV inválido: O cabeçalho obrigatório "${reqHeader}" não foi encontrado. Cabeçalhos detectados (normalizados): ${parsedHeaders.join(' | ')}`);
@@ -88,25 +94,27 @@ export default function RastreadoresPage() {
     const headerIndexMap: { [key: string]: number } = {};
     requiredHeaders.forEach(reqHeader => {
       const index = parsedHeaders.indexOf(reqHeader);
-      if (index !== -1) {
-        headerIndexMap[reqHeader] = index;
-      }
+      // Sabemos que o índice será encontrado devido à verificação anterior
+      headerIndexMap[reqHeader] = index;
     });
 
     for (let i = 1; i < lines.length; i++) {
       const values = parseCsvLine(lines[i]);
-      const entry: Partial<RastreadorData> = {}; // Use Partial for type safety
+      // Verificar se o número de colunas na linha de dados corresponde ao número de cabeçalhos
+      if (values.length !== parsedHeaders.length) {
+        console.warn(`Linha ${i+1} do CSV ignorada: número de colunas (${values.length}) não corresponde ao cabeçalho (${parsedHeaders.length}). Conteúdo: ${lines[i]}`);
+        continue; 
+      }
+      
+      const entry: Partial<RastreadorData> = {};
 
       requiredHeaders.forEach(reqHeader => {
         const index = headerIndexMap[reqHeader];
-        if (index !== undefined && index < values.length) {
-          (entry as any)[reqHeader] = values[index];
-        } else {
-          (entry as any)[reqHeader] = ""; // Default to empty string if header is missing or value not present
-        }
+        // O valor pode ser undefined se a linha de dados for mais curta que o cabeçalho,
+        // mas já verificamos isso acima.
+        (entry as any)[reqHeader] = values[index] !== undefined ? values[index] : "";
       });
       
-      // Ensure all fields of RastreadorData are present, even if empty, before casting
       const rastreadorEntry: Omit<RastreadorData, 'id'> = {
         cnpj: entry.cnpj || "",
         empresa: entry.empresa || "",
@@ -137,19 +145,17 @@ export default function RastreadoresPage() {
     reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) {
-        toast({ title: "Erro ao ler arquivo", variant: "destructive" });
+        toast({ title: "Erro ao ler arquivo", variant: "destructive", description: "Não foi possível ler o conteúdo do arquivo." });
         return;
       }
       
       try {
         const parsedData = parseCSV(text);
         if (parsedData.length === 0) {
-          toast({ title: "Arquivo CSV vazio ou sem dados válidos", variant: "destructive" });
+          toast({ title: "Nenhum dado para importar", variant: "destructive", description: "O arquivo CSV estava vazio ou não continha linhas de dados válidas." });
           return;
         }
 
-        // Usar um loop for...of para processar em lote pode ser mais eficiente, 
-        // mas para manter a simplicidade com addRastreador individual:
         for (const rastreadorData of parsedData) {
           await addRastreador(rastreadorData);
         }
@@ -162,7 +168,7 @@ export default function RastreadoresPage() {
         console.error("Erro ao importar CSV:", error);
         toast({
           title: "Erro na Importação",
-          description: error.message || "Não foi possível processar o arquivo. Verifique o formato e os cabeçalhos.",
+          description: error.message || "Não foi possível processar o arquivo. Verifique o formato, os cabeçalhos e os dados.",
           variant: "destructive",
         });
       } finally {
@@ -174,6 +180,9 @@ export default function RastreadoresPage() {
     
     reader.onerror = () => {
         toast({ title: "Erro ao tentar ler o arquivo.", variant: "destructive" });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
     };
     
     reader.readAsText(file);
@@ -195,7 +204,7 @@ export default function RastreadoresPage() {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".csv,text/csv" // Aceitar text/csv para maior compatibilidade
+        accept=".csv,text/csv"
         className="hidden" 
       />
     </>
@@ -209,11 +218,6 @@ export default function RastreadoresPage() {
         actions={pageActions}
       />
       <div className="space-y-8">
-        {/*
-          RastreadoresList geralmente recebe os dados e funções de manipulação.
-          Por enquanto, a importação é feita diretamente na página.
-          Considerar refatorar para que RastreadoresList gerencie o estado se necessário.
-        */}
         <RastreadoresList rastreadores={[]} onAddRastreador={async (data) => { await addRastreador(data);}} onDeleteRastreador={async (id) => { console.log("delete", id)}} onEditRastreador={(data) => console.log("edit", data)} />
       </div>
     </DashboardLayout>
