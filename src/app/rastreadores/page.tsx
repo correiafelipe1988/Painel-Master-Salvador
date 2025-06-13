@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useRef } from "react";
@@ -9,7 +10,6 @@ import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addRastreador } from "@/lib/firebase/rastreadorService";
 
-// Define a interface para garantir a tipagem correta dos dados.
 interface RastreadorData {
   cnpj: string;
   empresa: string;
@@ -27,40 +27,91 @@ export default function RastreadoresPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /**
-   * Analisa o texto de um arquivo CSV.
-   * A função foi corrigida para usar uma abordagem robusta e sem erros de sintaxe.
-   */
-  const parseCSV = (text: string): Omit<RastreadorData, 'id'>[] => {
-    // CORREÇÃO: Usa replace para normalizar quebras de linha e depois split
-    const lines = text.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(line => line.trim());
-    
-    if (lines.length < 2) {
-      throw new Error("CSV inválido: O arquivo precisa conter um cabeçalho e pelo menos uma linha de dados.");
-    }
-    
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
-    const requiredHeaders = ["cnpj", "empresa", "franqueado", "chassi", "placa", "rastreador", "tipo", "moto", "mes", "valor"];
-    
-    for (const header of requiredHeaders) {
-      if (!headers.includes(header)) {
-        throw new Error(`CSV inválido: O cabeçalho obrigatório "${header}" não foi encontrado.`);
-      }
+  const parseCSV = (csvText: string): Omit<RastreadorData, 'id'>[] => {
+    let cleanedCsvText = csvText;
+    if (cleanedCsvText.charCodeAt(0) === 0xFEFF) { // Remove BOM, if present
+      cleanedCsvText = cleanedCsvText.substring(1);
     }
 
-    return lines.slice(1).map(line => {
-      const values = line.split(",").map(v => v.trim());
-      const entry: { [key: string]: string } = {};
-      headers.forEach((header, index) => {
-        entry[header] = values[index] || "";
-      });
-      return entry as Omit<RastreadorData, 'id'>;
+    const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
+
+    if (lines.length < 2) {
+      throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
+    }
+
+    const parseCsvLine = (line: string): string[] => {
+      const result: string[] = [];
+      let currentField = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && i + 1 < line.length && line[i+1] === '"') { // Handle "" inside quotes
+            currentField += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ';' && !inQuotes) { // Use semicolon as delimiter
+          result.push(currentField.trim());
+          currentField = '';
+        } else {
+          currentField += char;
+        }
+      }
+      result.push(currentField.trim()); // Add the last field
+      return result;
+    };
+    
+    const normalizeHeader = (header: string) => header.toLowerCase().trim().replace(/\s+/g, ' ');
+    const headers = parseCsvLine(lines[0]).map(normalizeHeader);
+    
+    const requiredHeaders = ["cnpj", "empresa", "franqueado", "chassi", "placa", "rastreador", "tipo", "moto", "mes", "valor"];
+    const headerMap: { [key in keyof RastreadorData]?: number } = {};
+    
+    requiredHeaders.forEach(reqHeader => {
+      const index = headers.indexOf(normalizeHeader(reqHeader));
+      if (index === -1) {
+        throw new Error(`CSV inválido: O cabeçalho obrigatório "${reqHeader}" não foi encontrado. Cabeçalhos detectados: ${headers.join(', ')}`);
+      }
+      headerMap[reqHeader as keyof RastreadorData] = index;
     });
+
+    const rastreadoresArray: Omit<RastreadorData, 'id'>[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseCsvLine(lines[i]);
+      const entry: Partial<RastreadorData> = {};
+
+      // Check if any required field is missing data in this row by checking its index
+      let skipRow = false;
+      for (const reqHeader of requiredHeaders) {
+          const reqHeaderKey = reqHeader as keyof RastreadorData;
+          if (headerMap[reqHeaderKey] === undefined || values[headerMap[reqHeaderKey]!] === undefined || values[headerMap[reqHeaderKey]!].trim() === '') {
+              // Only consider a row problematic if a *required* header's value is truly empty.
+              // For now, let's assume all fields are somewhat expected. If 'cnpj' is critical, check specifically.
+              if (reqHeaderKey === 'cnpj' && (values[headerMap[reqHeaderKey]!] === undefined || values[headerMap[reqHeaderKey]!].trim() === '')) {
+                console.warn(`Linha ${i+1} do CSV ignorada por falta de CNPJ.`);
+                skipRow = true;
+                break;
+              }
+          }
+      }
+      if (skipRow) continue;
+
+
+      (Object.keys(headerMap) as Array<keyof RastreadorData>).forEach(key => {
+        const index = headerMap[key];
+        if (index !== undefined && index < values.length) {
+          entry[key] = values[index];
+        } else {
+          entry[key] = ""; // Default to empty string if column is missing for this row
+        }
+      });
+      rastreadoresArray.push(entry as Omit<RastreadorData, 'id'>);
+    }
+    return rastreadoresArray;
   };
 
-  /**
-   * Lida com a seleção do arquivo, lendo seu conteúdo e o processando.
-   */
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -70,19 +121,32 @@ export default function RastreadoresPage() {
     reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) {
-        toast({ title: "Erro ao ler arquivo", variant: "destructive" });
+        toast({ title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo.", variant: "destructive" });
         return;
       }
       
       try {
         const parsedData = parseCSV(text);
         if (parsedData.length === 0) {
-          toast({ title: "Arquivo CSV vazio", variant: "destructive" });
+          toast({ title: "Nenhum dado para importar", description: "O arquivo CSV estava vazio ou não continha dados válidos.", variant: "destructive" });
           return;
         }
 
         for (const rastreadorData of parsedData) {
-          await addRastreador(rastreadorData);
+          // Ensure all fields are present, even if empty, before sending to Firestore
+          const completeData: RastreadorData = {
+            cnpj: rastreadorData.cnpj || "",
+            empresa: rastreadorData.empresa || "",
+            franqueado: rastreadorData.franqueado || "",
+            chassi: rastreadorData.chassi || "",
+            placa: rastreadorData.placa || "",
+            rastreador: rastreadorData.rastreador || "",
+            tipo: rastreadorData.tipo || "",
+            moto: rastreadorData.moto || "",
+            mes: rastreadorData.mes || "",
+            valor: rastreadorData.valor || "",
+          };
+          await addRastreador(completeData);
         }
         
         toast({
@@ -93,7 +157,7 @@ export default function RastreadoresPage() {
         console.error("Erro ao importar CSV:", error);
         toast({
           title: "Erro na Importação",
-          description: error.message || "Não foi possível processar o arquivo. Verifique o formato.",
+          description: error.message || "Não foi possível processar o arquivo. Verifique o formato e os cabeçalhos.",
           variant: "destructive",
         });
       } finally {
@@ -105,17 +169,18 @@ export default function RastreadoresPage() {
     
     reader.onerror = () => {
         toast({ title: "Erro ao tentar ler o arquivo.", variant: "destructive" });
+         if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
     };
     
     reader.readAsText(file);
   }, [toast]);
 
-  // Simula um clique no input de arquivo oculto.
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
 
-  // Define os botões a serem exibidos no cabeçalho.
   const pageActions = (
     <>
       <Button variant="outline" onClick={handleImportClick}>
