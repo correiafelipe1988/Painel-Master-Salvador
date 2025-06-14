@@ -8,7 +8,7 @@ import { RadialProgressCard } from "@/components/indicadores/radial-progress-car
 import { TrendingUp, Bike } from "lucide-react";
 import type { Motorcycle } from '@/lib/types';
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
-import { subDays, format, eachDayOfInterval, parseISO, isValid } from 'date-fns';
+import { subDays, format, eachDayOfInterval } from 'date-fns';
 
 interface DailyLocacoesData {
   mediaLocacoesDiarias: number;
@@ -48,7 +48,7 @@ export default function IndicadoresPage() {
         totalLocacoesNoPeriodo += locacoesNoDia;
       });
       
-      const mediaLocacoesDiarias = totalLocacoesNoPeriodo / dateInterval.length;
+      const mediaLocacoesDiarias = dateInterval.length > 0 ? totalLocacoesNoPeriodo / dateInterval.length : 0;
 
       setDailyLocacoesData({
         mediaLocacoesDiarias: parseFloat(mediaLocacoesDiarias.toFixed(2)),
@@ -64,17 +64,21 @@ export default function IndicadoresPage() {
     if (!dailyLocacoesData) {
       return {
         title: "Volume Médio de Locações Diárias",
-        percentageValue: 0,
+        percentageValue: 0, // O valor real para o cálculo do display no card
         color: "red" as 'red',
         plannedValue: `Meta: ${META_LOCACOES_DIARIAS}/dia`,
-        realizedValue: "Calculando...",
+        realizedValue: "Calculando...", // Este é o valor numérico que aparece abaixo do %
         unit: " locações/dia",
+        displayValueForCenter: 0, // O valor que aparece no centro do medidor
       };
     }
 
     const { mediaLocacoesDiarias } = dailyLocacoesData;
-    let percentageValue = (mediaLocacoesDiarias / (META_LOCACOES_DIARIAS * 1.5)) * 150; // Mapeia para a escala de 0-150 do card
-    percentageValue = Math.min(Math.max(0, percentageValue), 150); // Clampa o valor
+    // O percentageValue para o card é o próprio valor da média, pois o card espera o valor real
+    // e internamente o escalona para seu display de 0-150 se necessário (ou usamos diretamente).
+    // Para o nosso card atual (estilo arco simples), o 'percentageValue' é usado para preencher o arco.
+    // A lógica de cor é baseada na média em relação à meta.
+    // Vamos usar a média diretamente como "realizedValue" e mapeá-la para o display visual do arco.
 
     let color: 'green' | 'yellow' | 'red' = 'red';
     if (mediaLocacoesDiarias >= META_LOCACOES_DIARIAS * 0.9) { // >= 90% da meta
@@ -82,14 +86,25 @@ export default function IndicadoresPage() {
     } else if (mediaLocacoesDiarias >= META_LOCACOES_DIARIAS * 0.6) { // >= 60% da meta
       color = 'yellow';
     }
+    
+    // O RadialProgressCard espera um percentageValue que ele usará para o display.
+    // No nosso caso, o 'percentageValue' do card será o próprio `mediaLocacoesDiarias` e ele o exibirá.
+    // O componente RadialProgressCard foi ajustado para mostrar o `percentageValue` diretamente.
+    // A escala interna do componente de 0-150% do arco total será preenchida por este valor.
+    // Ex: Se percentageValue for 8 e a escala visual do card for de 0 a 15 (META * 1.5),
+    // então o arco preencheria 8/15 do total.
+    // O card atual já faz o mapeamento do `percentageValue` para o arco.
+    // O texto no centro do card será `mediaLocacoesDiarias` formatado.
+
 
     return {
       title: "Volume Médio de Locações Diárias",
-      percentageValue: parseFloat(percentageValue.toFixed(1)),
+      percentageValue: mediaLocacoesDiarias, // O valor que o card usará para o arco e o texto central
       color,
       plannedValue: `Meta: ${META_LOCACOES_DIARIAS}/dia`,
       realizedValue: `${mediaLocacoesDiarias.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`,
       unit: " locações/dia",
+      // displayValueForCenter: mediaLocacoesDiarias, // Não é mais necessário, percentageValue é usado no centro
     };
   };
 
@@ -115,17 +130,19 @@ export default function IndicadoresPage() {
           <RadialProgressCard
             key={cardProps.title}
             title={cardProps.title}
-            percentageValue={cardProps.percentageValue}
+            percentageValue={cardProps.percentageValue} // Este é o valor que o card exibirá no centro
             color={cardProps.color}
             plannedValue={cardProps.plannedValue}
-            realizedValue={cardProps.realizedValue}
+            realizedValue={cardProps.realizedValue} // Este é o "Realizado: X locações/dia"
             unit={cardProps.unit}
           />
         ) : (
            <div className="col-span-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg min-h-[200px] bg-muted/50">
             <TrendingUp className="h-16 w-16 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              Não foi possível carregar os dados para o indicador.
+              Não foi possível carregar os dados para o indicador de volume médio de locações.
+              <br />
+              Verifique se há motocicletas com movimentações recentes.
             </p>
           </div>
         )}
