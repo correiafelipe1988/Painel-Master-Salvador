@@ -10,6 +10,10 @@ import { Users, Bike } from "lucide-react";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import type { Motorcycle, MotorcycleStatus } from '@/lib/types';
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 interface FranchiseeFleetStatus {
   franqueadoName: string;
@@ -18,7 +22,6 @@ interface FranchiseeFleetStatus {
     active: number; // Disponível
     manutencao: number;
     relocada: number;
-    // Removido: recolhida e inadimplente
   };
   totalGeral: number;
   percentLocadas: number;
@@ -31,6 +34,13 @@ export default function FranqueadosPage() {
   const [processedData, setProcessedData] = useState<FranchiseeFleetStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Filter states
+  const [selectedFranchisee, setSelectedFranchisee] = useState<string>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [franchisees, setFranchisees] = useState<string[]>([]);
+
+
   useEffect(() => {
     setIsLoading(true);
     const unsubscribe = subscribeToMotorcycles((motosFromDB) => {
@@ -39,6 +49,11 @@ export default function FranqueadosPage() {
           moto.status === undefined ? { ...moto, status: 'alugada' as MotorcycleStatus } : moto
         );
         setAllMotorcycles(updatedMotorcycles);
+         const uniqueFranchisees = Array.from(
+          new Set(updatedMotorcycles.map(moto => moto.franqueado?.trim()).filter((franqueado): franqueado is string => !!franqueado))
+        ).sort();
+        setFranchisees(uniqueFranchisees);
+
       } else {
         console.warn("Data from subscribeToMotorcycles (franqueados page) was not an array:", motosFromDB);
         setAllMotorcycles([]);
@@ -49,21 +64,65 @@ export default function FranqueadosPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !Array.isArray(allMotorcycles)) {
+    if (isLoading) {
       setProcessedData([]);
       return;
     }
 
+    // Filter logic
+    const filteredMotorcycles = allMotorcycles.filter(moto => {
+        const isFranchiseeMatch = selectedFranchisee === 'all' || moto.franqueado?.trim() === selectedFranchisee;
+        
+        // Date filtering logic
+        const motoDate = moto.data_ultima_mov ? new Date(moto.data_ultima_mov) : null;
+        let isDateMatch = true;
+        if(startDate && endDate && motoDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            // Adjust dates to ignore time
+            start.setHours(0,0,0,0);
+            end.setHours(23,59,59,999);
+            motoDate.setHours(0,0,0,0);
+            isDateMatch = motoDate >= start && motoDate <= end;
+        } else if (startDate && motoDate) {
+            const start = new Date(startDate);
+            start.setHours(0,0,0,0);
+            motoDate.setHours(0,0,0,0);
+            isDateMatch = motoDate >= start;
+        } else if (endDate && motoDate) {
+            const end = new Date(endDate);
+            end.setHours(23,59,59,999);
+            motoDate.setHours(0,0,0,0);
+            isDateMatch = motoDate <= end;
+        }
+
+        return isFranchiseeMatch && isDateMatch;
+    });
+
+
+    // Aplicar regra de placas únicas: considerar apenas a última atualização por placa
+    const uniqueMotorcyclesByPlaca: { [placa: string]: Motorcycle } = {};
+    filteredMotorcycles.forEach(moto => {
+      if (!moto.placa) return;
+      const existingMoto = uniqueMotorcyclesByPlaca[moto.placa];
+      if (!existingMoto ||
+          (moto.data_ultima_mov && existingMoto.data_ultima_mov && new Date(moto.data_ultima_mov) > new Date(existingMoto.data_ultima_mov)) ||
+          (moto.data_ultima_mov && !existingMoto.data_ultima_mov)) {
+        uniqueMotorcyclesByPlaca[moto.placa] = moto;
+      }
+    });
+    const representativeMotorcycles = Object.values(uniqueMotorcyclesByPlaca);
+
     const franchiseeStats: Record<string, {
-      counts: { [K in Exclude<MotorcycleStatus, 'recolhida' | 'inadimplente'>]: number } & { indefinido: number }; // Exclui recolhida e inadimplente
+      counts: { [K in Exclude<MotorcycleStatus, 'recolhida' | 'inadimplente' | 'indisponivel_rastreador' | 'indisponivel_emplacamento'>]: number } & { indefinido: number };
       totalGeral: number;
     }> = {};
 
-    allMotorcycles.forEach(moto => {
+    representativeMotorcycles.forEach(moto => {
       const frNameTrimmed = moto.franqueado?.trim();
 
       if (!frNameTrimmed || frNameTrimmed === "Não Especificado" || frNameTrimmed === "") {
-        return; 
+        return;
       }
       
       const frName = frNameTrimmed;
@@ -76,23 +135,20 @@ export default function FranqueadosPage() {
             manutencao: 0,
             relocada: 0,
             indefinido: 0,
-            // Não inicializa recolhida e inadimplente
           },
           totalGeral: 0,
         };
       }
 
       const status = moto.status;
-      // Somente contabiliza os status relevantes para a nova tabela
       if (status && (status === 'active' || status === 'alugada' || status === 'manutencao' || status === 'relocada')) {
         franchiseeStats[frName].counts[status]++;
-      } else if (status && (status === 'recolhida' || status === 'inadimplente')) {
-        // Status removidos da exibição direta, mas ainda contam para o total geral
+      } else if (status && (status === 'recolhida' || status === 'inadimplente' || status === 'indisponivel_rastreador' || status === 'indisponivel_emplacamento')) {
+        // Not displayed, but counted for total
       } else {
         franchiseeStats[frName].counts.indefinido++;
-        console.warn(`Motorcycle ${moto.placa} has unexpected or irrelevant status: ${status} for franchisee ${frName}`);
       }
-      franchiseeStats[frName].totalGeral++; // Total geral considera todas as motos do franqueado, independente do status visível
+      franchiseeStats[frName].totalGeral++;
     });
 
     const dataForTable: FranchiseeFleetStatus[] = Object.entries(franchiseeStats).map(([name, stats]) => {
@@ -118,7 +174,7 @@ export default function FranqueadosPage() {
 
     setProcessedData(dataForTable);
 
-  }, [allMotorcycles, isLoading]);
+  }, [allMotorcycles, isLoading, selectedFranchisee, startDate, endDate]);
 
   return (
     <DashboardLayout>
@@ -128,6 +184,45 @@ export default function FranqueadosPage() {
         icon={Users}
         iconContainerClassName="bg-primary"
       />
+
+        <Card className="mb-6 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <Label htmlFor="franchisee-select">Franqueado</Label>
+                     <Select onValueChange={setSelectedFranchisee} value={selectedFranchisee}>
+                        <SelectTrigger id="franchisee-select">
+                            <SelectValue placeholder="Selecione o Franqueado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos os Franqueados</SelectItem>
+                            {franchisees.map(franqueado => (
+                                <SelectItem key={franqueado} value={franqueado}>{franqueado}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label htmlFor="start-date">Data de Início</Label>
+                    <Input
+                        type="date"
+                        id="start-date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <Label htmlFor="end-date">Data de Fim</Label>
+                    <Input
+                        type="date"
+                        id="end-date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                    />
+                </div>
+            </div>
+        </Card>
+
+
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-headline">
@@ -147,9 +242,9 @@ export default function FranqueadosPage() {
             <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg min-h-[300px] bg-muted/50">
               <Users className="h-24 w-24 text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-center">
-                Nenhum dado de franqueado válido encontrado.
+                Nenhum dado encontrado para os filtros selecionados.
                 <br />
-                Verifique se há motocicletas cadastradas com informações de franqueado.
+                Ajuste os filtros ou verifique os dados cadastrados.
               </p>
             </div>
           ) : (

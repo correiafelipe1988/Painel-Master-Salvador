@@ -33,12 +33,12 @@ export const kpiDataTop: Kpi[] = [
     iconColor: "text-gray-700", 
   },
   {
-    title: "Motos Paradas +7 Dias",
-    value: "25",
-    icon: Bike, 
+    title: "Motos em Manutenção",
+    value: "0",
+    icon: Wrench,
     description: "unidades",
-    color: "text-orange-500",
-    iconBgColor: "bg-orange-500",
+    color: "text-purple-600",
+    iconBgColor: "bg-purple-500",
     iconColor: "text-white",
   },
 ];

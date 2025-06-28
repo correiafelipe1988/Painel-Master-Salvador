@@ -7,10 +7,25 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "./config";
 
 const RASTREADORES_COLLECTION = "rastreadores";
+
+export interface RastreadorData {
+  id?: string;
+  cnpj: string;
+  empresa: string;
+  franqueado: string;
+  chassi: string;
+  placa: string;
+  rastreador: string;
+  tipo: string;
+  moto: string;
+  mes: string;
+  valor: string;
+}
 
 // Adicionar um novo rastreador
 export const addRastreador = async (rastreadorData: any) => {
@@ -78,4 +93,28 @@ export const subscribeToRastreadores = (callback: (rastreadores: any[]) => void)
     callback(rastreadores);
   });
   return unsubscribe;
+};
+
+export const importRastreadoresBatch = async (rastreadores: Omit<RastreadorData, 'id'>[]) => {
+  const batch = writeBatch(db);
+  const rastreadoresCollection = collection(db, RASTREADORES_COLLECTION);
+
+  rastreadores.forEach((rastreadorData) => {
+    const docRef = doc(rastreadoresCollection); 
+    batch.set(docRef, rastreadorData);
+  });
+
+  try {
+    await batch.commit();
+    console.log("Lote de rastreadores importado com sucesso!");
+    return { success: true, message: "Lote de rastreadores importado com sucesso!" };
+  } catch (error) {
+    console.error("Erro ao importar lote de rastreadores:", error);
+    
+    if (error instanceof Error) {
+      throw new Error(`Falha na importação em lote: ${error.message}`);
+    } else {
+      throw new Error("Ocorreu um erro desconhecido durante a importação em lote.");
+    }
+  }
 };

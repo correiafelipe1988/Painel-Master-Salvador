@@ -40,6 +40,8 @@ const motorcycleStatusOptions: { value: MotorcycleStatus; label: string }[] = [
   { value: 'recolhida', label: 'Recolhida' },
   { value: 'relocada', label: 'Relocada' },
   { value: 'manutencao', label: 'Manutenção' },
+  { value: 'indisponivel_rastreador', label: 'Indisponível Rastreador' },
+  { value: 'indisponivel_emplacamento', label: 'Indisponível Emplacamento' },
 ];
 
 const motorcycleTypeOptions: { value: MotorcycleType; label: string }[] = [
@@ -51,8 +53,8 @@ const formSchema = z.object({
   placa: z.string().min(7, "A placa deve ter pelo menos 7 caracteres.").max(8, "A placa deve ter no máximo 8 caracteres.").regex(/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/, "Formato de placa inválido (Ex: AAA1B23)."),
   model: z.string().optional(),
   type: z.enum(['nova', 'usada']).optional(),
-  status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada']).optional(),
-  valorDiaria: z.coerce.number().positive("O valor da diária deve ser positivo.").optional().or(z.literal('')),
+  status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento']).optional(),
+  valorSemanal: z.coerce.number().positive("O valor semanal deve ser positivo.").optional().or(z.literal('')),
   data_ultima_mov: z.date().optional(),
   tempo_ocioso_dias: z.coerce.number().min(0, "Os dias parado não podem ser negativos.").optional().or(z.literal('')),
   franqueado: z.string().optional(),
@@ -66,7 +68,7 @@ const defaultFormValues: FormValues = {
   model: "",
   type: undefined,
   status: undefined,
-  valorDiaria: undefined,
+  valorSemanal: undefined,
   data_ultima_mov: undefined,
   tempo_ocioso_dias: undefined,
   franqueado: "",
@@ -92,7 +94,7 @@ export function AddMotorcycleForm({ onSubmit, onCancel, initialData }: AddMotorc
         model: initialData.model || "",
         type: initialData.type || undefined,
         status: initialData.status || undefined,
-        valorDiaria: initialData.valorDiaria !== undefined ? initialData.valorDiaria : '',
+        valorSemanal: initialData.valorSemanal !== undefined ? initialData.valorSemanal : '',
         // Convert string date from initialData to Date object for the calendar
         data_ultima_mov: initialData.data_ultima_mov && isValid(parseISO(initialData.data_ultima_mov)) ? parseISO(initialData.data_ultima_mov) : undefined,
         tempo_ocioso_dias: initialData.tempo_ocioso_dias !== undefined ? initialData.tempo_ocioso_dias : '',
@@ -112,7 +114,8 @@ export function AddMotorcycleForm({ onSubmit, onCancel, initialData }: AddMotorc
       model: values.model || undefined,
       type: values.type || undefined,
       status: values.status || undefined,
-      valorDiaria: values.valorDiaria ? parseFloat(String(values.valorDiaria)) : undefined,
+      valorSemanal: values.valorSemanal ? parseFloat(String(values.valorSemanal)) : undefined,
+      data_criacao: initialData?.data_criacao || new Date().toISOString(), // Preserve original or set new creation date
       data_ultima_mov: values.data_ultima_mov && isValid(values.data_ultima_mov) ? format(values.data_ultima_mov, "yyyy-MM-dd") : undefined,
       tempo_ocioso_dias: values.tempo_ocioso_dias ? parseInt(String(values.tempo_ocioso_dias), 10) : undefined,
       franqueado: values.franqueado || undefined,
@@ -210,12 +213,12 @@ export function AddMotorcycleForm({ onSubmit, onCancel, initialData }: AddMotorc
             />
             <FormField
               control={form.control}
-              name="valorDiaria"
+              name="valorSemanal"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor da Diária (R$)</FormLabel>
+                  <FormLabel>Valor Semanal (R$)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="Ex: 35.00" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} value={field.value === undefined || field.value === null ? '' : field.value} />
+                    <Input type="number" placeholder="Ex: 245.00" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} value={field.value === undefined || field.value === null ? '' : field.value} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -326,5 +329,3 @@ export function AddMotorcycleForm({ onSubmit, onCancel, initialData }: AddMotorc
     </>
   );
 }
-
-    

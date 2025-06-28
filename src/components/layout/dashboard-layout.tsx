@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image"; 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -19,18 +19,23 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListFilter, Users, BarChart3, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LayoutDashboard, ListFilter, Users, BarChart3, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, TrendingUp, LogOut, User, Settings, DollarSign } from "lucide-react";
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
+import { useAuth } from '@/context/AuthContext';
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
   { href: "/motorcycles", label: "Gestão de Motos", subLabel: "Frota completa", icon: ListFilter },
+  { href: "/projecao-motos", label: "Projeção de Crescimento", subLabel: "Meta 1.000 motos", icon: TrendingUp },
   { href: "/rastreadores", label: "Rastreadores", subLabel: "Nossos rastreadores", icon: MapPin },
   { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
+  { href: "/financeiro", label: "Financeiro", subLabel: "Receitas e análises", icon: DollarSign },
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
-  { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: Users }, 
+  { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: BarChart3 },
   { href: "/indicadores", label: "Indicadores", subLabel: "Principais métricas", icon: TrendingUp },
 ];
 
@@ -46,9 +51,28 @@ const initialStatusRapidoItems: StatusRapidoItemType[] = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
   const [dynamicStatusRapidoItems, setDynamicStatusRapidoItems] = useState<StatusRapidoItemType[]>(initialStatusRapidoItems);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
+
+  const getUserInitials = (name: string | null) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   useEffect(() => {
     setIsLoadingStatus(true);
@@ -99,10 +123,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const counts: Record<MotorcycleStatus, number> = {
       active: 0,
       alugada: 0,
-      inadimplente: 0, 
+      inadimplente: 0,
       manutencao: 0,
       recolhida: 0,
       relocada: 0,
+      indisponivel_rastreador: 0,
+      indisponivel_emplacamento: 0,
     };
 
     representativeMotorcycles.forEach(moto => {
@@ -189,18 +215,45 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </SidebarContent>
         <SidebarFooter className="p-4 mt-auto">
           <SidebarSeparator className="my-2 bg-sidebar-border" />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="letter A" />
-                <AvatarFallback>A</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium text-sidebar-foreground">Admin</p>
-                <p className="text-xs text-sidebar-foreground/80">Salvador - BA</p>
-              </div>
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="w-full justify-start p-2 h-auto hover:bg-sidebar-accent">
+                <div className="flex items-center gap-2 w-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'Usuário'} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getUserInitials(user?.displayName || user?.email || 'U')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">
+                      {user?.displayName || 'Usuário'}
+                    </p>
+                    <p className="text-xs text-sidebar-foreground/80 truncate">
+                      {user?.email || 'Salvador - BA'}
+                    </p>
+                  </div>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>Perfil</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Configurações</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sair</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>

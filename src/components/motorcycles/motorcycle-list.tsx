@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, QrCode, Eye, Edit, Trash2, CheckCircle, XCircle, Bike, Wrench } from 'lucide-react';
+import { MoreHorizontal, QrCode, Eye, Edit, Trash2, CheckCircle, XCircle, Bike, Wrench, Play, Pause } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MotorcyclePageFilters } from '@/app/motorcycles/page';
 import { differenceInCalendarDays, parseISO, isValid as dateIsValid } from 'date-fns';
+import { calculateCorrectIdleDays } from '@/lib/firebase/motorcycleService';
 
 const getStatusBadgeVariant = (status?: MotorcycleStatus) => {
   if (!status) return 'outline';
@@ -33,6 +34,8 @@ const getStatusBadgeVariant = (status?: MotorcycleStatus) => {
     case 'manutencao': return 'secondary';
     case 'recolhida': return 'outline';
     case 'relocada': return 'default';
+    case 'indisponivel_rastreador': return 'destructive';
+    case 'indisponivel_emplacamento': return 'destructive';
     default: return 'outline';
   }
 };
@@ -46,6 +49,8 @@ const getStatusBadgeClassName = (status?: MotorcycleStatus) => {
     case 'manutencao': return 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500';
     case 'recolhida': return 'bg-gray-500 hover:bg-gray-600 text-white border-gray-500';
     case 'relocada': return 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500';
+    case 'indisponivel_rastreador': return 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500';
+    case 'indisponivel_emplacamento': return 'bg-purple-500 hover:bg-purple-600 text-white border-purple-500';
     default: return 'bg-gray-200 text-gray-700 border-gray-400';
   }
 }
@@ -60,6 +65,8 @@ const translateStatus = (status?: MotorcycleStatus): string => {
     case 'manutencao': return 'Manutenção';
     case 'recolhida': return 'Recolhida';
     case 'relocada': return 'Relocada';
+    case 'indisponivel_rastreador': return 'Indisponível Rastreador';
+    case 'indisponivel_emplacamento': return 'Indisponível Emplacamento';
     default:
       const s = status as string;
       return s.charAt(0).toUpperCase() + s.slice(1);
@@ -72,9 +79,10 @@ interface MotorcycleListProps {
   onUpdateStatus: (motorcycleId: string, newStatus: MotorcycleStatus) => void;
   onDeleteMotorcycle: (motorcycleId: string) => void;
   onEditMotorcycle: (motorcycle: Motorcycle) => void;
+  onPauseIdleCount: (motorcycle: Motorcycle) => void;
 }
 
-export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteMotorcycle, onEditMotorcycle }: MotorcycleListProps) {
+export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteMotorcycle, onEditMotorcycle, onPauseIdleCount }: MotorcycleListProps) {
   const [clientMounted, setClientMounted] = useState(false);
   useEffect(() => {
     setClientMounted(true);
@@ -85,7 +93,7 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
       const statusMatch = filters.status === 'all' || moto.status === filters.status;
       const modelMatch = filters.model === 'all' || (moto.model || '').toLowerCase().includes(filters.model.toLowerCase());
       const searchTermMatch = filters.searchTerm === '' ||
-        moto.placa.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        (moto.placa || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
         (moto.franqueado || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
         (moto.model || '').toLowerCase().includes(filters.searchTerm.toLowerCase());
 
@@ -118,7 +126,7 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
               <TableHead>Status</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Franqueado</TableHead>
-              <TableHead>Valor Diária</TableHead>
+              <TableHead>Valor Semanal</TableHead>
               <TableHead>Últ. Movimento</TableHead>
               <TableHead>Ociosa (Dias)</TableHead>
               <TableHead>Ações</TableHead>
@@ -133,25 +141,8 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
               </TableRow>
             ) : (
               filteredMotorcycles.map((moto) => {
-                let daysIdle: string | number = 'N/A';
-                if (moto.status === 'manutencao' || moto.status === 'active') {
-                  if (moto.data_ultima_mov) {
-                    try {
-                      const lastMoveDate = parseISO(moto.data_ultima_mov);
-                      if (dateIsValid(lastMoveDate)) {
-                        const today = new Date();
-                        // Garante que as datas sejam comparadas sem a parte do horário, para evitar resultados parciais
-                        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                        const lastMoveDateMidnight = new Date(lastMoveDate.getFullYear(), lastMoveDate.getMonth(), lastMoveDate.getDate());
-                        
-                        daysIdle = differenceInCalendarDays(todayMidnight, lastMoveDateMidnight);
-                        if (daysIdle < 0) daysIdle = 0; // Se a data for futura por algum motivo, considerar 0 dias.
-                      }
-                    } catch (error) {
-                      console.error("Error parsing data_ultima_mov for idle calculation:", moto.data_ultima_mov, error);
-                    }
-                  }
-                }
+                // Usar a nova função que considera o histórico de movimentações
+                const daysIdle = calculateCorrectIdleDays(motorcycles, moto);
 
                 return (
                   <TableRow key={moto.id}>
@@ -175,10 +166,12 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
                     <TableCell className="capitalize">{moto.type ? (moto.type === 'nova' ? 'Nova' : 'Usada') : 'N/Definido'}</TableCell>
                     <TableCell>{moto.franqueado || 'N/Definido'}</TableCell>
                     <TableCell>
-                      {moto.valorDiaria ? `R$ ${moto.valorDiaria.toFixed(2).replace('.', ',')}` : 'N/A'}
+                      {moto.valorSemanal ? `R$ ${moto.valorSemanal.toFixed(2).replace('.', ',')}` : 'N/A'}
                     </TableCell>
                     <TableCell>{moto.data_ultima_mov ? new Date(moto.data_ultima_mov + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/A'}</TableCell>
-                    <TableCell>{daysIdle}</TableCell>
+                    <TableCell>
+                      {daysIdle === 'Pausado' ? <Badge variant="secondary">Pausado</Badge> : daysIdle}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -193,6 +186,18 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
                           <DropdownMenuItem onClick={() => onEditMotorcycle(moto)}>
                             <Edit className="mr-2 h-4 w-4" /> Editar
                           </DropdownMenuItem>
+                          
+                          {moto.status === 'manutencao' || moto.status === 'active' ? (
+                            <DropdownMenuItem onClick={() => onPauseIdleCount(moto)}>
+                              {moto.contagemPausada ? (
+                                <Play className="mr-2 h-4 w-4 text-green-500" />
+                              ) : (
+                                <Pause className="mr-2 h-4 w-4 text-yellow-500" />
+                              )}
+                              {moto.contagemPausada ? 'Retomar Contagem' : 'Parar Contagem'}
+                            </DropdownMenuItem>
+                          ) : null}
+
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'active')}>
                             <CheckCircle className="mr-2 h-4 w-4 text-green-500" /> Marcar como Disponível
@@ -208,6 +213,12 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'manutencao')}>
                             <Wrench className="mr-2 h-4 w-4 text-yellow-500" /> Marcar para Manutenção
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'indisponivel_rastreador')}>
+                            <XCircle className="mr-2 h-4 w-4 text-orange-500" /> Indisponível Rastreador
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'indisponivel_emplacamento')}>
+                            <XCircle className="mr-2 h-4 w-4 text-purple-500" /> Indisponível Emplacamento
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -229,4 +240,3 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
     </div>
   );
 }
-

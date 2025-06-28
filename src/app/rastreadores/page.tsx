@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { RastreadoresList } from "@/components/rastreadores/rastreadores-list";
 import { Button } from "@/components/ui/button";
-import { Upload, Edit3, Trash2 } from "lucide-react"; // Adicionando ícones para editar/excluir
+import { Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   addRastreador, 
@@ -25,11 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RastreadorFilters, RastreadorFiltersState } from "@/components/rastreadores/rastreador-filters";
 
-
-// Define a interface para os dados do rastreador, incluindo um ID opcional.
 interface RastreadorData {
-  id?: string; // ID é opcional, pois não existe ao criar um novo
+  id?: string;
   cnpj: string;
   empresa: string;
   franqueado: string;
@@ -41,10 +40,6 @@ interface RastreadorData {
   mes: string;
   valor: string;
 }
-
-// Interface para o formulário de edição/adição, onde o ID é necessário para edição.
-interface EditRastreadorFormData extends RastreadorData {}
-
 
 export default function RastreadoresPage() {
   const { toast } = useToast();
@@ -59,18 +54,47 @@ export default function RastreadoresPage() {
     rastreador: "", tipo: "", moto: "", mes: "", valor: "",
   });
 
+  const [filters, setFilters] = useState<RastreadorFiltersState>({
+    searchTerm: '',
+    status: 'all',
+    franqueado: 'all',
+  });
+
   useEffect(() => {
     setIsLoading(true);
     const unsubscribe = subscribeToRastreadores((dataFromDB) => {
-      if (Array.isArray(dataFromDB)) {
-        setRastreadoresData(dataFromDB as RastreadorData[]);
-      } else {
-        console.warn("Data from subscribeToRastreadores was not an array:", dataFromDB);
-        setRastreadoresData([]);
-      }
+      setRastreadoresData(Array.isArray(dataFromDB) ? (dataFromDB as RastreadorData[]) : []);
       setIsLoading(false);
     });
     return () => unsubscribe();
+  }, []);
+
+  const franqueadosUnicos = useMemo(() => {
+    const franqueadoSet = new Set(rastreadoresData.map(r => r.franqueado).filter(Boolean));
+    return Array.from(franqueadoSet);
+  }, [rastreadoresData]);
+
+  const filteredRastreadores = useMemo(() => {
+    return rastreadoresData.filter(r => {
+      const searchTermLower = filters.searchTerm.toLowerCase();
+      const searchMatch = !filters.searchTerm ||
+        r.placa?.toLowerCase().includes(searchTermLower) ||
+        r.rastreador?.toLowerCase().includes(searchTermLower) ||
+        r.chassi?.toLowerCase().includes(searchTermLower);
+      
+      const statusMatch = filters.status === 'all' || r.tipo?.toLowerCase() === filters.status;
+      const franqueadoMatch = filters.franqueado === 'all' || r.franqueado === filters.franqueado;
+
+      return searchMatch && statusMatch && franqueadoMatch;
+    });
+  }, [rastreadoresData, filters]);
+
+  const handleFilterChange = useCallback((newFilters: RastreadorFiltersState) => {
+    setFilters(newFilters);
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({ searchTerm: '', status: 'all', franqueado: 'all' });
   }, []);
 
   const handleOpenAddModal = () => {
@@ -84,7 +108,7 @@ export default function RastreadoresPage() {
 
   const handleOpenEditModal = (rastreador: RastreadorData) => {
     setEditingRastreador(rastreador);
-    setCurrentFormData({ ...rastreador }); // Popula o formulário com dados existentes
+    setCurrentFormData({ ...rastreador });
     setIsFormModalOpen(true);
   };
   
@@ -101,7 +125,7 @@ export default function RastreadoresPage() {
   const handleSaveRastreador = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      if (editingRastreador && editingRastreador.id) {
+      if (editingRastreador?.id) {
         await updateRastreadorInDB(editingRastreador.id, currentFormData);
         toast({ title: "Sucesso!", description: "Rastreador atualizado." });
       } else {
@@ -115,10 +139,7 @@ export default function RastreadoresPage() {
   };
 
   const handleDeleteRastreador = async (id: string) => {
-    if (!id) {
-      toast({ title: "Erro", description: "ID do rastreador inválido.", variant: "destructive" });
-      return;
-    }
+    if (!id) return;
     try {
       await deleteRastreadorFromDB(id);
       toast({ title: "Sucesso!", description: "Rastreador excluído.", variant: "destructive" });
@@ -127,18 +148,11 @@ export default function RastreadoresPage() {
     }
   };
 
-
   const parseCSV = (csvText: string): Omit<RastreadorData, 'id'>[] => {
-    let cleanedCsvText = csvText;
-    if (cleanedCsvText.charCodeAt(0) === 0xFEFF) { 
-      cleanedCsvText = cleanedCsvText.substring(1);
-    }
+    let cleanedCsvText = csvText.charCodeAt(0) === 0xFEFF ? csvText.substring(1) : csvText;
+    const lines = cleanedCsvText.trim().split().map(line => line.trim()).filter(line => line);
 
-    const lines = cleanedCsvText.trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line);
-
-    if (lines.length < 2) {
-      throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
-    }
+    if (lines.length < 2) throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
 
     const parseCsvLine = (line: string): string[] => {
       const result: string[] = [];
@@ -146,67 +160,51 @@ export default function RastreadoresPage() {
       let inQuotes = false;
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        if (char === '"') {
-          if (inQuotes && i + 1 < line.length && line[i+1] === '"') { 
-            currentField += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ';' && !inQuotes) { 
+        if (char === '"') inQuotes = !inQuotes;
+        else if (char === ',' && !inQuotes) {
           result.push(currentField.trim());
           currentField = '';
-        } else {
-          currentField += char;
-        }
+        } else currentField += char;
       }
       result.push(currentField.trim());
       return result;
     };
     
-    const parsedHeaders = parseCsvLine(lines[0]).map(h => normalizeHeader(h));
+    const headers = parseCsvLine(lines[0]).map(h => normalizeHeader(h));
     const requiredHeaders = ["cnpj", "empresa", "franqueado", "chassi", "placa", "rastreador", "tipo", "moto", "mes", "valor"];
     
-    if (parsedHeaders.length !== requiredHeaders.length) {
-      throw new Error(
-        `CSV inválido: Número incorreto de colunas no cabeçalho. Esperado: ${requiredHeaders.length}, Encontrado: ${parsedHeaders.length}. Cabeçalhos detectados (normalizados): ${parsedHeaders.join(' | ')}`
-      );
-    }
-
     for (const reqHeader of requiredHeaders) {
-      if (!parsedHeaders.includes(reqHeader)) {
-        throw new Error(`CSV inválido: O cabeçalho obrigatório "${reqHeader}" não foi encontrado. Cabeçalhos detectados (normalizados): ${parsedHeaders.join(' | ')}`);
+      if (!headers.includes(reqHeader)) {
+        throw new Error(`CSV inválido: O cabeçalho obrigatório "${reqHeader}" não foi encontrado. Cabeçalhos detectados: ${headers.join(' | ')}`);
       }
     }
 
-    const rastreadoresArray: Omit<RastreadorData, 'id'>[] = [];
-    const headerIndexMap: { [key: string]: number } = {};
-    requiredHeaders.forEach(reqHeader => {
-      const index = parsedHeaders.indexOf(reqHeader);
-      headerIndexMap[reqHeader] = index;
-    });
+    const headerIndexMap = requiredHeaders.reduce((acc, reqHeader) => {
+      acc[reqHeader] = headers.indexOf(reqHeader);
+      return acc;
+    }, {} as { [key: string]: number });
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCsvLine(lines[i]);
-      if (values.length !== parsedHeaders.length) {
-        console.warn(`Linha ${i+1} do CSV ignorada: número de colunas (${values.length}) não corresponde ao cabeçalho (${parsedHeaders.length}). Conteúdo: ${lines[i]}`);
-        continue; 
+    return lines.slice(1).map((line, i) => {
+      const values = parseCsvLine(line);
+      if (values.length !== headers.length) {
+        console.warn(`Linha ${i+2} do CSV ignorada: número de colunas não corresponde ao cabeçalho.`);
+        return null;
       }
-      
-      const entry: Partial<RastreadorData> = {};
-      requiredHeaders.forEach(reqHeader => {
-        const index = headerIndexMap[reqHeader];
-        (entry as any)[reqHeader] = values[index] !== undefined ? values[index] : "";
-      });
       
       const rastreadorEntry: Omit<RastreadorData, 'id'> = {
-        cnpj: entry.cnpj || "", empresa: entry.empresa || "", franqueado: entry.franqueado || "",
-        chassi: entry.chassi || "", placa: entry.placa || "", rastreador: entry.rastreador || "",
-        tipo: entry.tipo || "", moto: entry.moto || "", mes: entry.mes || "", valor: entry.valor || "",
+        cnpj: values[headerIndexMap["cnpj"]] || "",
+        empresa: values[headerIndexMap["empresa"]] || "",
+        franqueado: values[headerIndexMap["franqueado"]] || "",
+        chassi: values[headerIndexMap["chassi"]] || "",
+        placa: values[headerIndexMap["placa"]] || "",
+        rastreador: values[headerIndexMap["rastreador"]] || "",
+        tipo: values[headerIndexMap["tipo"]] || "",
+        moto: values[headerIndexMap["moto"]] || "",
+        mes: values[headerIndexMap["mes"]] || "",
+        valor: values[headerIndexMap["valor"]] || "",
       };
-      rastreadoresArray.push(rastreadorEntry);
-    }
-    return rastreadoresArray;
+      return rastreadorEntry;
+    }).filter((r): r is Omit<RastreadorData, 'id'> => r !== null);
   };
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,34 +215,33 @@ export default function RastreadoresPage() {
     reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) {
-        toast({ title: "Erro ao ler arquivo", variant: "destructive", description: "Não foi possível ler o conteúdo do arquivo." });
+        toast({ title: "Erro", description: "Não foi possível ler o arquivo.", variant: "destructive" });
         return;
       }
       
       try {
         const parsedData = parseCSV(text);
         if (parsedData.length === 0) {
-          toast({ title: "Nenhum dado para importar", variant: "destructive", description: "O arquivo CSV estava vazio ou não continha linhas de dados válidas." });
+          toast({ title: "Aviso", description: "Nenhum dado válido para importar.", variant: "destructive" });
           return;
         }
 
-        for (const rastreadorData of parsedData) {
-          await addRastreador(rastreadorData); // addRastreador não retorna ID aqui, mas o onSnapshot atualizará
+        for (const data of parsedData) {
+            await addRastreador(data);
         }
         
-        toast({ title: "Importação Concluída", description: `${parsedData.length} rastreadores importados com sucesso.` });
+        toast({ title: "Sucesso!", description: `${parsedData.length} rastreadores importados.` });
       } catch (error: any) {
-        console.error("Erro ao importar CSV:", error);
-        toast({ title: "Erro na Importação", description: error.message || "Não foi possível processar o arquivo.", variant: "destructive" });
+        toast({ title: "Erro na Importação", description: error.message, variant: "destructive" });
       } finally {
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     };
     reader.onerror = () => {
-        toast({ title: "Erro ao tentar ler o arquivo.", variant: "destructive" });
+        toast({ title: "Erro", description: "Falha ao ler o arquivo.", variant: "destructive" });
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
   }, [toast]);
 
   const handleImportClick = () => fileInputRef.current?.click();
@@ -252,57 +249,49 @@ export default function RastreadoresPage() {
   const pageActions = (
     <>
       <Button variant="outline" onClick={handleImportClick}>
-        <Upload className="mr-2 h-4 w-4" />
-        Importar CSV
+        <Upload className="mr-2 h-4 w-4" /> Importar CSV
       </Button>
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".csv,text/csv" className="hidden" />
-      <Button onClick={handleOpenAddModal}>
-        Adicionar Rastreador
-      </Button>
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".csv" hidden />
+      <Button onClick={handleOpenAddModal}>Adicionar Rastreador</Button>
+      {(filters.searchTerm || filters.status !== 'all' || filters.franqueado !== 'all') && (
+        <Button variant="ghost" onClick={handleClearFilters}>
+          <X className="mr-2 h-4 w-4" /> Limpar Filtros
+        </Button>
+      )}
     </>
   );
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Gestão de Rastreadores"
-        description="Visualize e gerencie os rastreadores da sua frota."
-        actions={pageActions}
+      <PageHeader title="Gestão de Rastreadores" description="Visualize e gerencie os rastreadores." actions={pageActions} />
+      <RastreadorFilters 
+        onFilterChange={handleFilterChange}
+        initialFilters={filters}
+        franqueados={franqueadosUnicos}
       />
-      <div className="space-y-8">
-        <RastreadoresList
-          rastreadores={rastreadoresData}
-          onEditRastreador={handleOpenEditModal} // Passa a função de abrir modal de edição
-          onDeleteRastreador={handleDeleteRastreador} // Passa a função de exclusão
-          isLoading={isLoading}
-        />
-      </div>
-
-      <Dialog open={isFormModalOpen} onOpenChange={(isOpen) => { if (!isOpen) handleCloseFormModal(); else setIsFormModalOpen(true); }}>
+      <RastreadoresList
+        rastreadores={filteredRastreadores}
+        onEditRastreador={handleOpenEditModal}
+        onDeleteRastreador={handleDeleteRastreador}
+        isLoading={isLoading}
+      />
+      <Dialog open={isFormModalOpen} onOpenChange={setIsFormModalOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingRastreador ? "Editar Rastreador" : "Adicionar Novo Rastreador"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSaveRastreador}>
-            <div className="grid gap-4 py-4">
-              {/* Campos do formulário reutilizados */}
-              {(Object.keys(currentFormData) as Array<keyof Omit<RastreadorData, 'id'>>).map((key) => (
-                <div className="grid grid-cols-4 items-center gap-4" key={key}>
-                  <Label htmlFor={key} className="text-right capitalize">{key.replace(/_/g, ' ')}</Label>
-                  <Input id={key} value={currentFormData[key]} onChange={handleFormInputChange} className="col-span-3" />
-                </div>
-              ))}
-            </div>
+          <DialogHeader><DialogTitle>{editingRastreador ? "Editar" : "Adicionar"} Rastreador</DialogTitle></DialogHeader>
+          <form onSubmit={handleSaveRastreador} className="space-y-4">
+            {Object.keys(currentFormData).map((key) => (
+              <div key={key} className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor={key} className="text-right capitalize">{key}</Label>
+                <Input id={key} value={(currentFormData as any)[key]} onChange={handleFormInputChange} className="col-span-3" />
+              </div>
+            ))}
             <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline" onClick={handleCloseFormModal}>Cancelar</Button>
-              </DialogClose>
-              <Button type="submit">{editingRastreador ? "Salvar Alterações" : "Salvar Rastreador"}</Button>
+              <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+              <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
     </DashboardLayout>
   );
 }

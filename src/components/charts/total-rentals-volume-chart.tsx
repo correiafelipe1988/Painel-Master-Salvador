@@ -1,67 +1,39 @@
 
-"use client"
+"use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts"
-import type { ChartDataPoint } from "@/lib/types";
-import { ChartContainer, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 
-const chartConfig = {
-  count: {
-    label: "Locações Total",
-    color: "hsl(var(--chart-5))", // New Green (Teal-ish)
-  },
-} satisfies ChartConfig;
-
-interface MonthlyChartDataPoint extends Omit<ChartDataPoint, 'date'> {
+interface ChartDataPoint {
   month: string;
+  count: number;
 }
 
-export function TotalRentalsVolumeChart({ data }: { data: MonthlyChartDataPoint[] | null }) {
-  if (!data || data.length === 0) {
+interface TotalRentalsVolumeChartProps {
+  data: ChartDataPoint[] | null;
+}
+
+export function TotalRentalsVolumeChart({ data }: TotalRentalsVolumeChartProps) {
+  if (!data || data.every(d => d.count === 0)) {
     return (
-      <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
-        Carregando dados do gráfico...
+      <div className="flex justify-center items-center h-[350px]">
+        <p className="text-muted-foreground">Não há dados de locações para exibir.</p>
       </div>
     );
   }
 
   return (
-    <div className="h-[300px] w-full">
-      <ChartContainer config={chartConfig} className="h-full w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 10, left: -25, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-            <XAxis
-              dataKey="month"
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={10}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={10}
-              axisLine={false}
-              tickLine={false}
-              tickCount={5}
-              domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.1) +1, 5)]}
-              allowDecimals={false}
-            />
-            <Tooltip
-              cursor={{ fill: 'hsl(var(--accent) / 0.1)' }}
-              content={<ChartTooltipContent indicator="dot" />}
-            />
-            <Bar dataKey="count" nameKey="Locações Total" fill="var(--color-count)" radius={[2, 2, 0, 0]} barSize={12}>
-              <LabelList 
-                dataKey="count" 
-                position="top" 
-                style={{ fontSize: '10px', fill: 'hsl(var(--foreground))' }} 
-                formatter={(value: number) => value > 0 ? value : null} 
-              />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartContainer>
-    </div>
-  )
+    <ResponsiveContainer width="100%" height={350}>
+      <BarChart data={data} margin={{ top: 30, right: 0, left: 0, bottom: 0 }}>
+        <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+        <Tooltip
+          cursor={{ fill: 'rgba(128, 128, 128, 0.1)' }}
+          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', border: '1px solid #ccc', borderRadius: '5px' }}
+        />
+        <Bar dataKey="count" name="Total de Locações" fill="hsl(221.2 83.2% 53.3%)" radius={[4, 4, 0, 0]}>
+          <LabelList dataKey="count" position="top" style={{ fontSize: '12px', fill: 'hsl(221.2 83.2% 53.3%)' }} />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
 }
