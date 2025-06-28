@@ -75,15 +75,17 @@ src/
 
 #### Configuração do Firebase:
 
-As credenciais já estão configuradas no `.env.local`:
+As credenciais devem ser configuradas no `.env.local`:
 ```env
-NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSyDAEFPM3dtK7t9IptEFLjoA3cP6LS-pR0g"
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="motosight-dashboard.firebaseapp.com"
-NEXT_PUBLIC_FIREBASE_PROJECT_ID="motosight-dashboard"
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="motosight-dashboard.appspot.com"
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="688385251268"
-NEXT_PUBLIC_FIREBASE_APP_ID="1:688385251268:web:03e7f6389dc07d6ab47691"
+NEXT_PUBLIC_FIREBASE_API_KEY="sua_api_key_aqui"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="seu_projeto.firebaseapp.com"
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="seu_projeto_id"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="seu_projeto.appspot.com"
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="seu_sender_id"
+NEXT_PUBLIC_FIREBASE_APP_ID="seu_app_id"
 ```
+
+**⚠️ IMPORTANTE**: Nunca exponha suas credenciais reais em arquivos de documentação!
 
 #### Regras do Firestore:
 
