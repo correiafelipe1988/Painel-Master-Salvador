@@ -49,6 +49,15 @@ const motorcycleTypeOptions: { value: MotorcycleType; label: string }[] = [
   { value: 'usada', label: 'Usada' },
 ];
 
+const motorcycleModelOptions = [
+  { value: 'SHINERAY SHI 175 CARBURADA', label: 'SHINERAY SHI 175 CARBURADA' },
+  { value: 'SHINERAY SHI 175 INJETADA', label: 'SHINERAY SHI 175 INJETADA' },
+  { value: 'DAFRA NH190', label: 'DAFRA NH190' },
+  { value: 'HAOJUE DK 150', label: 'HAOJUE DK 150' },
+  { value: 'HAOJUE DK160', label: 'HAOJUE DK160' },
+  { value: 'SHINERAY XY150', label: 'SHINERAY XY150' },
+];
+
 const formSchema = z.object({
   placa: z.string().min(7, "A placa deve ter pelo menos 7 caracteres.").max(8, "A placa deve ter no máximo 8 caracteres.").regex(/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/, "Formato de placa inválido (Ex: AAA1B23)."),
   model: z.string().optional(),
@@ -157,9 +166,18 @@ export function AddMotorcycleForm({ onSubmit, onCancel, initialData }: AddMotorc
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Modelo</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Honda Pop 110i" {...field} value={field.value || ''} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o modelo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {motorcycleModelOptions.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

@@ -88,20 +88,12 @@ export function FinancialKpiCards({ kpis, isLoading = false }: FinancialKpiCards
       bgColor: "bg-teal-100",
     },
     {
-      title: "Crescimento da Receita",
-      value: kpis.revenueGrowth !== 0 ? formatPercentage(kpis.revenueGrowth) : "N/A",
-      description: "Comparado ao período anterior",
-      icon: kpis.revenueGrowth >= 0 ? TrendingUp : TrendingDown,
-      color: kpis.revenueGrowth >= 0 ? "text-green-600" : "text-red-600",
-      bgColor: kpis.revenueGrowth >= 0 ? "bg-green-100" : "bg-red-100",
-      badge: kpis.revenueGrowth !== 0 ? (
-        <Badge 
-          variant={kpis.revenueGrowth >= 0 ? "default" : "destructive"}
-          className="ml-2"
-        >
-          {kpis.revenueGrowth >= 0 ? "↗" : "↘"}
-        </Badge>
-      ) : null,
+      title: "Receita Líquida por Moto",
+      value: formatCurrency(kpis.receitaLiquidaPorMoto),
+      description: "Valor real baseado no DRE",
+      icon: Calculator,
+      color: "text-green-600",
+      bgColor: "bg-green-100",
     },
   ];
 
@@ -122,7 +114,7 @@ export function FinancialKpiCards({ kpis, isLoading = false }: FinancialKpiCards
               <div className={cn("text-2xl font-bold", kpi.color)}>
                 {kpi.value}
               </div>
-              {kpi.badge}
+              {index === 6 ? null : ('badge' in kpi ? kpi.badge as React.ReactNode : null)}
             </div>
             <CardDescription className="text-xs text-muted-foreground mt-1">
               {kpi.description}

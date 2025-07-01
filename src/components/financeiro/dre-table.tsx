@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, TrendingUp, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FileText, TrendingUp, TrendingDown, Info } from "lucide-react";
 import type { Motorcycle } from "@/lib/types";
 import { calculateFranchiseeRevenue } from "@/lib/firebase/financialService";
 
@@ -18,11 +19,31 @@ interface MonthlyDREData {
   month: string;
   monthNumber: number;
   receita: number;
-  custos: number;
-  despesas: number;
-  impostos: number;
+  receitasNaoOperacionais: {
+    caucao: number;
+    juros: number;
+    cobrancaLocatario: number;
+    total: number;
+  };
+  receitaBruta: number;
+  tributosReceitas: {
+    simplesNacional: number;
+    total: number;
+  };
+  custosOperacionais: {
+    seguroRastreador: number;
+    manutencao: number;
+    taxaEspaco: number;
+    royalties: number;
+    ipvaTaxas: number;
+    fundoMarketing: number;
+    sistemaGestao: number;
+    honorariosContabeis: number;
+    total: number;
+  };
   lucroLiquido: number;
   margemLiquida: number;
+  receitaLiquidaPorMoto: number;
 }
 
 const months = [
@@ -47,6 +68,7 @@ const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
 export function DRETable({ motorcycles, selectedYear }: DRETableProps) {
   const [selectedFranchisee, setSelectedFranchisee] = useState<string>("all");
+  const [showRules, setShowRules] = useState<boolean>(false);
 
   // Obter lista de franqueados únicos
   const franchisees = useMemo(() => {
@@ -112,22 +134,105 @@ export function DRETable({ motorcycles, selectedYear }: DRETableProps) {
       const franchiseeRevenues = calculateFranchiseeRevenue(filteredMotorcycles, year, month);
       const receita = franchiseeRevenues.reduce((sum, fr) => sum + fr.weeklyRevenue, 0) * 4.33; // Converter para mensal
 
-      // Por enquanto, custos/despesas/impostos são 0 (serão definidos posteriormente)
-      const custos = 0;
-      const despesas = 0;
-      const impostos = 0;
-      const lucroLiquido = receita - custos - despesas - impostos;
-      const margemLiquida = receita > 0 ? (lucroLiquido / receita) * 100 : 0;
+      // Contar total de motos do franqueado (para taxas fixas)
+      const totalMotorcyclesByFranchisee = selectedFranchisee !== "all"
+        ? motorcycles.filter(moto => moto.franqueado?.trim() === selectedFranchisee).length
+        : motorcycles.length;
+
+      // Contar motos alugadas e relocadas especificamente neste mês (para cálculo de caução)
+      const rentedMotorcycles = filteredMotorcycles.filter(moto => {
+        if (moto.status !== 'alugada' || !moto.data_ultima_mov) return false;
+        
+        try {
+          const motoDate = new Date(moto.data_ultima_mov);
+          const motoYear = motoDate.getFullYear();
+          const motoMonth = motoDate.getMonth() + 1;
+          
+          // Só contar se foi alugada especificamente neste mês
+          return motoYear === year && motoMonth === month;
+        } catch {
+          return false;
+        }
+      }).length;
+
+      const relocatedMotorcycles = filteredMotorcycles.filter(moto => {
+        if (moto.status !== 'relocada' || !moto.data_ultima_mov) return false;
+        
+        try {
+          const motoDate = new Date(moto.data_ultima_mov);
+          const motoYear = motoDate.getFullYear();
+          const motoMonth = motoDate.getMonth() + 1;
+          
+          // Só contar se foi relocada especificamente neste mês
+          return motoYear === year && motoMonth === month;
+        } catch {
+          return false;
+        }
+      }).length;
+
+      // Verificar se há receita no mês (indica que franqueado iniciou operação)
+      const hasRevenue = receita > 0;
+
+      // Custos/Despesas Operacionais (só cobrar se há receita)
+      // Contar placas únicas para evitar duplicatas
+      const uniquePlates = new Set(filteredMotorcycles.map(moto => moto.placa));
+      const motorcyclesInMonth = uniquePlates.size; // Quantidade de motos únicas do franqueado no mês específico
+
+      // Receitas Não Operacionais
+      const caucao = (rentedMotorcycles * 700) + (relocatedMotorcycles * 400); // R$ 700 por moto alugada + R$ 400 por moto relocada
+      const juros = hasRevenue ? Math.floor(motorcyclesInMonth / 10) * 212 : 0; // R$ 212 a cada 10 motos no mês (só se há receita)
+      const receitasNaoOperacionais = {
+        caucao,
+        juros,
+        cobrancaLocatario: 0, // Removido conforme solicitação
+        total: caucao + juros
+      };
+
+      // Tributos sobre Receitas
+      const receitaTotal = receita + receitasNaoOperacionais.total;
+      const simplesNacional = receitaTotal * 0.07; // 7% sobre receita bruta
+      const tributosReceitas = {
+        simplesNacional,
+        total: simplesNacional
+      };
+      const seguroRastreador = hasRevenue ? motorcyclesInMonth * 139.90 : 0; // R$ 139,90 por moto no mês (só se há receita)
+      const manutencao = 0; // Será puxado de outra base de dados
+      const taxaEspaco = hasRevenue ? motorcyclesInMonth * 250 : 0; // R$ 250 por moto no mês (só se há receita)
+      const royalties = receita * 0.05; // 5% sobre receita operacional
+      const ipvaTaxas = 0; // Conforme exemplo
+      const fundoMarketing = hasRevenue ? 300 : 0; // R$ 300 fixo por franqueado (só se há receita)
+      const sistemaGestao = hasRevenue ? 80 : 0; // R$ 80 fixo por franqueado (só se há receita)
+      const honorariosContabeis = hasRevenue ? 600 : 0; // R$ 600 fixo por franqueado (só se há receita)
+
+      const custosOperacionais = {
+        seguroRastreador,
+        manutencao,
+        taxaEspaco,
+        royalties,
+        ipvaTaxas,
+        fundoMarketing,
+        sistemaGestao,
+        honorariosContabeis,
+        total: seguroRastreador + manutencao + taxaEspaco + royalties + ipvaTaxas +
+               fundoMarketing + sistemaGestao + honorariosContabeis
+      };
+
+      const receitaBruta = receita + receitasNaoOperacionais.total;
+      const lucroLiquido = receitaTotal - tributosReceitas.total - custosOperacionais.total;
+      const margemLiquida = receitaTotal > 0 ? (lucroLiquido / receitaTotal) * 100 : 0;
+      const receitaLiquidaPorMoto = motorcyclesInMonth > 0 ? lucroLiquido / motorcyclesInMonth : 0;
 
       monthlyData.push({
         month: months[month - 1].short,
         monthNumber: month,
         receita,
-        custos,
-        despesas,
-        impostos,
+        receitasNaoOperacionais,
+        receitaBruta,
+        tributosReceitas,
+        custosOperacionais,
         lucroLiquido,
-        margemLiquida
+        margemLiquida,
+        receitaLiquidaPorMoto
       });
     }
 
@@ -138,20 +243,23 @@ export function DRETable({ motorcycles, selectedYear }: DRETableProps) {
   const yearTotals = useMemo(() => {
     return dreData.reduce((totals, month) => ({
       receita: totals.receita + month.receita,
-      custos: totals.custos + month.custos,
-      despesas: totals.despesas + month.despesas,
-      impostos: totals.impostos + month.impostos,
+      receitasNaoOperacionais: totals.receitasNaoOperacionais + month.receitasNaoOperacionais.total,
+      receitaBruta: totals.receitaBruta + month.receitaBruta,
+      tributosReceitas: totals.tributosReceitas + month.tributosReceitas.total,
+      custosOperacionais: totals.custosOperacionais + month.custosOperacionais.total,
       lucroLiquido: totals.lucroLiquido + month.lucroLiquido,
     }), {
       receita: 0,
-      custos: 0,
-      despesas: 0,
-      impostos: 0,
+      receitasNaoOperacionais: 0,
+      receitaBruta: 0,
+      tributosReceitas: 0,
+      custosOperacionais: 0,
       lucroLiquido: 0,
     });
   }, [dreData]);
 
-  const yearMargemLiquida = yearTotals.receita > 0 ? (yearTotals.lucroLiquido / yearTotals.receita) * 100 : 0;
+  const yearReceitaTotal = yearTotals.receita + yearTotals.receitasNaoOperacionais;
+  const yearMargemLiquida = yearReceitaTotal > 0 ? (yearTotals.lucroLiquido / yearReceitaTotal) * 100 : 0;
 
   return (
     <Card>
@@ -199,10 +307,10 @@ export function DRETable({ motorcycles, selectedYear }: DRETableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Receita Bruta */}
+              {/* Receita Operacional */}
               <TableRow className="bg-green-50">
                 <TableCell className="font-semibold text-green-700">
-                  Receita Bruta
+                  Receita Operacional
                 </TableCell>
                 {dreData.map(month => (
                   <TableCell key={month.monthNumber} className="text-center text-green-700 font-medium">
@@ -214,48 +322,176 @@ export function DRETable({ motorcycles, selectedYear }: DRETableProps) {
                 </TableCell>
               </TableRow>
 
-              {/* Custos */}
-              <TableRow>
-                <TableCell className="font-semibold text-red-600">
-                  (-) Custos Diretos
+              {/* Receitas Não Operacionais */}
+              <TableRow className="bg-green-25">
+                <TableCell className="font-semibold text-green-600 pl-4">
+                  (+) Caução
                 </TableCell>
                 {dreData.map(month => (
-                  <TableCell key={month.monthNumber} className="text-center text-red-600">
-                    {formatCurrency(month.custos)}
+                  <TableCell key={month.monthNumber} className="text-center text-green-600">
+                    {formatCurrency(month.receitasNaoOperacionais.caucao)}
                   </TableCell>
                 ))}
-                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
-                  {formatCurrency(yearTotals.custos)}
+                <TableCell className="text-center font-bold text-green-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.receitasNaoOperacionais.caucao, 0))}
                 </TableCell>
               </TableRow>
 
-              {/* Despesas */}
-              <TableRow>
-                <TableCell className="font-semibold text-red-600">
-                  (-) Despesas Operacionais
+              <TableRow className="bg-green-25">
+                <TableCell className="font-semibold text-green-600 pl-4">
+                  (+) Juros
                 </TableCell>
                 {dreData.map(month => (
-                  <TableCell key={month.monthNumber} className="text-center text-red-600">
-                    {formatCurrency(month.despesas)}
+                  <TableCell key={month.monthNumber} className="text-center text-green-600">
+                    {formatCurrency(month.receitasNaoOperacionais.juros)}
                   </TableCell>
                 ))}
-                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
-                  {formatCurrency(yearTotals.despesas)}
+                <TableCell className="text-center font-bold text-green-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.receitasNaoOperacionais.juros, 0))}
                 </TableCell>
               </TableRow>
 
-              {/* Impostos */}
-              <TableRow>
+              {/* Receita Bruta */}
+              <TableRow className="bg-green-100 border-t-2 border-green-300">
+                <TableCell className="font-bold text-green-800">
+                  RECEITA BRUTA
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center font-bold text-green-800">
+                    {formatCurrency(month.receitaBruta)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-green-800 bg-green-200">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.receitaBruta, 0))}
+                </TableCell>
+              </TableRow>
+
+              {/* Tributos sobre Receitas */}
+              <TableRow className="bg-red-50">
                 <TableCell className="font-semibold text-red-600">
-                  (-) Impostos e Taxas
+                  (-) Simples Nacional
                 </TableCell>
                 {dreData.map(month => (
                   <TableCell key={month.monthNumber} className="text-center text-red-600">
-                    {formatCurrency(month.impostos)}
+                    {formatCurrency(month.tributosReceitas.simplesNacional)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-red-600 bg-red-100">
+                  {formatCurrency(yearTotals.tributosReceitas)}
+                </TableCell>
+              </TableRow>
+
+              {/* Custos/Despesas Operacionais */}
+              <TableRow className="bg-orange-50">
+                <TableCell className="font-semibold text-orange-700">
+                  CUSTOS/DESPESAS OPERACIONAIS
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-orange-700 font-bold">
+                    {formatCurrency(month.custosOperacionais.total)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-orange-700 bg-orange-100">
+                  {formatCurrency(yearTotals.custosOperacionais)}
+                </TableCell>
+              </TableRow>
+
+              <TableRow>
+                <TableCell className="font-medium text-red-600 pl-4">
+                  (-) Seguro Rastreador
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-red-600">
+                    {formatCurrency(month.custosOperacionais.seguroRastreador)}
                   </TableCell>
                 ))}
                 <TableCell className="text-center font-bold text-red-600 bg-gray-50">
-                  {formatCurrency(yearTotals.impostos)}
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.custosOperacionais.seguroRastreador, 0))}
+                </TableCell>
+              </TableRow>
+
+              <TableRow>
+                <TableCell className="font-medium text-red-600 pl-4">
+                  (-) Manutenção
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-red-600">
+                    {formatCurrency(month.custosOperacionais.manutencao)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.custosOperacionais.manutencao, 0))}
+                </TableCell>
+              </TableRow>
+
+              <TableRow>
+                <TableCell className="font-medium text-red-600 pl-4">
+                  (-) Taxa de Espaço
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-red-600">
+                    {formatCurrency(month.custosOperacionais.taxaEspaco)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.custosOperacionais.taxaEspaco, 0))}
+                </TableCell>
+              </TableRow>
+
+              <TableRow>
+                <TableCell className="font-medium text-red-600 pl-4">
+                  (-) Royalties
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-red-600">
+                    {formatCurrency(month.custosOperacionais.royalties)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.custosOperacionais.royalties, 0))}
+                </TableCell>
+              </TableRow>
+
+
+              <TableRow>
+                <TableCell className="font-medium text-red-600 pl-4">
+                  (-) Fundo de Marketing
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-red-600">
+                    {formatCurrency(month.custosOperacionais.fundoMarketing)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.custosOperacionais.fundoMarketing, 0))}
+                </TableCell>
+              </TableRow>
+
+              <TableRow>
+                <TableCell className="font-medium text-red-600 pl-4">
+                  (-) Sistema de Gestão
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-red-600">
+                    {formatCurrency(month.custosOperacionais.sistemaGestao)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.custosOperacionais.sistemaGestao, 0))}
+                </TableCell>
+              </TableRow>
+
+              <TableRow>
+                <TableCell className="font-medium text-red-600 pl-4">
+                  (-) Honorários Contábeis
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center text-red-600">
+                    {formatCurrency(month.custosOperacionais.honorariosContabeis)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-red-600 bg-gray-50">
+                  {formatCurrency(dreData.reduce((sum, m) => sum + m.custosOperacionais.honorariosContabeis, 0))}
                 </TableCell>
               </TableRow>
 
@@ -307,50 +543,93 @@ export function DRETable({ motorcycles, selectedYear }: DRETableProps) {
                   </div>
                 </TableCell>
               </TableRow>
+
+              {/* Receita Líquida por Moto */}
+              <TableRow className="bg-green-50">
+                <TableCell className="font-bold text-green-700">
+                  Receita Líquida por Moto
+                </TableCell>
+                {dreData.map(month => (
+                  <TableCell key={month.monthNumber} className="text-center font-bold text-green-700">
+                    {formatCurrency(month.receitaLiquidaPorMoto)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-center font-bold text-green-700 bg-green-100">
+                  {formatCurrency(dreData.reduce((sum, m, index, arr) => {
+                    const totalMotorcycles = dreData.reduce((total, month) => {
+                      const uniquePlates = new Set(motorcycles.filter(moto => {
+                        if (!moto.data_ultima_mov) {
+                          return moto.status === 'alugada' || moto.status === 'relocada';
+                        }
+                        
+                        try {
+                          const motoDate = new Date(moto.data_ultima_mov);
+                          const motoYear = motoDate.getFullYear();
+                          const motoMonth = motoDate.getMonth() + 1;
+                          
+                          if (motoYear === parseInt(selectedYear) && motoMonth === month.monthNumber) {
+                            return true;
+                          } else if (motoYear < parseInt(selectedYear) || (motoYear === parseInt(selectedYear) && motoMonth < month.monthNumber)) {
+                            return moto.status === 'alugada' || moto.status === 'relocada';
+                          }
+                          
+                          return false;
+                        } catch {
+                          return false;
+                        }
+                      }).filter(moto => selectedFranchisee === "all" || moto.franqueado?.trim() === selectedFranchisee).map(moto => moto.placa));
+                      return total + uniquePlates.size;
+                    }, 0);
+                    
+                    const totalLucroLiquido = dreData.reduce((total, month) => total + month.lucroLiquido, 0);
+                    return totalMotorcycles > 0 ? totalLucroLiquido / totalMotorcycles : 0;
+                  }, 0))}
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>
 
-        {/* Resumo */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-sm text-green-600 font-medium">Receita Total</div>
-            <div className="text-lg font-bold text-green-700">{formatCurrency(yearTotals.receita)}</div>
-          </div>
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="text-sm text-red-600 font-medium">Custos + Despesas</div>
-            <div className="text-lg font-bold text-red-700">
-              {formatCurrency(yearTotals.custos + yearTotals.despesas + yearTotals.impostos)}
-            </div>
-          </div>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm text-blue-600 font-medium">Lucro Líquido</div>
-            <div className="text-lg font-bold text-blue-700">{formatCurrency(yearTotals.lucroLiquido)}</div>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="text-sm text-purple-600 font-medium">Margem Líquida</div>
-            <div className="text-lg font-bold text-purple-700 flex items-center gap-1">
-              {yearMargemLiquida >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              )}
-              {formatPercentage(yearMargemLiquida)}
-            </div>
-          </div>
+
+        {/* Botão de Regras */}
+        <div className="mt-6 flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => setShowRules(!showRules)}
+            className="flex items-center gap-2"
+          >
+            <Info className="h-4 w-4" />
+            {showRules ? 'Ocultar Regras' : 'Ver Regras de Cálculo'}
+          </Button>
         </div>
 
-        {/* Nota informativa */}
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start gap-2">
-            <Badge variant="outline" className="text-yellow-700 border-yellow-300">
-              Nota
-            </Badge>
-            <p className="text-sm text-yellow-700">
-              Atualmente, apenas as receitas estão sendo calculadas. Os custos, despesas e impostos serão configurados posteriormente conforme as regras específicas do negócio.
-            </p>
+        {/* Nota informativa - só aparece quando showRules é true */}
+        {showRules && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Badge variant="outline" className="text-blue-700 border-blue-300">
+                Informações
+              </Badge>
+              <div className="text-sm text-blue-700">
+                <p className="mb-2"><strong>Regras de Cálculo:</strong></p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>Custos aplicados apenas em meses com receita:</strong></li>
+                  <li>Taxa de Espaço: R$ 250 por moto no mês específico</li>
+                  <li>Seguro Rastreador: R$ 139,90 por moto no mês específico</li>
+                  <li>Fundo de Marketing: R$ 300 fixo por franqueado</li>
+                  <li>Sistema de Gestão: R$ 80 fixo por franqueado</li>
+                  <li>Honorários Contábeis: R$ 600 fixo por franqueado</li>
+                  <li>Juros: R$ 212 a cada 10 motos no mês específico</li>
+                  <li><strong>Outros:</strong></li>
+                  <li>Manutenção: Será integrada com base de dados externa</li>
+                  <li>Royalties: 5% sobre receita operacional</li>
+                  <li>Caução: R$ 700 por moto alugada + R$ 400 por moto relocada no mês específico</li>
+                  <li>Simples Nacional: 7% sobre receita bruta</li>
+                </ul>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

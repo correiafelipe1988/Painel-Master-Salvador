@@ -36,7 +36,7 @@ const navItems: NavItem[] = [
   { href: "/financeiro", label: "Financeiro", subLabel: "Receitas e análises", icon: DollarSign },
   { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
   { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: BarChart3 },
-  { href: "/indicadores", label: "Indicadores", subLabel: "Principais métricas", icon: TrendingUp },
+  { href: "/frota", label: "Frota", subLabel: "Análise de modelos", icon: Package },
 ];
 
 const initialStatusRapidoItems: StatusRapidoItemType[] = [

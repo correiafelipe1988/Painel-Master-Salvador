@@ -16,7 +16,8 @@ import {
   calculateMonthlyRevenueAnalysis,
   calculateRevenueProjection,
   calculateGoalAnalysis,
-  getTopPerformingFranchisees
+  getTopPerformingFranchisees,
+  calculateMonthlyRevenueForDRE
 } from '@/lib/firebase/financialService';
 import { FinancialKpiCards } from "@/components/financeiro/financial-kpi-cards";
 import { DRETable } from "@/components/financeiro/dre-table";
@@ -69,6 +70,50 @@ export default function FinanceiroPage() {
     return () => unsubscribe();
   }, []);
 
+  // Filtrar motos por mês se selecionado
+  const filteredMotorcycles = useMemo(() => {
+    if (isLoading || !Array.isArray(allMotorcycles)) {
+      return [];
+    }
+
+    let filtered = allMotorcycles;
+    if (selectedMonth !== "all") {
+      const targetMonth = parseInt(selectedMonth);
+      const targetYear = parseInt(selectedYear);
+      
+      // Para filtro por mês, consideramos todas as motos que estavam ativas no período
+      // Não apenas as que tiveram movimentação no mês específico
+      filtered = allMotorcycles.filter(moto => {
+        // Se não tem data de movimentação, incluir se está alugada/relocada
+        if (!moto.data_ultima_mov) {
+          return moto.status === 'alugada' || moto.status === 'relocada';
+        }
+        
+        try {
+          const motoDate = new Date(moto.data_ultima_mov);
+          const motoYear = motoDate.getFullYear();
+          const motoMonth = motoDate.getMonth() + 1;
+          
+          // Incluir motos que:
+          // 1. Tiveram movimentação no mês/ano específico, OU
+          // 2. Tiveram movimentação antes do mês/ano e estão alugadas/relocadas
+          if (motoYear === targetYear && motoMonth === targetMonth) {
+            return true; // Movimentação no período específico
+          } else if (motoYear < targetYear || (motoYear === targetYear && motoMonth < targetMonth)) {
+            // Movimentação anterior ao período - incluir se está alugada/relocada
+            return moto.status === 'alugada' || moto.status === 'relocada';
+          }
+          
+          return false; // Movimentação posterior ao período
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    return filtered;
+  }, [allMotorcycles, selectedYear, selectedMonth, isLoading]);
+
   const financialData = useMemo(() => {
     if (isLoading || !Array.isArray(allMotorcycles)) {
       return {
@@ -104,42 +149,6 @@ export default function FinanceiroPage() {
       };
     }
 
-    // Filtrar motos por mês se selecionado
-    let filteredMotorcycles = allMotorcycles;
-    if (selectedMonth !== "all") {
-      const targetMonth = parseInt(selectedMonth);
-      const targetYear = parseInt(selectedYear);
-      
-      // Para filtro por mês, consideramos todas as motos que estavam ativas no período
-      // Não apenas as que tiveram movimentação no mês específico
-      filteredMotorcycles = allMotorcycles.filter(moto => {
-        // Se não tem data de movimentação, incluir se está alugada/relocada
-        if (!moto.data_ultima_mov) {
-          return moto.status === 'alugada' || moto.status === 'relocada';
-        }
-        
-        try {
-          const motoDate = new Date(moto.data_ultima_mov);
-          const motoYear = motoDate.getFullYear();
-          const motoMonth = motoDate.getMonth() + 1;
-          
-          // Incluir motos que:
-          // 1. Tiveram movimentação no mês/ano específico, OU
-          // 2. Tiveram movimentação antes do mês/ano e estão alugadas/relocadas
-          if (motoYear === targetYear && motoMonth === targetMonth) {
-            return true; // Movimentação no período específico
-          } else if (motoYear < targetYear || (motoYear === targetYear && motoMonth < targetMonth)) {
-            // Movimentação anterior ao período - incluir se está alugada/relocada
-            return moto.status === 'alugada' || moto.status === 'relocada';
-          }
-          
-          return false; // Movimentação posterior ao período
-        } catch {
-          return false;
-        }
-      });
-    }
-
     // Passar parâmetros de ano/mês para cálculo proporcional
     const targetYear = parseInt(selectedYear);
     const targetMonth = selectedMonth !== "all" ? parseInt(selectedMonth) : undefined;
@@ -159,7 +168,7 @@ export default function FinanceiroPage() {
       goalAnalysis,
       topPerformers
     };
-  }, [allMotorcycles, selectedYear, selectedMonth, isLoading]);
+  }, [filteredMotorcycles, selectedYear, selectedMonth, isLoading]);
 
   const handleExportExcel = () => {
     toast({
@@ -261,27 +270,46 @@ export default function FinanceiroPage() {
                 <CardContent>
                   {financialData.franchiseeRevenues.length > 0 ? (
                     <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
-                      {financialData.franchiseeRevenues.map((franchisee, index) => (
-                        <div key={franchisee.franqueadoName} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-8 h-8 bg-green-100 text-green-700 rounded-full font-bold text-sm">
-                              {index + 1}
+                      {financialData.franchiseeRevenues.map((franchisee, index) => {
+                        // Se um mês específico está selecionado, calcular usando a mesma lógica do DRE
+                        let displayMonthlyRevenue;
+                        const isSpecificMonth = selectedMonth !== "all";
+                        
+                        if (isSpecificMonth) {
+                          // Usar a mesma função do DRE para garantir consistência
+                          displayMonthlyRevenue = calculateMonthlyRevenueForDRE(
+                            allMotorcycles,
+                            parseInt(selectedYear),
+                            parseInt(selectedMonth),
+                            franchisee.franqueadoName
+                          );
+                        } else {
+                          // Para "Todos os Meses", usar projeção baseada na receita semanal atual
+                          displayMonthlyRevenue = franchisee.weeklyRevenue * 4.33;
+                        }
+                        
+                        return (
+                          <div key={franchisee.franqueadoName} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-8 h-8 bg-green-100 text-green-700 rounded-full font-bold text-sm">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm">{franchisee.franqueadoName}</p>
+                                <p className="text-xs text-gray-500">{franchisee.motorcycleCount} motos • {franchisee.occupationRate.toFixed(1)}% ocupação</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-sm">{franchisee.franqueadoName}</p>
-                              <p className="text-xs text-gray-500">{franchisee.motorcycleCount} motos • {franchisee.occupationRate.toFixed(1)}% ocupação</p>
+                            <div className="text-right">
+                              <p className="font-bold text-green-600 text-sm">
+                                R$ {franchisee.weeklyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                              <p className="text-xs text-blue-600">
+                                {isSpecificMonth ? 'Real' : 'Proj.'} Mensal: R$ {displayMonthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-green-600 text-sm">
-                              R$ {franchisee.weeklyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                            <p className="text-xs text-blue-600">
-                              Mensal: R$ {franchisee.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-center py-8">Nenhum dado disponível</p>

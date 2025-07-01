@@ -64,6 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let errorMessage = "Erro ao fazer login";
       
       switch (error.code) {
+        case 'auth/api-key-not-valid':
+          errorMessage = "Chave de API do Firebase inválida. Verifique a configuração.";
+          break;
         case 'auth/user-not-found':
           errorMessage = "Usuário não encontrado";
           break;
@@ -81,6 +84,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           break;
         case 'auth/invalid-credential':
           errorMessage = "Credenciais inválidas";
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = "Erro de rede. Verifique sua conexão.";
           break;
         default:
           errorMessage = error.message || "Erro desconhecido";

@@ -21,6 +21,7 @@ export interface FinancialKPI {
   financialOccupationRate: number;
   revenueGrowth: number;
   averageTicketPerMoto: number;
+  receitaLiquidaPorMoto: number;
 }
 
 export interface MonthlyRevenueData {
@@ -210,7 +211,7 @@ export function calculateFinancialKPIs(motorcycles: Motorcycle[], previousPeriod
   
   const totalWeeklyRevenue = franchiseeRevenues.reduce((sum, fr) => sum + fr.totalRevenue, 0);
   const totalMonthlyRevenue = totalWeeklyRevenue * 4.33;
-  const averageRevenuePerFranchisee = franchiseeRevenues.length > 0 ? 
+  const averageRevenuePerFranchisee = franchiseeRevenues.length > 0 ?
     totalWeeklyRevenue / franchiseeRevenues.length : 0;
   
   const totalRentedMotorcycles = franchiseeRevenues.reduce((sum, fr) => sum + fr.motorcycleCount, 0);
@@ -220,18 +221,18 @@ export function calculateFinancialKPIs(motorcycles: Motorcycle[], previousPeriod
   motorcycles.forEach(moto => {
     if (!moto.placa) return;
     const existingMoto = uniqueMotorcyclesByPlaca[moto.placa];
-    if (!existingMoto || 
-        (moto.data_ultima_mov && existingMoto.data_ultima_mov && 
+    if (!existingMoto ||
+        (moto.data_ultima_mov && existingMoto.data_ultima_mov &&
          new Date(moto.data_ultima_mov) > new Date(existingMoto.data_ultima_mov))) {
       uniqueMotorcyclesByPlaca[moto.placa] = moto;
     }
   });
   
   const totalUniqueMotorcycles = Object.values(uniqueMotorcyclesByPlaca).length;
-  const financialOccupationRate = totalUniqueMotorcycles > 0 ? 
+  const financialOccupationRate = totalUniqueMotorcycles > 0 ?
     (totalRentedMotorcycles / totalUniqueMotorcycles) * 100 : 0;
 
-  const averageTicketPerMoto = totalRentedMotorcycles > 0 ? 
+  const averageTicketPerMoto = totalRentedMotorcycles > 0 ?
     totalWeeklyRevenue / totalRentedMotorcycles : 0;
 
   // Calcular crescimento da receita (se dados do período anterior estiverem disponíveis)
@@ -245,6 +246,9 @@ export function calculateFinancialKPIs(motorcycles: Motorcycle[], previousPeriod
     }
   }
 
+  // Calcular Receita Líquida por Moto usando a mesma lógica do DRE
+  const receitaLiquidaPorMoto = calculateReceitaLiquidaPorMoto(motorcycles, targetYear, targetMonth);
+
   return {
     totalWeeklyRevenue,
     totalMonthlyRevenue,
@@ -252,7 +256,8 @@ export function calculateFinancialKPIs(motorcycles: Motorcycle[], previousPeriod
     totalRentedMotorcycles,
     financialOccupationRate,
     revenueGrowth,
-    averageTicketPerMoto
+    averageTicketPerMoto,
+    receitaLiquidaPorMoto
   };
 }
 
@@ -497,4 +502,174 @@ export function diagnoseFranchiseeDiscrepancies(motorcycles: Motorcycle[], franc
       data_ultima_mov: moto.data_ultima_mov
     }))
   };
+}
+
+// Função para calcular receita de um mês específico usando a mesma lógica do DRE
+export function calculateMonthlyRevenueForDRE(motorcycles: Motorcycle[], year: number, month: number, selectedFranchisee?: string): number {
+  // Filtrar motos por mês (mesma lógica do DRE)
+  const monthMotorcycles = motorcycles.filter(moto => {
+    if (!moto.data_ultima_mov) {
+      return moto.status === 'alugada' || moto.status === 'relocada';
+    }
+    
+    try {
+      const motoDate = new Date(moto.data_ultima_mov);
+      const motoYear = motoDate.getFullYear();
+      const motoMonth = motoDate.getMonth() + 1;
+      
+      if (motoYear === year && motoMonth === month) {
+        return true;
+      } else if (motoYear < year || (motoYear === year && motoMonth < month)) {
+        return moto.status === 'alugada' || moto.status === 'relocada';
+      }
+      
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
+  // Filtrar por franqueado se especificado
+  let filteredMotorcycles = monthMotorcycles;
+  if (selectedFranchisee && selectedFranchisee !== "all") {
+    filteredMotorcycles = monthMotorcycles.filter(
+      moto => moto.franqueado?.trim() === selectedFranchisee
+    );
+  }
+
+  // Calcular receita do mês
+  const franchiseeRevenues = calculateFranchiseeRevenue(filteredMotorcycles, year, month);
+  return franchiseeRevenues.reduce((sum, fr) => sum + fr.weeklyRevenue, 0) * 4.33;
+}
+
+// Função para calcular Receita Líquida por Moto usando a mesma lógica do DRE
+export function calculateReceitaLiquidaPorMoto(motorcycles: Motorcycle[], targetYear?: number, targetMonth?: number): number {
+  const year = targetYear || new Date().getFullYear();
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+  
+  // Se um mês específico foi selecionado, calcular apenas para esse mês
+  if (targetMonth) {
+    return calculateMonthlyReceitaLiquidaPorMoto(motorcycles, year, targetMonth);
+  }
+  
+  // Caso contrário, calcular a média anual (apenas meses realizados)
+  const maxMonth = year === currentYear ? currentMonth : 12;
+  let totalLucroLiquido = 0;
+  let totalMotorcycles = 0;
+  
+  for (let month = 1; month <= maxMonth; month++) {
+    const monthData = calculateMonthlyDREData(motorcycles, year, month);
+    totalLucroLiquido += monthData.lucroLiquido;
+    totalMotorcycles += monthData.motorcyclesInMonth;
+  }
+  
+  return totalMotorcycles > 0 ? totalLucroLiquido / totalMotorcycles : 0;
+}
+
+// Função auxiliar para calcular dados do DRE de um mês específico
+function calculateMonthlyDREData(motorcycles: Motorcycle[], year: number, month: number) {
+  // Filtrar motos por mês (mesma lógica do DRE)
+  const monthMotorcycles = motorcycles.filter(moto => {
+    if (!moto.data_ultima_mov) {
+      return moto.status === 'alugada' || moto.status === 'relocada';
+    }
+    
+    try {
+      const motoDate = new Date(moto.data_ultima_mov);
+      const motoYear = motoDate.getFullYear();
+      const motoMonth = motoDate.getMonth() + 1;
+      
+      if (motoYear === year && motoMonth === month) {
+        return true;
+      } else if (motoYear < year || (motoYear === year && motoMonth < month)) {
+        return moto.status === 'alugada' || moto.status === 'relocada';
+      }
+      
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
+  // Calcular receita do mês
+  const franchiseeRevenues = calculateFranchiseeRevenue(monthMotorcycles, year, month);
+  const receita = franchiseeRevenues.reduce((sum, fr) => sum + fr.weeklyRevenue, 0) * 4.33;
+
+  // Contar motos alugadas e relocadas especificamente neste mês (para cálculo de caução)
+  const rentedMotorcycles = monthMotorcycles.filter(moto => {
+    if (moto.status !== 'alugada' || !moto.data_ultima_mov) return false;
+    
+    try {
+      const motoDate = new Date(moto.data_ultima_mov);
+      const motoYear = motoDate.getFullYear();
+      const motoMonth = motoDate.getMonth() + 1;
+      
+      return motoYear === year && motoMonth === month;
+    } catch {
+      return false;
+    }
+  }).length;
+
+  const relocatedMotorcycles = monthMotorcycles.filter(moto => {
+    if (moto.status !== 'relocada' || !moto.data_ultima_mov) return false;
+    
+    try {
+      const motoDate = new Date(moto.data_ultima_mov);
+      const motoYear = motoDate.getFullYear();
+      const motoMonth = motoDate.getMonth() + 1;
+      
+      return motoYear === year && motoMonth === month;
+    } catch {
+      return false;
+    }
+  }).length;
+
+  // Verificar se há receita no mês
+  const hasRevenue = receita > 0;
+
+  // Contar placas únicas para evitar duplicatas
+  const uniquePlates = new Set(monthMotorcycles.map(moto => moto.placa));
+  const motorcyclesInMonth = uniquePlates.size;
+
+  // Receitas Não Operacionais
+  const caucao = (rentedMotorcycles * 700) + (relocatedMotorcycles * 400);
+  const juros = hasRevenue ? Math.floor(motorcyclesInMonth / 10) * 212 : 0;
+  const receitasNaoOperacionais = caucao + juros;
+
+  // Tributos sobre Receitas
+  const receitaTotal = receita + receitasNaoOperacionais;
+  const simplesNacional = receitaTotal * 0.07;
+
+  // Custos Operacionais (só cobrar se há receita)
+  const seguroRastreador = hasRevenue ? motorcyclesInMonth * 139.90 : 0;
+  const manutencao = 0;
+  const taxaEspaco = hasRevenue ? motorcyclesInMonth * 250 : 0;
+  const royalties = receita * 0.05;
+  const ipvaTaxas = 0;
+  const fundoMarketing = hasRevenue ? 300 : 0;
+  const sistemaGestao = hasRevenue ? 80 : 0;
+  const honorariosContabeis = hasRevenue ? 600 : 0;
+
+  const custosOperacionais = seguroRastreador + manutencao + taxaEspaco + royalties +
+                            ipvaTaxas + fundoMarketing + sistemaGestao + honorariosContabeis;
+
+  const lucroLiquido = receitaTotal - simplesNacional - custosOperacionais;
+
+  return {
+    receita,
+    receitasNaoOperacionais,
+    receitaTotal,
+    simplesNacional,
+    custosOperacionais,
+    lucroLiquido,
+    motorcyclesInMonth
+  };
+}
+
+// Função auxiliar para calcular receita líquida por moto de um mês específico
+function calculateMonthlyReceitaLiquidaPorMoto(motorcycles: Motorcycle[], year: number, month: number): number {
+  const monthData = calculateMonthlyDREData(motorcycles, year, month);
+  return monthData.motorcyclesInMonth > 0 ? monthData.lucroLiquido / monthData.motorcyclesInMonth : 0;
 }
