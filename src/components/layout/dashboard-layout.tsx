@@ -30,6 +30,7 @@ import { useAuth } from '@/context/AuthContext';
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", subLabel: "Visão geral", icon: LayoutDashboard },
   { href: "/motorcycles", label: "Gestão de Motos", subLabel: "Frota completa", icon: ListFilter },
+  { href: "/venda-motos", label: "Venda de Motos", subLabel: "Registro de vendas", icon: DollarSign },
   { href: "/projecao-motos", label: "Projeção de Crescimento", subLabel: "Meta 1.000 motos", icon: TrendingUp },
   { href: "/rastreadores", label: "Rastreadores", subLabel: "Nossos rastreadores", icon: MapPin },
   { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },

@@ -17,6 +17,22 @@ export interface Motorcycle {
   dias_ociosos_congelados?: number; // Dias ociosos no momento que entrou em manutenção
 }
 
+export interface VendaMoto {
+  id: string;
+  data_compra: string;
+  parceiro: string;
+  status: string;
+  entregue: string;
+  franqueado: string;
+  cnpj: string;
+  razao_social: string;
+  quantidade: number;
+  marca: string;
+  modelo: string;
+  valor_unitario: number;
+  valor_total: number;
+}
+
 export type Kpi = {
   title: string;
   value: string;
