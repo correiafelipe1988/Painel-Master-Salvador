@@ -43,7 +43,6 @@ const initialStatusRapidoItems: StatusRapidoItemType[] = [
   { label: "Total de Motos", subLabel: "Placas únicas", count: 0, bgColor: "bg-slate-100", textColor: "text-slate-700", badgeTextColor: "text-slate-700", icon: Package },
   { label: "Disponíveis", subLabel: "Motos prontas", count: 0, bgColor: "bg-green-100", textColor: "text-green-700", badgeTextColor: "text-green-700", statusKey: 'active', icon: CheckCircle2 },
   { label: "Alugadas", subLabel: "Em uso", count: 0, bgColor: "bg-blue-100", textColor: "text-blue-700", badgeTextColor: "text-blue-700", statusKey: 'alugada', icon: SidebarBikeIcon },
-  { label: "Relocadas", subLabel: "Em transferência", count: 0, bgColor: "bg-gray-100", textColor: "text-gray-700", badgeTextColor: "text-gray-700", statusKey: 'relocada', icon: MapPin },
   { label: "Manutenção", subLabel: "Em oficina", count: 0, bgColor: "bg-purple-100", textColor: "text-purple-700", badgeTextColor: "text-purple-700", statusKey: 'manutencao', icon: Wrench },
   { label: "Recolhidas", subLabel: "Aguardando", count: 0, bgColor: "bg-orange-100", textColor: "text-orange-700", badgeTextColor: "text-orange-700", statusKey: 'recolhida', icon: XCircle },
 ];
@@ -143,6 +142,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       initialStatusRapidoItems.map(item => {
         if (item.label === "Total de Motos") {
           return { ...item, count: totalUniqueMotorcycles };
+        }
+        if (item.label === "Alugadas") {
+          return { ...item, count: (counts['alugada'] || 0) + (counts['relocada'] || 0) };
         }
         return {
           ...item,
