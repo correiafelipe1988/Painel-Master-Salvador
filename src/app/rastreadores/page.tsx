@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useRef, useState, useEffect, useMemo } from "react";
@@ -6,7 +5,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { RastreadoresList } from "@/components/rastreadores/rastreadores-list";
 import { Button } from "@/components/ui/button";
-import { Upload, X, BarChartBig, SatelliteDish, DollarSign, Calendar } from "lucide-react";
+import { Upload, X, BarChartBig, SatelliteDish, DollarSign, Calendar, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   addRastreador, 
@@ -33,6 +32,8 @@ import { TrackerInstallationRevenueChart } from "@/components/charts/tracker-ins
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { type Kpi } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/context/AuthContext";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const monthFullNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
@@ -72,6 +73,7 @@ const processTrackerData = (rastreadores: RastreadorData[], selectedMonth: strin
 
 export default function RastreadoresPage() {
   const { toast } = useToast();
+  const { user, loading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rastreadoresData, setRastreadoresData] = useState<RastreadorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +89,14 @@ export default function RastreadoresPage() {
   const [filters, setFilters] = useState<RastreadorFiltersState>({
     searchTerm: '', status: 'all', franqueado: 'all',
   });
+
+  // Lista de IDs permitidos
+  const allowedUsers = [
+    "1dpkLRLH3Sgm5hTkmNJAlfDQgoP2",
+    "FOHbVCbMyhadO3tm1rVdknwLVPr1",
+    "orbGQ8lbCfb51KuJlD5oSflsLRx1",
+    "edsTZ2zG54Ph2ZoNSyFZXoJj74s2"
+  ];
 
   useEffect(() => {
     setIsLoading(true);
@@ -129,7 +139,7 @@ export default function RastreadoresPage() {
     setIsFormModalOpen(true);
   };
 
-  const handleOpenEditModal = (rastreador: RastreadorData) => {
+  const handleOpenEditModal = (rastreador: any) => {
     setEditingRastreador(rastreador);
     setCurrentFormData({ ...rastreador });
     setIsFormModalOpen(true);
@@ -180,6 +190,37 @@ export default function RastreadoresPage() {
       )}
     </>
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  if (!user || !allowedUsers.includes(user.uid)) {
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title="Acesso Restrito"
+          description="Você não tem permissão para visualizar esta página."
+          icon={ShieldAlert}
+          iconContainerClassName="bg-red-600"
+        />
+        <div className="p-4">
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Acesso Negado</AlertTitle>
+            <AlertDescription>
+              Esta área é restrita e requer permissões especiais. Por favor, entre em contato com o administrador se você acredita que isso é um erro.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

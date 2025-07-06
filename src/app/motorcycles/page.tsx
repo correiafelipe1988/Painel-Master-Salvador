@@ -32,12 +32,24 @@ import {
   deleteAllMotorcycles as deleteAllFromDB,
   updateWeeklyValuesForRentedMotorcycles,
 } from '@/lib/firebase/motorcycleService';
+import { useAuth } from "@/context/AuthContext";
+import { ShieldAlert } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export type MotorcyclePageFilters = {
   status: MotorcycleStatus | 'all';
   model: string | 'all';
   searchTerm: string;
 };
+
+// Lista de IDs de usuários permitidos para Gestão de Motos
+const ALLOWED_USER_IDS = [
+  "1dpkLRLH3Sgm5hTkmNJAlfDQgoP2",
+  "FOHbVCbMyhadO3tm1rVdknwLVPr1",
+  "orbGQ8lbCfb51KuJlD5oSflsLRx1",
+  "edsTZ2zG54Ph2ZoNSyFZXoJj74s2",
+  "Z0OEHNXsqOMuZ6ZOc9ElNG6mReP2"
+];
 
 export default function MotorcyclesPage() {
   const [filters, setFilters] = useState<MotorcyclePageFilters>({
@@ -51,6 +63,7 @@ export default function MotorcyclesPage() {
   const [isDeleteAllAlertOpen, setIsDeleteAllAlertOpen] = useState(false);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     setIsLoading(true);
@@ -302,6 +315,38 @@ export default function MotorcyclesPage() {
       </Button>
     </>
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user || !ALLOWED_USER_IDS.includes(user.uid)) {
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title="Acesso Restrito"
+          description="Você não tem permissão para visualizar esta página."
+          icon={ShieldAlert}
+          iconContainerClassName="bg-red-600"
+        />
+        <div className="p-4">
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Acesso Negado</AlertTitle>
+            <AlertDescription>
+              Esta área é restrita e requer permissões especiais. Por favor, entre em contato com o administrador se você acredita que isso é um erro.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (isLoading) {
     return (
