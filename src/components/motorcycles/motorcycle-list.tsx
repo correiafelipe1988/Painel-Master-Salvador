@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -98,6 +97,15 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
         (moto.model || '').toLowerCase().includes(filters.searchTerm.toLowerCase());
 
       return statusMatch && modelMatch && searchTermMatch;
+    })
+    // Ordenar por data_ultima_mov decrescente (mais recente no topo)
+    .sort((a, b) => {
+      const dateA = a.data_ultima_mov ? new Date(a.data_ultima_mov) : null;
+      const dateB = b.data_ultima_mov ? new Date(b.data_ultima_mov) : null;
+      if (dateA && dateB) return dateB.getTime() - dateA.getTime();
+      if (dateA) return -1;
+      if (dateB) return 1;
+      return 0;
     });
   }, [filters, motorcycles]);
 
