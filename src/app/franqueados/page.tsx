@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -35,7 +34,7 @@ export default function FranqueadosPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Filter states
-  const [selectedFranchisee, setSelectedFranchisee] = useState<string>("all");
+  const [selectedFranchisee, setSelectedFranchisee] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [franchisees, setFranchisees] = useState<string[]>([]);
@@ -71,7 +70,7 @@ export default function FranqueadosPage() {
 
     // Filter logic
     const filteredMotorcycles = allMotorcycles.filter(moto => {
-        const isFranchiseeMatch = selectedFranchisee === 'all' || moto.franqueado?.trim() === selectedFranchisee;
+        const isFranchiseeMatch = !selectedFranchisee || (moto.franqueado?.toLowerCase().includes(selectedFranchisee.toLowerCase()));
         
         // Date filtering logic
         const motoDate = moto.data_ultima_mov ? new Date(moto.data_ultima_mov) : null;
@@ -188,18 +187,14 @@ export default function FranqueadosPage() {
         <Card className="mb-6 p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <Label htmlFor="franchisee-select">Franqueado</Label>
-                     <Select onValueChange={setSelectedFranchisee} value={selectedFranchisee}>
-                        <SelectTrigger id="franchisee-select">
-                            <SelectValue placeholder="Selecione o Franqueado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos os Franqueados</SelectItem>
-                            {franchisees.map(franqueado => (
-                                <SelectItem key={franqueado} value={franqueado}>{franqueado}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Label htmlFor="franchisee-search">Franqueado</Label>
+                    <Input
+                      id="franchisee-search"
+                      placeholder="Buscar por franqueado"
+                      value={selectedFranchisee}
+                      onChange={e => setSelectedFranchisee(e.target.value)}
+                      className="w-full"
+                    />
                 </div>
                 <div>
                     <Label htmlFor="start-date">Data de Início</Label>
