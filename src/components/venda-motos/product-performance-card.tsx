@@ -2,7 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { DollarSign, Package, Trophy } from "lucide-react";
+import { DollarSign, Package, Trophy, Users } from "lucide-react"; // Importa o ícone Users
 
 // Função para formatar valores monetários
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -15,6 +15,7 @@ interface ProductPerformanceCardProps {
   totalRevenue: number;
   averagePrice: number;
   revenuePercentage: number;
+  franchiseeCount: number; // Novo campo
   isTopThree: boolean;
 }
 
@@ -25,6 +26,7 @@ export function ProductPerformanceCard({
   totalRevenue,
   averagePrice,
   revenuePercentage,
+  franchiseeCount,
   isTopThree,
 }: ProductPerformanceCardProps) {
   
@@ -70,7 +72,8 @@ export function ProductPerformanceCard({
         </div>
 
         {/* Seção Média: Métricas Detalhadas */}
-        <div className="grid grid-cols-2 gap-4 border-t pt-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4">
+          {/* Preço Médio */}
           <div className="flex flex-col items-start">
             <p className="text-sm text-muted-foreground">Preço Médio</p>
             <div className="flex items-center gap-2 mt-1">
@@ -78,11 +81,20 @@ export function ProductPerformanceCard({
               <span className="text-lg font-bold text-green-600">{formatCurrency(averagePrice)}</span>
             </div>
           </div>
+          {/* Unidades Vendidas */}
           <div className="flex flex-col items-start">
             <p className="text-sm text-muted-foreground">Unidades Vendidas</p>
             <div className="flex items-center gap-2 mt-1">
                 <Package className="h-5 w-5 text-blue-500" />
                 <span className="text-lg font-bold text-blue-600">{unitsSold}</span>
+            </div>
+          </div>
+           {/* Franqueados Compradores */}
+          <div className="flex flex-col items-start">
+            <p className="text-sm text-muted-foreground">Franqueados</p>
+            <div className="flex items-center gap-2 mt-1">
+                <Users className="h-5 w-5 text-indigo-500" />
+                <span className="text-lg font-bold text-indigo-600">{franchiseeCount}</span>
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, ListFilter, Users, BarChart3, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, TrendingUp, LogOut, User, Settings, DollarSign } from "lucide-react";
+import { LayoutDashboard, ListFilter, Users, BarChart3, Package, MapPin, Wrench, CheckCircle2, XCircle, Bike as SidebarBikeIcon, TrendingUp, LogOut, User, Settings, DollarSign, SatelliteDish } from "lucide-react";
 import type { NavItem, StatusRapidoItem as StatusRapidoItemType, Motorcycle, MotorcycleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
@@ -32,10 +32,9 @@ const navItems: NavItem[] = [
   { href: "/motorcycles", label: "Gestão de Motos", subLabel: "Frota completa", icon: ListFilter },
   { href: "/venda-motos", label: "Venda de Motos", subLabel: "Registro de vendas", icon: DollarSign },
   { href: "/projecao-motos", label: "Projeção de Crescimento", subLabel: "Meta 1.000 motos", icon: TrendingUp },
-  { href: "/rastreadores", label: "Rastreadores", subLabel: "Nossos rastreadores", icon: MapPin },
+  { href: "/rastreadores", label: "Rastreadores", subLabel: "Nossos rastreadores", icon: SatelliteDish },
   { href: "/franqueados", label: "Franqueados", subLabel: "Análise por franqueado", icon: Users },
   { href: "/financeiro", label: "Financeiro", subLabel: "Receitas e análises", icon: DollarSign },
-  { href: "/relatorios", label: "Relatórios", subLabel: "Análises e métricas", icon: BarChart3 },
   { href: "/predict-idle", label: "Previsão de Ociosidade", subLabel: "IA para tempo ocioso", icon: BarChart3 },
   { href: "/frota", label: "Frota", subLabel: "Análise de modelos", icon: Package },
 ];

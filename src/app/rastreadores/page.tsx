@@ -6,13 +6,14 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { RastreadoresList } from "@/components/rastreadores/rastreadores-list";
 import { Button } from "@/components/ui/button";
-import { Upload, X } from "lucide-react";
+import { Upload, X, BarChartBig, SatelliteDish, DollarSign, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   addRastreador, 
   subscribeToRastreadores,
   deleteRastreador as deleteRastreadorFromDB,
   updateRastreador as updateRastreadorInDB,
+  RastreadorData,
 } from "@/lib/firebase/rastreadorService";
 import { normalizeHeader } from "@/lib/utils";
 import {
@@ -26,26 +27,55 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RastreadorFilters, RastreadorFiltersState } from "@/components/rastreadores/rastreador-filters";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { TrackerInstallationRevenueChart } from "@/components/charts/tracker-installation-revenue-chart";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { type Kpi } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface RastreadorData {
-  id?: string;
-  cnpj: string;
-  empresa: string;
-  franqueado: string;
-  chassi: string;
-  placa: string;
-  rastreador: string;
-  tipo: string;
-  moto: string;
-  mes: string;
-  valor: string;
-}
+const monthFullNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+const processTrackerData = (rastreadores: RastreadorData[], selectedMonth: string) => {
+    const filteredByMonth = selectedMonth === 'all'
+        ? rastreadores
+        : rastreadores.filter(r => r.mes.toLowerCase() === selectedMonth);
+
+    const monthlyInstallations = Array(12).fill(0);
+    const monthlyRevenue = Array(12).fill(0);
+    
+    filteredByMonth.forEach(rastreador => {
+        const mesIndex = monthFullNames.indexOf(rastreador.mes.toLowerCase());
+        if (mesIndex !== -1) {
+            monthlyInstallations[mesIndex]++;
+            monthlyRevenue[mesIndex] += parseFloat(rastreador.valor) || 0;
+        }
+    });
+
+    const totalInstallations = filteredByMonth.length;
+    const totalRevenue = filteredByMonth.reduce((sum, r) => sum + (parseFloat(r.valor) || 0), 0);
+    
+    const chartData = monthFullNames.map((m, i) => ({
+      month: m.substring(0, 3),
+      count: monthlyInstallations[i],
+      revenue: monthlyRevenue[i],
+    }));
+
+    return {
+        kpiData: [
+            { title: "Rastreadores Instalados", value: totalInstallations.toString(), icon: SatelliteDish, description: "Total no período", color: "text-indigo-700" },
+            { title: "Receita de Rastreadores", value: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: DollarSign, description: "Soma no período", color: "text-green-600" },
+        ],
+        chartData,
+    }
+};
 
 export default function RastreadoresPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rastreadoresData, setRastreadoresData] = useState<RastreadorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState('all');
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingRastreador, setEditingRastreador] = useState<RastreadorData | null>(null);
@@ -55,15 +85,13 @@ export default function RastreadoresPage() {
   });
 
   const [filters, setFilters] = useState<RastreadorFiltersState>({
-    searchTerm: '',
-    status: 'all',
-    franqueado: 'all',
+    searchTerm: '', status: 'all', franqueado: 'all',
   });
 
   useEffect(() => {
     setIsLoading(true);
     const unsubscribe = subscribeToRastreadores((dataFromDB) => {
-      setRastreadoresData(Array.isArray(dataFromDB) ? (dataFromDB as RastreadorData[]) : []);
+      setRastreadoresData(Array.isArray(dataFromDB) ? dataFromDB : []);
       setIsLoading(false);
     });
     return () => unsubscribe();
@@ -81,22 +109,17 @@ export default function RastreadoresPage() {
         r.placa?.toLowerCase().includes(searchTermLower) ||
         r.rastreador?.toLowerCase().includes(searchTermLower) ||
         r.chassi?.toLowerCase().includes(searchTermLower);
-      
       const statusMatch = filters.status === 'all' || r.tipo?.toLowerCase() === filters.status;
       const franqueadoMatch = filters.franqueado === 'all' || r.franqueado === filters.franqueado;
-
       return searchMatch && statusMatch && franqueadoMatch;
     });
   }, [rastreadoresData, filters]);
+  
+  const { kpiData, chartData } = useMemo(() => processTrackerData(rastreadoresData, selectedMonth), [rastreadoresData, selectedMonth]);
 
-  const handleFilterChange = useCallback((newFilters: RastreadorFiltersState) => {
-    setFilters(newFilters);
-  }, []);
-
-  const handleClearFilters = useCallback(() => {
-    setFilters({ searchTerm: '', status: 'all', franqueado: 'all' });
-  }, []);
-
+  const handleFilterChange = useCallback((newFilters: RastreadorFiltersState) => setFilters(newFilters), []);
+  const handleClearFilters = useCallback(() => setFilters({ searchTerm: '', status: 'all', franqueado: 'all' }), []);
+  
   const handleOpenAddModal = () => {
     setEditingRastreador(null);
     setCurrentFormData({
@@ -112,10 +135,7 @@ export default function RastreadoresPage() {
     setIsFormModalOpen(true);
   };
   
-  const handleCloseFormModal = () => {
-    setIsFormModalOpen(false);
-    setEditingRastreador(null);
-  };
+  const handleCloseFormModal = () => setIsFormModalOpen(false);
 
   const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -147,134 +167,83 @@ export default function RastreadoresPage() {
       toast({ title: "Erro", description: error.message || "Não foi possível excluir o rastreador.", variant: "destructive" });
     }
   };
-
-  const parseCSV = (csvText: string): Omit<RastreadorData, 'id'>[] => {
-    let cleanedCsvText = csvText.charCodeAt(0) === 0xFEFF ? csvText.substring(1) : csvText;
-    const lines = cleanedCsvText.trim().split().map(line => line.trim()).filter(line => line);
-
-    if (lines.length < 2) throw new Error("CSV inválido: Necessita de cabeçalho e pelo menos uma linha de dados.");
-
-    const parseCsvLine = (line: string): string[] => {
-      const result: string[] = [];
-      let currentField = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') inQuotes = !inQuotes;
-        else if (char === ',' && !inQuotes) {
-          result.push(currentField.trim());
-          currentField = '';
-        } else currentField += char;
-      }
-      result.push(currentField.trim());
-      return result;
-    };
-    
-    const headers = parseCsvLine(lines[0]).map(h => normalizeHeader(h));
-    const requiredHeaders = ["cnpj", "empresa", "franqueado", "chassi", "placa", "rastreador", "tipo", "moto", "mes", "valor"];
-    
-    for (const reqHeader of requiredHeaders) {
-      if (!headers.includes(reqHeader)) {
-        throw new Error(`CSV inválido: O cabeçalho obrigatório "${reqHeader}" não foi encontrado. Cabeçalhos detectados: ${headers.join(' | ')}`);
-      }
-    }
-
-    const headerIndexMap = requiredHeaders.reduce((acc, reqHeader) => {
-      acc[reqHeader] = headers.indexOf(reqHeader);
-      return acc;
-    }, {} as { [key: string]: number });
-
-    return lines.slice(1).map((line, i) => {
-      const values = parseCsvLine(line);
-      if (values.length !== headers.length) {
-        console.warn(`Linha ${i+2} do CSV ignorada: número de colunas não corresponde ao cabeçalho.`);
-        return null;
-      }
-      
-      const rastreadorEntry: Omit<RastreadorData, 'id'> = {
-        cnpj: values[headerIndexMap["cnpj"]] || "",
-        empresa: values[headerIndexMap["empresa"]] || "",
-        franqueado: values[headerIndexMap["franqueado"]] || "",
-        chassi: values[headerIndexMap["chassi"]] || "",
-        placa: values[headerIndexMap["placa"]] || "",
-        rastreador: values[headerIndexMap["rastreador"]] || "",
-        tipo: values[headerIndexMap["tipo"]] || "",
-        moto: values[headerIndexMap["moto"]] || "",
-        mes: values[headerIndexMap["mes"]] || "",
-        valor: values[headerIndexMap["valor"]] || "",
-      };
-      return rastreadorEntry;
-    }).filter((r): r is Omit<RastreadorData, 'id'> => r !== null);
-  };
-
-  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      if (!text) {
-        toast({ title: "Erro", description: "Não foi possível ler o arquivo.", variant: "destructive" });
-        return;
-      }
-      
-      try {
-        const parsedData = parseCSV(text);
-        if (parsedData.length === 0) {
-          toast({ title: "Aviso", description: "Nenhum dado válido para importar.", variant: "destructive" });
-          return;
-        }
-
-        for (const data of parsedData) {
-            await addRastreador(data);
-        }
-        
-        toast({ title: "Sucesso!", description: `${parsedData.length} rastreadores importados.` });
-      } catch (error: any) {
-        toast({ title: "Erro na Importação", description: error.message, variant: "destructive" });
-      } finally {
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
-    };
-    reader.onerror = () => {
-        toast({ title: "Erro", description: "Falha ao ler o arquivo.", variant: "destructive" });
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    };
-    reader.readAsText(file, 'UTF-8');
-  }, [toast]);
-
+  
   const handleImportClick = () => fileInputRef.current?.click();
-
+  
   const pageActions = (
     <>
-      <Button variant="outline" onClick={handleImportClick}>
-        <Upload className="mr-2 h-4 w-4" /> Importar CSV
-      </Button>
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".csv" hidden />
+      <Button variant="outline" onClick={handleImportClick}><Upload className="mr-2 h-4 w-4" /> Importar CSV</Button>
+      <input type="file" ref={fileInputRef} hidden />
       <Button onClick={handleOpenAddModal}>Adicionar Rastreador</Button>
       {(filters.searchTerm || filters.status !== 'all' || filters.franqueado !== 'all') && (
-        <Button variant="ghost" onClick={handleClearFilters}>
-          <X className="mr-2 h-4 w-4" /> Limpar Filtros
-        </Button>
+        <Button variant="ghost" onClick={handleClearFilters}><X className="mr-2 h-4 w-4" /> Limpar Filtros</Button>
       )}
     </>
   );
 
   return (
     <DashboardLayout>
-      <PageHeader title="Gestão de Rastreadores" description="Visualize e gerencie os rastreadores." actions={pageActions} />
-      <RastreadorFilters 
-        onFilterChange={handleFilterChange}
-        initialFilters={filters}
-        franqueados={franqueadosUnicos}
+      <PageHeader 
+        title="Gestão de Rastreadores" 
+        description="Visualize e gerencie os rastreadores." 
+        icon={SatelliteDish}
+        iconContainerClassName="bg-indigo-600"
+        actions={pageActions} 
       />
-      <RastreadoresList
-        rastreadores={filteredRastreadores}
-        onEditRastreador={handleOpenEditModal}
-        onDeleteRastreador={handleDeleteRastreador}
-        isLoading={isLoading}
-      />
+
+      <Tabs defaultValue="graficos" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="dados">Dados</TabsTrigger>
+          <TabsTrigger value="graficos">Gráficos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="dados" className="mt-4">
+          <RastreadorFilters 
+            onFilterChange={handleFilterChange}
+            initialFilters={filters}
+            franqueados={franqueadosUnicos}
+          />
+          <RastreadoresList
+            rastreadores={filteredRastreadores}
+            onEditRastreador={handleOpenEditModal}
+            onDeleteRastreador={handleDeleteRastreador}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+        <TabsContent value="graficos" className="mt-4 space-y-4">
+          <div className="flex justify-start">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px]">
+                <Calendar className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Selecione o Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Meses</SelectItem>
+                {monthFullNames.map((month, index) => (
+                  <SelectItem key={index} value={month}>{month.charAt(0).toUpperCase() + month.slice(1)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {kpiData.map((kpi: Kpi) => <KpiCard key={kpi.title} {...kpi} />)}
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChartBig className="h-5 w-5" />
+                Volume e Receita de Instalações de Rastreadores
+              </CardTitle>
+              <CardDescription>
+                Volume de instalações (barras) e receita correspondente (linha).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TrackerInstallationRevenueChart data={chartData} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
       <Dialog open={isFormModalOpen} onOpenChange={setIsFormModalOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingRastreador ? "Editar" : "Adicionar"} Rastreador</DialogTitle></DialogHeader>

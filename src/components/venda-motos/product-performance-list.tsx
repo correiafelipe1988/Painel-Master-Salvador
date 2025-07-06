@@ -6,7 +6,6 @@ import { getVendasMotos } from "@/lib/firebase/vendaMotoService";
 import { ProductPerformanceCard } from "./product-performance-card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Tipagem para os dados de performance processados
 interface ModelPerformance {
   rank: number;
   modelName: string;
@@ -14,15 +13,15 @@ interface ModelPerformance {
   totalRevenue: number;
   averagePrice: number;
   revenuePercentage: number;
-  isTopThree: boolean; // Alterado para refletir a nova lógica
+  franchiseeCount: number;
+  isTopThree: boolean;
 }
 
-// Componente de Skeleton para o loading
 const PerformanceListSkeleton = () => (
   <div className="space-y-4">
-    <Skeleton className="h-40 w-full" />
-    <Skeleton className="h-40 w-full" />
-    <Skeleton className="h-40 w-full" />
+    <Skeleton className="h-48 w-full" />
+    <Skeleton className="h-48 w-full" />
+    <Skeleton className="h-48 w-full" />
   </div>
 );
 
@@ -39,10 +38,18 @@ export function ProductPerformanceList() {
         const statsByModel = vendas.reduce((acc, venda) => {
           const model = venda.modelo || 'Não Especificado';
           if (!acc[model]) {
-            acc[model] = { unitsSold: 0, totalRevenue: 0 };
+            acc[model] = { 
+              unitsSold: 0, 
+              totalRevenue: 0,
+              franchisees: new Set(),
+            };
           }
           acc[model].unitsSold += venda.quantidade;
           acc[model].totalRevenue += venda.valor_total;
+          // Correção: usar o campo "franqueado" em vez de "nome_franqueado"
+          if (venda.franqueado) {
+            acc[model].franchisees.add(venda.franqueado);
+          }
           return acc;
         }, {});
 
@@ -55,12 +62,13 @@ export function ProductPerformanceList() {
             totalRevenue: stats.totalRevenue,
             averagePrice: stats.unitsSold > 0 ? stats.totalRevenue / stats.unitsSold : 0,
             revenuePercentage: grandTotalRevenue > 0 ? (stats.totalRevenue / grandTotalRevenue) * 100 : 0,
+            franchiseeCount: stats.franchisees.size,
           }))
           .sort((a, b) => b.totalRevenue - a.totalRevenue)
           .map((data, index) => ({
             ...data,
             rank: index + 1,
-            isTopThree: index < 3, // A lógica agora checa se o item está no Top 3
+            isTopThree: index < 3,
           }));
 
         setPerformanceData(processedData);
