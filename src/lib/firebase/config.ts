@@ -39,13 +39,13 @@ if (missingVars.length > 0) {
   };
 } else {
   firebaseConfig = {
-    apiKey: requiredEnvVars.apiKey!,
-    authDomain: requiredEnvVars.authDomain!,
-    projectId: requiredEnvVars.projectId!,
-    storageBucket: requiredEnvVars.storageBucket!,
-    messagingSenderId: requiredEnvVars.messagingSenderId!,
-    appId: requiredEnvVars.appId!,
-  };
+  apiKey: requiredEnvVars.apiKey!,
+  authDomain: requiredEnvVars.authDomain!,
+  projectId: requiredEnvVars.projectId!,
+  storageBucket: requiredEnvVars.storageBucket!,
+  messagingSenderId: requiredEnvVars.messagingSenderId!,
+  appId: requiredEnvVars.appId!,
+};
 }
 
 // Inicialização do Firebase
