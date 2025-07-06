@@ -232,7 +232,7 @@ Este sistema é propriedade da **Felipe Correia** e está protegido por direitos
 
 ### 🔄 **Changelog Recente**
 
-#### v1.0.0 (Janeiro 2025)
+#### v1.0.0 (Junho 2025)
 - ✅ Implementação inicial do sistema
 - ✅ Integração completa com Firebase
 - ✅ Sistema de autenticação

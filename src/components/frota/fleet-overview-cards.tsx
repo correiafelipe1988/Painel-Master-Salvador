@@ -88,26 +88,10 @@ export function FleetOverviewCards({ motorcycles, isLoading = false }: FleetOver
       iconBgColor: occupationRate >= 85 ? "bg-green-100" : 
                    occupationRate >= 75 ? "bg-yellow-100" : "bg-red-100",
     },
-    {
-      title: "Receita Semanal",
-      value: formatCurrency(totalWeeklyRevenue),
-      description: "Total da frota",
-      icon: DollarSign,
-      color: "text-emerald-600",
-      iconBgColor: "bg-emerald-100",
-    },
-    {
-      title: "Ticket Médio",
-      value: formatCurrency(averageTicket),
-      description: "Por moto/semana",
-      icon: DollarSign,
-      color: "text-teal-600",
-      iconBgColor: "bg-teal-100",
-    },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
       {kpiCards.map((kpi, index) => (
         <KpiCard 
           key={index}
