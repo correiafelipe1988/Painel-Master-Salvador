@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "motorcycles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "franqueado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data_ultima_mov",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

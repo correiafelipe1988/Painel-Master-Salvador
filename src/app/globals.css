@@ -1,0 +1,108 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 0% 96%; /* #F5F5F5 Very Light Gray */
+    --foreground: 220 13% 20%; /* #2A2E33 Dark Gray */
+
+    --card: 0 0% 100%; /* #FFFFFF White */
+    --card-foreground: 220 13% 20%; /* #2A2E33 Dark Gray */
+
+    --popover: 0 0% 100%; /* #FFFFFF White */
+    --popover-foreground: 220 13% 20%; /* #2A2E33 Dark Gray */
+
+    --primary: 228 59% 48%; /* #354FBF Brand Blue */
+    --primary-foreground: 0 0% 98%; /* #FAFAFA Almost White */
+
+    --secondary: 210 40% 90%; /* #DCE3EA Light Blue/Gray */
+    --secondary-foreground: 228 59% 48%; /* #354FBF Brand Blue */
+
+    --muted: 210 40% 95%; /* #F0F2F5 Very Light Gray/Off-White */
+    --muted-foreground: 210 30% 50%; /* #6B7A8C Medium Gray */
+
+    --accent: 98 59% 50%; /* #6DCC33 Brand Green */
+    --accent-foreground: 220 13% 10%; /* Dark Gray for contrast on green */
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 210 30% 85%; /* #CCD5E0 Light Gray Border */
+    --input: 210 30% 88%; /* #D6DDE5 Lighter Gray for Input BG */
+    --ring: 228 59% 48%; /* #354FBF Brand Blue for Focus Rings */
+
+    --chart-1: 228 59% 65%; /* Lighter Brand Blue - Used for Recuperadas */
+    --chart-2: 228 59% 48%; /* Brand Blue - Used for Alugadas */
+    --chart-3: 98 59% 50%;  /* Brand Green - Used for Relocadas */
+    --chart-4: 30 80% 60%;  /* Orange - Used for Maintenance */
+    --chart-5: 98 59% 65%;  /* Lighter Brand Green - Used for Locações Total */
+
+    --radius: 0.5rem;
+
+    /* Sidebar specific theme variables */
+    --sidebar-background: 228 59% 38%; /* Darker shade of Brand Blue */
+    --sidebar-foreground: 0 0% 95%; /* #F2F2F2 Light gray/off-white for text */
+    --sidebar-primary: 98 59% 50%; /* #6DCC33 Brand Green for active/highlighted items */
+    --sidebar-primary-foreground: 220 13% 10%; /* Dark Gray text on Brand Green */
+    --sidebar-accent: 228 59% 48%; /* #354FBF Brand Blue for hover */
+    --sidebar-accent-foreground: 0 0% 98%; /* #FAFAFA Almost White text on hover */
+    --sidebar-border: 228 59% 30%; /* Even darker Brand Blue for sidebar elements border */
+    --sidebar-ring: 98 59% 50%; /* #6DCC33 Brand Green for focus rings in sidebar */
+  }
+
+  .dark {
+    --background: 220 13% 10%;
+    --foreground: 0 0% 95%;
+
+    --card: 220 13% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 220 13% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 228 59% 58%; /* Lighter Brand Blue for dark mode */
+    --primary-foreground: 220 13% 10%;
+
+    --secondary: 220 13% 20%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 220 13% 25%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 98 59% 60%; /* Lighter Brand Green for dark mode */
+    --accent-foreground: 220 13% 10%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 13% 30%;
+    --input: 220 13% 30%;
+    --ring: 228 59% 58%; /* Lighter Brand Blue for Focus Rings */
+
+    --chart-1: 228 59% 75%;
+    --chart-2: 228 59% 58%;
+    --chart-3: 98 59% 60%;
+    --chart-4: 30 80% 70%;
+    --chart-5: 98 59% 75%;
+
+    --sidebar-background: 228 59% 15%; /* Very dark Brand Blue for sidebar */
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 98 59% 60%; /* Lighter Brand Green */
+    --sidebar-primary-foreground: 220 13% 10%;
+    --sidebar-accent: 228 59% 25%; /* Darker Brand Blue for hover state */
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 228 59% 20%;
+    --sidebar-ring: 98 59% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
