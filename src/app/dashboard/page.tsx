@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -371,7 +370,7 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Motos Alugadas Hoje</p>
+                <p className="text-sm text-muted-foreground font-medium">Novas Alugadas Hoje</p>
                 <p className="text-2xl font-bold text-blue-500">{todayData.motosAlugadasHoje}</p>
                 <p className="text-xs text-muted-foreground">unidades</p>
               </div>
@@ -397,7 +396,7 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-gray-400 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Motos Relocadas Hoje</p>
+                <p className="text-sm text-muted-foreground font-medium">Usadas Alugadas Hoje</p>
                 <p className="text-2xl font-bold text-gray-600">{todayData.motosRelocadasHoje}</p>
                 <p className="text-xs text-muted-foreground">unidades</p>
               </div>
@@ -459,7 +458,7 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Motos Alugadas</p>
+                <p className="text-sm text-muted-foreground font-medium">Moto Nova Alugada</p>
                 <p className="text-2xl font-bold text-blue-500">{monthData.motosAlugadas}</p>
                 <p className="text-xs text-muted-foreground">em {monthNames[selectedMonth]}/{selectedYear}</p>
               </div>
@@ -485,7 +484,7 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-gray-400 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Motos Relocadas</p>
+                <p className="text-sm text-muted-foreground font-medium">Motos Usadas Alugadas</p>
                 <p className="text-2xl font-bold text-gray-600">{monthData.motosRelocadas}</p>
                 <p className="text-xs text-muted-foreground">em {monthNames[selectedMonth]}/{selectedYear}</p>
               </div>

@@ -44,7 +44,9 @@ export function MotorcycleProjectionChart() {
   // Determinar o mês atual
   const mesAtual = new Date().getMonth() + 1 // 1-12
   const metaFinal = 1000
-  const mesesRestantes = Math.max(1, 12 - mesAtual) // Pelo menos 1 mês
+  
+  // Calcular meses restantes a partir de julho
+  const mesesRestantes = mesAtual <= 7 ? 6 : Math.max(1, 12 - mesAtual + 1) // Julho a dezembro = 6 meses
   
   // Calcular quantas motos precisam ser adicionadas
   const motasFaltantes = Math.max(0, metaFinal - baseAtual)
@@ -60,8 +62,8 @@ export function MotorcycleProjectionChart() {
       { month: "Mar", monthNumber: 3, atual: Math.round(crescimentoMedio * 3) },
       { month: "Abr", monthNumber: 4, atual: Math.round(crescimentoMedio * 4) },
       { month: "Mai", monthNumber: 5, atual: Math.round(crescimentoMedio * 5) },
-      { month: "Jun", monthNumber: 6, atual: mesAtual >= 6 ? baseAtual : Math.round(crescimentoMedio * 6) },
-      { month: "Jul", monthNumber: 7, atual: mesAtual >= 7 ? baseAtual : baseAtual }, // Manter base atual para meses futuros
+      { month: "Jun", monthNumber: 6, atual: mesAtual > 6 ? Math.round(crescimentoMedio * 6) : Math.round(crescimentoMedio * 6) },
+      { month: "Jul", monthNumber: 7, atual: mesAtual >= 7 ? baseAtual : baseAtual },
       { month: "Ago", monthNumber: 8, atual: mesAtual >= 8 ? baseAtual : baseAtual },
       { month: "Set", monthNumber: 9, atual: mesAtual >= 9 ? baseAtual : baseAtual },
       { month: "Out", monthNumber: 10, atual: mesAtual >= 10 ? baseAtual : baseAtual },
@@ -72,26 +74,48 @@ export function MotorcycleProjectionChart() {
 
   // Criar dados de projeção
   const dadosProjecao: ProjectionData[] = useMemo(() => {
+    const hoje = new Date();
+    const diasNoMes = new Date(hoje.getFullYear(), mesAtual, 0).getDate();
+    const diaAtual = hoje.getDate();
+    const diasRestantes = diasNoMes - diaAtual;
+    
+    // Projeção acumulada começa da base atual
+    let acumulado = baseAtual;
+    
     return dadosHistoricos.map((item) => {
-      let projecao = item.atual
-      let motosNecessarias = 0
-
-      if (item.monthNumber > mesAtual) {
-        const mesesApos = item.monthNumber - mesAtual
-        projecao = baseAtual + (motasPorMes * mesesApos)
-        motosNecessarias = motasPorMes
-      } else if (item.monthNumber === mesAtual) {
-        projecao = baseAtual
+      let projecao = item.atual;
+      let motosNecessarias = 0;
+      
+      if (item.monthNumber < mesAtual) {
+        // Meses passados: usar realizado
+        projecao = item.atual;
+      } else if (item.monthNumber === mesAtual && item.monthNumber < 7) {
+        // Mês corrente antes de julho: manter base atual
+        projecao = baseAtual;
+        acumulado = baseAtual;
+      } else if (item.monthNumber === 7) {
+        // Julho: base atual + primeiro incremento mensal
+        acumulado = Math.round(baseAtual + motasPorMes);
+        projecao = acumulado;
+        motosNecessarias = motasPorMes;
+      } else if (item.monthNumber > 7) {
+        // Meses após julho: continuar crescimento proporcional
+        acumulado = Math.round(acumulado + motasPorMes);
+        projecao = acumulado;
+        motosNecessarias = motasPorMes;
+      } else {
+        // Meses entre o atual e julho: manter base atual
+        projecao = baseAtual;
       }
-
+      
       return {
         ...item,
         projecao: Math.min(projecao, metaFinal),
         meta: metaFinal,
         motosNecessarias
-      }
-    })
-  }, [dadosHistoricos, mesAtual, baseAtual, motasPorMes, metaFinal])
+      };
+    });
+  }, [dadosHistoricos, mesAtual, baseAtual, motasPorMes, metaFinal]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -197,7 +221,7 @@ export function MotorcycleProjectionChart() {
         <Card className="border-l-4 border-l-purple-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardContent className="p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm text-muted-foreground font-medium">Por Mês</p>
+              <p className="text-sm text-muted-foreground font-medium">Por Mês (Jul-Dez)</p>
               <p className="text-2xl font-bold text-purple-500">+{motasPorMes}</p>
               <p className="text-xs text-muted-foreground">motos necessárias</p>
             </div>
@@ -347,11 +371,11 @@ export function MotorcycleProjectionChart() {
               <strong>Crescimento Necessário:</strong> +{motasFaltantes} motos em {mesesRestantes} meses
             </p>
             <p>
-              <strong>Média Mensal:</strong> +{motasPorMes} motos por mês ({getNomesMeses() === 'dezembro' ? 'dezembro' : `${getNomesMeses()} a dezembro`})
+              <strong>Média Mensal:</strong> +{motasPorMes} motos por mês (julho a dezembro)
             </p>
             <p className="text-sm mt-4 p-3 bg-orange-100 rounded-lg">
               <strong>Recomendação:</strong> Para atingir a meta de 1.000 motos até dezembro, 
-              é necessário adicionar aproximadamente {motasPorMes} motos por mês a partir de {getNomesMeses()}. 
+              é necessário adicionar aproximadamente {motasPorMes} motos por mês a partir de julho. 
               {baseAtual > 0 && (
                 <>
                   Isso representa um crescimento mensal de {((motasPorMes / baseAtual) * 100).toFixed(1)}% 
