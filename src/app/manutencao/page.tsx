@@ -36,7 +36,7 @@ export default function ManutencaoPage() {
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
       color: 'text-purple-600',
-      description: '',
+      description: 'Quantidade total de manutenções registradas no período.',
     },
     {
       title: 'Valor Total',
@@ -45,7 +45,7 @@ export default function ManutencaoPage() {
       iconBgColor: 'bg-green-100',
       iconColor: 'text-green-600',
       color: 'text-green-600',
-      description: '',
+      description: 'Soma de todos os valores das manutenções realizadas.',
     },
     {
       title: 'Valor Médio',
@@ -54,7 +54,7 @@ export default function ManutencaoPage() {
       iconBgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
       color: 'text-blue-600',
-      description: '',
+      description: 'Média de valor por manutenção registrada.',
     },
     {
       title: 'Clientes Únicos',
@@ -63,7 +63,7 @@ export default function ManutencaoPage() {
       iconBgColor: 'bg-orange-100',
       iconColor: 'text-orange-600',
       color: 'text-orange-600',
-      description: '',
+      description: 'Número de clientes distintos que realizaram manutenções.',
     },
   ];
 
@@ -76,16 +76,14 @@ export default function ManutencaoPage() {
         iconContainerClassName="bg-purple-600"
       />
 
-      {/* KPIs de Manutenção */}
-      {activeTab === "dados" && (
-        <div className="mt-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {kpis.map((kpi) => (
-              <KpiCard key={kpi.title} {...kpi} className="h-32" />
-            ))}
-          </div>
+      {/* KPIs de Manutenção - sempre visíveis */}
+      <div className="mt-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {kpis.map((kpi) => (
+            <KpiCard key={kpi.title} {...kpi} className="h-32" />
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Tabs com diferentes visões */}
       <div className="mt-8">
@@ -106,7 +104,7 @@ export default function ManutencaoPage() {
         </TabsContent>
         
         <TabsContent value="graficos" className="space-y-6">
-          <ManutencaoGraficosTab data={data} />
+          <ManutencaoGraficosTab data={data} hideKpis />
         </TabsContent>
       </Tabs>
       </div>
