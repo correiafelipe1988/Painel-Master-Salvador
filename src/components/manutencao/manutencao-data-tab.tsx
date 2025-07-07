@@ -78,16 +78,85 @@ export function ManutencaoDataTab() {
           // Tentar diferentes variações dos nomes das colunas
           const parsedData = csvData.map((row, index) => {
             try {
+              // Função para converter data para formato ISO (assumindo formato brasileiro DD/MM/YYYY)
+              const formatDate = (dateStr: string) => {
+                if (!dateStr) return new Date().toISOString().split('T')[0];
+                
+                const trimmedDate = dateStr.trim();
+                
+                // Primeiro, tentar formato brasileiro DD/MM/YYYY ou DD/MM/YY
+                if (trimmedDate.includes('/')) {
+                  const parts = trimmedDate.split('/');
+                  if (parts.length === 3) {
+                    const day = parseInt(parts[0]);
+                    const month = parseInt(parts[1]);
+                    let year = parseInt(parts[2]);
+                    
+                    // Se o ano tem apenas 2 dígitos, assumir 2000+
+                    if (year < 100) {
+                      year += 2000;
+                    }
+                    
+                    // Validar se a data é válida
+                    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+                      const formattedDate = new Date(year, month - 1, day);
+                      if (!isNaN(formattedDate.getTime())) {
+                        console.log(`Data convertida: ${trimmedDate} -> ${formattedDate.toISOString().split('T')[0]}`);
+                        return formattedDate.toISOString().split('T')[0];
+                      }
+                    }
+                  }
+                }
+                
+                // Tentar formato ISO ou outros formatos padrão
+                const date = new Date(trimmedDate);
+                if (!isNaN(date.getTime())) {
+                  return date.toISOString().split('T')[0];
+                }
+                
+                // Se nada funcionar, usar data atual
+                console.warn(`Não foi possível parsear a data: ${trimmedDate}, usando data atual`);
+                return new Date().toISOString().split('T')[0];
+              };
+
+              // Função auxiliar para buscar valor em múltiplas variações de nome de coluna
+              const getColumnValue = (possibleNames: string[]) => {
+                for (const name of possibleNames) {
+                  if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+                    return String(row[name]).trim();
+                  }
+                }
+                return '';
+              };
+
               const data = {
-                nome_cliente: row['Nome do cliente'] || row['nome_cliente'] || row['cliente'] || '',
-                veiculo_placa: row['Veículo placa'] || row['veiculo_placa'] || row['placa'] || '',
-                veiculo_modelo: row['Veículo modelo'] || row['veiculo_modelo'] || row['modelo'] || '',
-                veiculo_fabricante: row['Veículo fabricante'] || row['veiculo_fabricante'] || row['fabricante'] || '',
-                semana: row['SEMANA'] || row['semana'] || '',
-                data: row['Data'] || row['data'] || new Date().toISOString().split('T')[0],
-                valor_total: parseFloat(String(row['Valor Total'] || row['valor_total'] || row['valor'] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
-                pecas_utilizadas: row['Peças utilizadas'] || row['pecas_utilizadas'] || row['pecas'] || '',
-                responsaveis_mao_obra: row['Responsáveis pela mão de obra'] || row['responsaveis_mao_obra'] || row['responsaveis'] || '',
+                nome_cliente: getColumnValue([
+                  'Nome do cliente', 'nome_cliente', 'cliente', 'Cliente', 'CLIENTE', 'Nome Cliente', 'nome cliente'
+                ]),
+                veiculo_placa: getColumnValue([
+                  'Veículo placa', 'veiculo_placa', 'placa', 'Placa', 'PLACA', 'Veiculo Placa', 'veiculo placa'
+                ]),
+                veiculo_modelo: getColumnValue([
+                  'Veículo modelo', 'veiculo_modelo', 'modelo', 'Modelo', 'MODELO', 'Veiculo Modelo', 'veiculo modelo'
+                ]),
+                veiculo_fabricante: getColumnValue([
+                  'Veículo fabricante', 'veiculo_fabricante', 'fabricante', 'Fabricante', 'FABRICANTE', 'Veiculo Fabricante', 'veiculo fabricante', 'marca', 'Marca', 'MARCA'
+                ]),
+                semana: getColumnValue([
+                  'SEMANA', 'semana', 'Semana', 'Sem', 'SEM', 'sem'
+                ]),
+                data: formatDate(getColumnValue([
+                  'Data', 'data', 'DATA', 'Date', 'date', 'Data Manutencao', 'data_manutencao'
+                ])),
+                valor_total: parseFloat(String(getColumnValue([
+                  'Valor Total', 'valor_total', 'valor', 'Valor', 'VALOR', 'Total', 'TOTAL', 'Valor total', 'valor total'
+                ]) || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+                pecas_utilizadas: getColumnValue([
+                  'Peças utilizadas', 'pecas_utilizadas', 'pecas', 'Pecas', 'PECAS', 'Peças', 'Pecas utilizadas', 'pecas utilizadas', 'Peça', 'peca'
+                ]),
+                responsaveis_mao_obra: getColumnValue([
+                  'Responsáveis pela mão de obra', 'responsaveis_mao_obra', 'responsaveis', 'Responsaveis', 'RESPONSAVEIS', 'Responsáveis', 'mao_obra', 'mao de obra', 'Mao de obra', 'MAO DE OBRA', 'mecanico', 'Mecanico', 'MECANICO'
+                ]),
               };
               
               console.log(`Linha ${index + 1} processada:`, data);
@@ -258,20 +327,47 @@ export function ManutencaoDataTab() {
                 disabled={isUploading}
               />
               <div className="text-sm text-muted-foreground mt-1">
-                <p className="mb-1"><strong>Colunas esperadas:</strong></p>
-                <ul className="text-xs space-y-0.5">
-                  <li>• Nome do cliente</li>
-                  <li>• Veículo placa</li>
-                  <li>• Veículo modelo</li>
-                  <li>• Veículo fabricante</li>
-                  <li>• SEMANA</li>
-                  <li>• Data</li>
-                  <li>• Valor Total</li>
-                  <li>• Peças utilizadas</li>
-                  <li>• Responsáveis pela mão de obra</li>
-                </ul>
+                <p className="mb-1"><strong>Colunas aceitas (várias variações):</strong></p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="font-medium">Cliente:</p>
+                    <p>Nome do cliente, cliente, Cliente</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Placa:</p>
+                    <p>Veículo placa, placa, Placa</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Modelo:</p>
+                    <p>Veículo modelo, modelo, Modelo</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Fabricante:</p>
+                    <p>Veículo fabricante, fabricante, marca</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Semana:</p>
+                    <p>SEMANA, semana, Semana</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Data:</p>
+                    <p>Data, data, Date</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Valor:</p>
+                    <p>Valor Total, valor, Total</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Peças:</p>
+                    <p>Peças utilizadas, pecas, Pecas</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="font-medium">Responsáveis:</p>
+                    <p>Responsáveis pela mão de obra, responsaveis, mecanico</p>
+                  </div>
+                </div>
                 <p className="text-xs mt-2 text-orange-600">
-                  💡 Dica: Abra o Console do navegador (F12) para ver detalhes do erro
+                  💡 Dica: Abra o Console do navegador (F12) para ver detalhes do processamento
                 </p>
               </div>
             </div>

@@ -19,16 +19,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "created_at",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "manutencao",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
           "fieldPath": "veiculo_fabricante",
           "order": "ASCENDING"
         },

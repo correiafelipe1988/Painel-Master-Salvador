@@ -147,25 +147,48 @@ export async function getManutencaoByFabricante(
 export async function importManutencaoBatch(
   manutencaoList: Omit<ManutencaoData, 'id' | 'created_at' | 'updated_at'>[]
 ): Promise<string[]> {
-  const batch = writeBatch(db);
-  const addedIds: string[] = [];
-  
-  manutencaoList.forEach((manutencaoData) => {
-    const processedData = {
-      ...manutencaoData,
-      valor_total: manutencaoData.valor_total || 0,
-      created_at: serverTimestamp(),
-      updated_at: serverTimestamp(),
-    };
+  try {
+    console.log('Iniciando importação em lote de', manutencaoList.length, 'registros');
     
-    const dataToSave = cleanDataForFirestore(processedData);
-    const newDocRef = doc(manutencaoCollectionRef);
-    batch.set(newDocRef, dataToSave);
-    addedIds.push(newDocRef.id);
-  });
-  
-  await batch.commit();
-  return addedIds;
+    // Para operações em lote grandes, vamos dividir em chunks menores
+    const BATCH_SIZE = 100; // Firestore limita a 500 operações por batch
+    const chunks = [];
+    
+    for (let i = 0; i < manutencaoList.length; i += BATCH_SIZE) {
+      chunks.push(manutencaoList.slice(i, i + BATCH_SIZE));
+    }
+    
+    const allIds: string[] = [];
+    
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      const chunkIds: string[] = [];
+      
+      chunk.forEach((manutencaoData) => {
+        const processedData = {
+          ...manutencaoData,
+          valor_total: manutencaoData.valor_total || 0,
+          created_at: serverTimestamp(),
+          updated_at: serverTimestamp(),
+        };
+        
+        const dataToSave = cleanDataForFirestore(processedData);
+        const newDocRef = doc(manutencaoCollectionRef);
+        batch.set(newDocRef, dataToSave);
+        chunkIds.push(newDocRef.id);
+      });
+      
+      console.log('Commitando chunk de', chunk.length, 'registros');
+      await batch.commit();
+      allIds.push(...chunkIds);
+    }
+    
+    console.log('Importação concluída com sucesso. Total de IDs:', allIds.length);
+    return allIds;
+  } catch (error) {
+    console.error('Erro detalhado na importação em lote:', error);
+    throw error;
+  }
 }
 
 export async function deleteAllManutencao(): Promise<void> {
