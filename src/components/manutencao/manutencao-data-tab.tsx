@@ -275,60 +275,6 @@ export function ManutencaoDataTab() {
 
   return (
     <div className="space-y-6">
-      {/* Botões de ação alinhados à direita */}
-      <div className="flex flex-wrap gap-2 mb-4 justify-end">
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-          className="flex items-center gap-2"
-        >
-          <FileText className="h-4 w-4" />
-          {isUploading ? "Processando..." : "Importar Dados"}
-        </Button>
-        <Input
-          id="csvFile"
-          type="file"
-          accept=".csv"
-          onChange={handleFileUpload}
-          ref={fileInputRef}
-          disabled={isUploading}
-          className="hidden"
-        />
-        <Button
-          variant="outline"
-          onClick={handleExportCSV}
-          disabled={data.length === 0}
-          className="flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          Exportar
-        </Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            try {
-              await deleteAllManutencao();
-              toast({
-                title: "Sucesso",
-                description: "Todos os registros foram removidos.",
-              });
-            } catch (error) {
-              console.error('Erro ao limpar dados:', error);
-              toast({
-                title: "Erro",
-                description: "Erro ao limpar os dados.",
-                variant: "destructive",
-              });
-            }
-          }}
-          disabled={data.length === 0}
-          className="flex items-center gap-2"
-        >
-          <Database className="h-4 w-4" />
-          Limpar
-        </Button>
-      </div>
-
       {/* Data Table */}
       <Card>
         <CardHeader>
@@ -342,10 +288,66 @@ export function ManutencaoDataTab() {
                 {data.length} registros carregados
               </CardDescription>
             </div>
-            <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Adicionar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                {isUploading ? "Processando..." : "Importar"}
+              </Button>
+              <Input
+                id="csvFile"
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                ref={fileInputRef}
+                disabled={isUploading}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                disabled={data.length === 0}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await deleteAllManutencao();
+                    toast({
+                      title: "Sucesso",
+                      description: "Todos os registros foram removidos.",
+                    });
+                  } catch (error) {
+                    console.error('Erro ao limpar dados:', error);
+                    toast({
+                      title: "Erro",
+                      description: "Erro ao limpar os dados.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={data.length === 0}
+                className="flex items-center gap-2"
+              >
+                <Database className="h-4 w-4" />
+                Limpar
+              </Button>
+              <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Adicionar
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
