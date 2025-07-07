@@ -63,9 +63,9 @@ Após fazer login, você terá acesso a:
 - Gestão de Motocicletas
 - Rastreadores
 - Relatórios
-- Indicadores
+- Frota
+- Financeiro
 - Menu de usuário com logout
-
 ## 🔧 Troubleshooting
 
 **Se a tela ficar em "Verificando autenticação":**

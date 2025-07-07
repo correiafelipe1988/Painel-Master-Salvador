@@ -67,3 +67,18 @@ export interface StatusRapidoItem {
   statusKey?: MotorcycleStatus;
   icon: React.ElementType;
 }
+
+export interface ManutencaoData {
+  id: string;
+  nome_cliente: string;
+  veiculo_placa: string;
+  veiculo_modelo: string;
+  veiculo_fabricante: string;
+  semana: string;
+  data: string;
+  valor_total: number;
+  pecas_utilizadas: string;
+  responsaveis_mao_obra: string;
+  created_at: string;
+  updated_at: string;
+}
