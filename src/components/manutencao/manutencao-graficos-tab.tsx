@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { BarChart3, PieChart as PieChartIcon, TrendingUp, AlertCircle } from "lucide-react";
+import { BarChart3, PieChart as PieChartIcon, TrendingUp, AlertCircle, Wrench, DollarSign, Users } from "lucide-react";
 import { ManutencaoData } from "@/lib/types";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 
 interface ManutencaoGraficosTabProps {
   data?: ManutencaoData[];
+  hideKpis?: boolean;
 }
 
-export function ManutencaoGraficosTab({ data = [] }: ManutencaoGraficosTabProps) {
+export function ManutencaoGraficosTab({ data = [], hideKpis = false }: ManutencaoGraficosTabProps) {
   const [chartData, setChartData] = useState({
     fabricanteData: [] as { name: string; value: number; color: string }[],
     modeloData: [] as { name: string; value: number }[],
@@ -100,6 +102,9 @@ export function ManutencaoGraficosTab({ data = [] }: ManutencaoGraficosTabProps)
     return colors[index];
   };
 
+  const totalValor = data.reduce((sum, item) => sum + item.valor_total, 0);
+  const avgValor = data.length > 0 ? totalValor / data.length : 0;
+  const totalClientes = new Set(data.map(item => item.nome_cliente)).size;
 
   if (data.length === 0) {
     return (
@@ -119,116 +124,57 @@ export function ManutencaoGraficosTab({ data = [] }: ManutencaoGraficosTabProps)
     );
   }
 
+  // Novo padrão de KPIs
+  const kpis = [
+    {
+      title: 'Total de Manutenções',
+      value: data.length.toString(),
+      icon: Wrench,
+      iconBgColor: 'bg-purple-100',
+      iconColor: 'text-purple-600',
+      color: 'text-purple-600',
+      description: '',
+    },
+    {
+      title: 'Valor Total',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValor),
+      icon: DollarSign,
+      iconBgColor: 'bg-green-100',
+      iconColor: 'text-green-600',
+      color: 'text-green-600',
+      description: '',
+    },
+    {
+      title: 'Valor Médio',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(avgValor),
+      icon: BarChart3,
+      iconBgColor: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      color: 'text-blue-600',
+      description: '',
+    },
+    {
+      title: 'Clientes Únicos',
+      value: totalClientes.toString(),
+      icon: Users,
+      iconBgColor: 'bg-orange-100',
+      iconColor: 'text-orange-600',
+      color: 'text-orange-600',
+      description: '',
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Fabricante Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChartIcon className="h-5 w-5" />
-              Distribuição por Fabricante
-            </CardTitle>
-            <CardDescription>
-              Quantidade de manutenções por fabricante
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={chartData.fabricanteData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {chartData.fabricanteData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Modelos */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Modelos de Veículos
-            </CardTitle>
-            <CardDescription>
-              Quantidade de manutenções por modelo
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData.modeloData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Valor Mensal */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Valor por Mês
-            </CardTitle>
-            <CardDescription>
-              Evolução dos valores de manutenção
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData.valorMensal}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, 'Valor']} />
-                <Line type="monotone" dataKey="valor" stroke="#10b981" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Semanas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Manutenções por Semana
-            </CardTitle>
-            <CardDescription>
-              Quantidade de manutenções por semana
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData.semanaData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#8b5cf6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+      {/* KPIs no novo padrão visual */}
+      {!hideKpis && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {kpis.map((kpi) => (
+            <KpiCard key={kpi.title} {...kpi} />
+          ))}
+        </div>
+      )}
+      {/* Nenhum gráfico renderizado */}
     </div>
   );
 }
