@@ -48,7 +48,8 @@ const ALLOWED_USER_IDS = [
   "FOHbVCbMyhadO3tm1rVdknwLVPr1",
   "orbGQ8lbCfb51KuJlD5oSflsLRx1",
   "edsTZ2zG54Ph2ZoNSyFZXoJj74s2",
-  "Z0OEHNXsqOMuZ6ZOc9ElNG6mReP2"
+  "Z0OEHNXsqOMuZ6ZOc9ElNG6mReP2",
+  "VL0J7KdhhPUAmcTI0onP2PqZ19T2"
 ];
 
 export default function MotorcyclesPage() {
