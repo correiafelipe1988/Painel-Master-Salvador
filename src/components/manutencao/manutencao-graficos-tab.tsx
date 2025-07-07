@@ -100,9 +100,6 @@ export function ManutencaoGraficosTab({ data = [] }: ManutencaoGraficosTabProps)
     return colors[index];
   };
 
-  const totalValor = data.reduce((sum, item) => sum + item.valor_total, 0);
-  const avgValor = data.length > 0 ? totalValor / data.length : 0;
-  const totalClientes = new Set(data.map(item => item.nome_cliente)).size;
 
   if (data.length === 0) {
     return (
@@ -124,42 +121,6 @@ export function ManutencaoGraficosTab({ data = [] }: ManutencaoGraficosTabProps)
 
   return (
     <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total de Manutenções</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {totalValor.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Valor Médio</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {avgValor.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Únicos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalClientes}</div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Fabricante Distribution */}
