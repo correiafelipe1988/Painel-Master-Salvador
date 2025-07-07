@@ -275,8 +275,8 @@ export function ManutencaoDataTab() {
 
   return (
     <div className="space-y-6">
-      {/* Botões de ação no topo */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      {/* Botões de ação alinhados à direita */}
+      <div className="flex flex-wrap gap-2 mb-4 justify-end">
         <Button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
