@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Download, FileText, Plus, Edit2, Trash2, Save, Database } from "lucide-react";
+import { Upload, Download, FileText, Plus, Edit2, Trash2, Save, Database, MoreHorizontal } from "lucide-react";
 import { ManutencaoData } from "@/lib/types";
 import Papa from "papaparse";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,9 @@ import {
   importManutencaoBatch,
   deleteAllManutencao
 } from "@/lib/firebase/manutencaoService";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AddManutencaoForm } from "./add-manutencao-form";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export function ManutencaoDataTab() {
   const [data, setData] = useState<ManutencaoData[]>([]);
@@ -30,6 +33,7 @@ export function ManutencaoDataTab() {
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToManutencao((manutencaoData) => {
@@ -262,38 +266,6 @@ export function ManutencaoDataTab() {
     }
   };
 
-  const handleAddNew = async () => {
-    const newItem = {
-      nome_cliente: '',
-      veiculo_placa: '',
-      veiculo_modelo: '',
-      veiculo_fabricante: '',
-      semana: '',
-      data: new Date().toISOString().split('T')[0],
-      valor_total: 0,
-      pecas_utilizadas: '',
-      responsaveis_mao_obra: '',
-    };
-    
-    try {
-      const newId = await addManutencao(newItem);
-      setEditingId(newId);
-      setEditingData({ ...newItem, id: newId });
-      
-      toast({
-        title: "Sucesso",
-        description: "Novo registro criado com sucesso.",
-      });
-    } catch (error) {
-      console.error('Erro ao criar manutenção:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao criar novo registro.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -303,120 +275,59 @@ export function ManutencaoDataTab() {
 
   return (
     <div className="space-y-6">
-      {/* Upload Area */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Importar Dados
-          </CardTitle>
-          <CardDescription>
-            Importe um arquivo CSV com os dados de manutenção
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="csvFile">Arquivo CSV</Label>
-              <Input
-                id="csvFile"
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                ref={fileInputRef}
-                disabled={isUploading}
-              />
-              <div className="text-sm text-muted-foreground mt-1">
-                <p className="mb-1"><strong>Colunas aceitas (várias variações):</strong></p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <p className="font-medium">Cliente:</p>
-                    <p>Nome do cliente, cliente, Cliente</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Placa:</p>
-                    <p>Veículo placa, placa, Placa</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Modelo:</p>
-                    <p>Veículo modelo, modelo, Modelo</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Fabricante:</p>
-                    <p>Veículo fabricante, fabricante, marca</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Semana:</p>
-                    <p>SEMANA, semana, Semana</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Data:</p>
-                    <p>Data, data, Date</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Valor:</p>
-                    <p>Valor Total, valor, Total</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Peças:</p>
-                    <p>Peças utilizadas, pecas, Pecas</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="font-medium">Responsáveis:</p>
-                    <p>Responsáveis pela mão de obra, responsaveis, mecanico</p>
-                  </div>
-                </div>
-                <p className="text-xs mt-2 text-orange-600">
-                  💡 Dica: Abra o Console do navegador (F12) para ver detalhes do processamento
-                </p>
-              </div>
-            </div>
-            <div className="flex items-end gap-2">
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                {isUploading ? "Processando..." : "Selecionar Arquivo"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleExportCSV}
-                disabled={data.length === 0}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Exportar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await deleteAllManutencao();
-                    toast({
-                      title: "Sucesso",
-                      description: "Todos os registros foram removidos.",
-                    });
-                  } catch (error) {
-                    console.error('Erro ao limpar dados:', error);
-                    toast({
-                      title: "Erro",
-                      description: "Erro ao limpar os dados.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-                disabled={data.length === 0}
-                className="flex items-center gap-2"
-              >
-                <Database className="h-4 w-4" />
-                Limpar
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Botões de ação no topo */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="flex items-center gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          {isUploading ? "Processando..." : "Importar Dados"}
+        </Button>
+        <Input
+          id="csvFile"
+          type="file"
+          accept=".csv"
+          onChange={handleFileUpload}
+          ref={fileInputRef}
+          disabled={isUploading}
+          className="hidden"
+        />
+        <Button
+          variant="outline"
+          onClick={handleExportCSV}
+          disabled={data.length === 0}
+          className="flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Exportar
+        </Button>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              await deleteAllManutencao();
+              toast({
+                title: "Sucesso",
+                description: "Todos os registros foram removidos.",
+              });
+            } catch (error) {
+              console.error('Erro ao limpar dados:', error);
+              toast({
+                title: "Erro",
+                description: "Erro ao limpar os dados.",
+                variant: "destructive",
+              });
+            }
+          }}
+          disabled={data.length === 0}
+          className="flex items-center gap-2"
+        >
+          <Database className="h-4 w-4" />
+          Limpar
+        </Button>
+      </div>
 
       {/* Data Table */}
       <Card>
@@ -431,7 +342,7 @@ export function ManutencaoDataTab() {
                 {data.length} registros carregados
               </CardDescription>
             </div>
-            <Button onClick={handleAddNew} className="flex items-center gap-2">
+            <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Adicionar
             </Button>
@@ -563,39 +474,27 @@ export function ManutencaoDataTab() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {editingId === item.id ? (
-                          <Button
-                            size="sm"
-                            onClick={handleSave}
-                            className="flex items-center gap-1"
-                          >
-                            <Save className="h-3 w-3" />
-                            Salvar
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEdit(item)}
-                              className="flex items-center gap-1"
-                            >
-                              <Edit2 className="h-3 w-3" />
-                              Editar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDelete(item.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                              Excluir
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {editingId === item.id ? (
+                            <DropdownMenuItem onClick={handleSave}>
+                              <Save className="mr-2 h-4 w-4" /> Salvar
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => handleEdit(item)}>
+                              <Edit2 className="mr-2 h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => handleDelete(item.id)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -614,6 +513,19 @@ export function ManutencaoDataTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de Adição */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="max-w-lg w-full">
+          <AddManutencaoForm
+            onSubmit={async (manutencaoData) => {
+              await addManutencao(manutencaoData);
+              setIsAddModalOpen(false);
+            }}
+            onCancel={() => setIsAddModalOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
