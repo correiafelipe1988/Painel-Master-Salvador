@@ -85,9 +85,7 @@ export function ManutencaoDataTab() {
               // Função para converter data para formato ISO (assumindo formato brasileiro DD/MM/YYYY)
               const formatDate = (dateStr: string) => {
                 if (!dateStr) return new Date().toISOString().split('T')[0];
-                
                 const trimmedDate = dateStr.trim();
-                
                 // Primeiro, tentar formato brasileiro DD/MM/YYYY ou DD/MM/YY
                 if (trimmedDate.includes('/')) {
                   const parts = trimmedDate.split('/');
@@ -95,32 +93,40 @@ export function ManutencaoDataTab() {
                     const day = parseInt(parts[0]);
                     const month = parseInt(parts[1]);
                     let year = parseInt(parts[2]);
-                    
-                    // Se o ano tem apenas 2 dígitos, assumir 2000+
                     if (year < 100) {
                       year += 2000;
                     }
-                    
-                    // Validar se a data é válida
                     if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
-                      const formattedDate = new Date(year, month - 1, day);
-                      if (!isNaN(formattedDate.getTime())) {
-                        console.log(`Data convertida: ${trimmedDate} -> ${formattedDate.toISOString().split('T')[0]}`);
-                        return formattedDate.toISOString().split('T')[0];
-                      }
+                      // Corrigir: adicionar 1 dia
+                      const dateObj = new Date(year, month - 1, day);
+                      dateObj.setDate(dateObj.getDate() + 1);
+                      const yyyy = dateObj.getFullYear().toString().padStart(4, '0');
+                      const mm = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+                      const dd = dateObj.getDate().toString().padStart(2, '0');
+                      const formatted = `${yyyy}-${mm}-${dd}`;
+                      console.log(`Data convertida: ${trimmedDate} -> ${formatted}`);
+                      return formatted;
                     }
                   }
                 }
-                
                 // Tentar formato ISO ou outros formatos padrão
                 const date = new Date(trimmedDate);
                 if (!isNaN(date.getTime())) {
-                  return date.toISOString().split('T')[0];
+                  date.setDate(date.getDate() + 1);
+                  const yyyy = date.getFullYear().toString().padStart(4, '0');
+                  const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+                  const dd = date.getDate().toString().padStart(2, '0');
+                  const formatted = `${yyyy}-${mm}-${dd}`;
+                  return formatted;
                 }
-                
                 // Se nada funcionar, usar data atual
                 console.warn(`Não foi possível parsear a data: ${trimmedDate}, usando data atual`);
-                return new Date().toISOString().split('T')[0];
+                const now = new Date();
+                now.setDate(now.getDate() + 1);
+                const yyyy = now.getFullYear().toString().padStart(4, '0');
+                const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+                const dd = now.getDate().toString().padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
               };
 
               // Função auxiliar para buscar valor em múltiplas variações de nome de coluna
