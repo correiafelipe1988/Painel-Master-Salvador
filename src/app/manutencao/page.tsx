@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wrench, Database, BarChart3 } from "lucide-react";
+import { Wrench, Database, BarChart3, DollarSign, Users } from "lucide-react";
 import { ManutencaoDataTab } from "@/components/manutencao/manutencao-data-tab";
 import { ManutencaoGraficosTab } from "@/components/manutencao/manutencao-graficos-tab";
 import { ManutencaoData } from "@/lib/types";
 import { subscribeToManutencao } from "@/lib/firebase/manutencaoService";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+
 export default function ManutencaoPage() {
   const [activeTab, setActiveTab] = useState("dados");
   const [data, setData] = useState<ManutencaoData[]>([]);
@@ -21,6 +23,50 @@ export default function ManutencaoPage() {
     return () => unsubscribe();
   }, []);
 
+  // KPIs de manutenção no novo padrão visual
+  const totalValor = data.reduce((sum, item) => sum + item.valor_total, 0);
+  const avgValor = data.length > 0 ? totalValor / data.length : 0;
+  const totalClientes = new Set(data.map(item => item.nome_cliente)).size;
+
+  const kpis = [
+    {
+      title: 'Total de Manutenções',
+      value: data.length.toString(),
+      icon: Wrench,
+      iconBgColor: 'bg-purple-100',
+      iconColor: 'text-purple-600',
+      color: 'text-purple-600',
+      description: '',
+    },
+    {
+      title: 'Valor Total',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValor),
+      icon: DollarSign,
+      iconBgColor: 'bg-green-100',
+      iconColor: 'text-green-600',
+      color: 'text-green-600',
+      description: '',
+    },
+    {
+      title: 'Valor Médio',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(avgValor),
+      icon: BarChart3,
+      iconBgColor: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      color: 'text-blue-600',
+      description: '',
+    },
+    {
+      title: 'Clientes Únicos',
+      value: totalClientes.toString(),
+      icon: Users,
+      iconBgColor: 'bg-orange-100',
+      iconColor: 'text-orange-600',
+      color: 'text-orange-600',
+      description: '',
+    },
+  ];
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -31,85 +77,15 @@ export default function ManutencaoPage() {
       />
 
       {/* KPIs de Manutenção */}
-      <div className="mt-6">
-        {data.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Total de Manutenções</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">{data.length}</div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Valor Total</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  R$ {data.reduce((sum, item) => sum + item.valor_total, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Valor Médio</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  R$ {(data.reduce((sum, item) => sum + item.valor_total, 0) / data.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Clientes Únicos</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {new Set(data.map(item => item.nome_cliente)).size}
-                </div>
-              </div>
-            </div>
+      {activeTab === "dados" && (
+        <div className="mt-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {kpis.map((kpi) => (
+              <KpiCard key={kpi.title} {...kpi} className="h-32" />
+            ))}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Total de Manutenções</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">0</div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Valor Total</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">R$ 0,00</div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Valor Médio</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">R$ 0,00</div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-sm font-medium text-gray-600">Clientes Únicos</h3>
-              </div>
-              <div className="px-4 pb-4">
-                <div className="text-2xl font-bold text-gray-900">0</div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Tabs com diferentes visões */}
       <div className="mt-8">
