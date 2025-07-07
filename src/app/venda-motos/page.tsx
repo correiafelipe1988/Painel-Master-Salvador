@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useAuth } from "@/context/AuthContext"; // Importa o hook de autenticação
@@ -13,7 +12,7 @@ import { DollarSign, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Lista de IDs de usuários permitidos
-const ALLOWED_USER_IDS = ["edsTZ2zG54Ph2ZoNSyFZXoJj74s2", "FOHbVCbMyhadO3tm1rVdknwLVPr1"];
+const ALLOWED_USER_IDS = ["edsTZ2zG54Ph2ZoNSyFZXoJj74s2", "FOHbVCbMyhadO3tm1rVdknwLVPr1", "VL0J7KdhhPUAmcTI0onP2PqZ19T2"];
 
 export default function VendaMotosPage() {
   const { user, loading } = useAuth();
