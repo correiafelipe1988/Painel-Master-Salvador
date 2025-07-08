@@ -6,6 +6,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { BarChart3, PieChart as PieChartIcon, TrendingUp, AlertCircle, Wrench, DollarSign, Users } from "lucide-react";
 import { ManutencaoData } from "@/lib/types";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { ClienteFilter } from "./rastreadores-filters";
+import { MaintenanceVolumeRevenueMonthlyChart } from "./maintenance-volume-revenue-monthly-chart";
+import { MaintenanceVolumeRevenueDailyChart } from "./maintenance-volume-revenue-daily-chart";
+import { MaintenanceClientRankList } from "./maintenance-client-rank-list";
+import { MaintenancePlateRankList } from "./maintenance-plate-rank-list";
 
 interface ManutencaoGraficosTabProps {
   data?: ManutencaoData[];
@@ -13,6 +18,16 @@ interface ManutencaoGraficosTabProps {
 }
 
 export function ManutencaoGraficosTab({ data = [], hideKpis = false }: ManutencaoGraficosTabProps) {
+  const [clienteSelecionado, setClienteSelecionado] = useState("__all__");
+
+  // Extrair lista única de clientes
+  const clientes = Array.from(new Set(data.map((item) => item.nome_cliente).filter(Boolean)));
+
+  // Filtrar dados pelo cliente selecionado
+  const dataFiltrada = clienteSelecionado !== "__all__"
+    ? data.filter((item) => item.nome_cliente === clienteSelecionado)
+    : data;
+
   const [chartData, setChartData] = useState({
     fabricanteData: [] as { name: string; value: number; color: string }[],
     modeloData: [] as { name: string; value: number }[],
@@ -166,6 +181,12 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
 
   return (
     <div className="space-y-6">
+      {/* Filtro de Cliente */}
+      <ClienteFilter
+        clientes={clientes}
+        clienteSelecionado={clienteSelecionado}
+        onChange={setClienteSelecionado}
+      />
       {/* KPIs no novo padrão visual */}
       {!hideKpis && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -174,7 +195,27 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
           ))}
         </div>
       )}
-      {/* Nenhum gráfico renderizado */}
+      {/* Layout side-by-side: ranking à esquerda, gráficos à direita */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+        {/* Coluna esquerda: Ranking de clientes e placas */}
+        <div className="flex flex-col h-[800px] gap-6">
+          <div className="h-1/2 flex-1 flex flex-col">
+            <MaintenanceClientRankList data={dataFiltrada} />
+          </div>
+          <div className="h-1/2 flex-1 flex flex-col">
+            <MaintenancePlateRankList data={dataFiltrada} />
+          </div>
+        </div>
+        {/* Coluna direita: Gráficos mensal e diário */}
+        <div className="flex flex-col h-[800px] gap-6">
+          <div className="h-1/2 flex-1 flex flex-col">
+            <MaintenanceVolumeRevenueMonthlyChart data={dataFiltrada} />
+          </div>
+          <div className="h-1/2 flex-1 flex flex-col">
+            <MaintenanceVolumeRevenueDailyChart data={dataFiltrada} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
