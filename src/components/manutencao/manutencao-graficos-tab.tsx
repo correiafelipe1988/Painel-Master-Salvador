@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { BarChart3, PieChart as PieChartIcon, TrendingUp, AlertCircle, Wrench, DollarSign, Users } from "lucide-react";
 import { ManutencaoData } from "@/lib/types";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { ClienteFilter } from "./rastreadores-filters";
+import { SearchFilter } from "./search-filter";
 import { MaintenanceVolumeRevenueMonthlyChart } from "./maintenance-volume-revenue-monthly-chart";
 import { MaintenanceVolumeRevenueDailyChart } from "./maintenance-volume-revenue-daily-chart";
 import { MaintenanceClientRankList } from "./maintenance-client-rank-list";
@@ -18,15 +18,10 @@ interface ManutencaoGraficosTabProps {
 }
 
 export function ManutencaoGraficosTab({ data = [], hideKpis = false }: ManutencaoGraficosTabProps) {
-  const [clienteSelecionado, setClienteSelecionado] = useState("__all__");
+  const [dataFiltradaPorBusca, setDataFiltradaPorBusca] = useState(data);
 
-  // Extrair lista única de clientes
-  const clientes = Array.from(new Set(data.map((item) => item.nome_cliente).filter(Boolean)));
-
-  // Filtrar dados pelo cliente selecionado
-  const dataFiltrada = clienteSelecionado !== "__all__"
-    ? data.filter((item) => item.nome_cliente === clienteSelecionado)
-    : data;
+  // Usar dados filtrados diretamente
+  const dataFiltrada = dataFiltradaPorBusca;
 
   const [chartData, setChartData] = useState({
     fabricanteData: [] as { name: string; value: number; color: string }[],
@@ -34,6 +29,10 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
     valorMensal: [] as { month: string; valor: number }[],
     semanaData: [] as { name: string; value: number }[],
   });
+
+  useEffect(() => {
+    setDataFiltradaPorBusca(data);
+  }, [data]);
 
   useEffect(() => {
     if (data.length === 0) {
@@ -117,9 +116,9 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
     return colors[index];
   };
 
-  const totalValor = data.reduce((sum, item) => sum + item.valor_total, 0);
-  const avgValor = data.length > 0 ? totalValor / data.length : 0;
-  const totalClientes = new Set(data.map(item => item.nome_cliente)).size;
+  const totalValor = dataFiltrada.reduce((sum, item) => sum + item.valor_total, 0);
+  const avgValor = dataFiltrada.length > 0 ? totalValor / dataFiltrada.length : 0;
+  const totalClientes = new Set(dataFiltrada.map(item => item.nome_cliente)).size;
 
   if (data.length === 0) {
     return (
@@ -143,7 +142,7 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
   const kpis = [
     {
       title: 'Total de Manutenções',
-      value: data.length.toString(),
+      value: dataFiltrada.length.toString(),
       icon: Wrench,
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
@@ -181,11 +180,10 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
 
   return (
     <div className="space-y-6">
-      {/* Filtro de Cliente */}
-      <ClienteFilter
-        clientes={clientes}
-        clienteSelecionado={clienteSelecionado}
-        onChange={setClienteSelecionado}
+      {/* Filtro de Busca */}
+      <SearchFilter
+        data={data}
+        onFilteredDataChange={setDataFiltradaPorBusca}
       />
       {/* KPIs no novo padrão visual */}
       {!hideKpis && (
