@@ -22,7 +22,7 @@ const currentMonth = new Date().getMonth();
 
 const monthNames = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Juli', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
 const statusColorsForChart: Record<string, string> = {
@@ -248,6 +248,7 @@ const processMonthData = (motorcycles: Motorcycle[], selectedMonth: number, sele
     let motosAlugadas = 0;
     let emManutencao = 0;
     let motosRelocadas = 0;
+    let motosRecuperadas = 0; // Adicionado para armazenar o número de motos recuperadas no mês
     
     // Contar movimentações que aconteceram durante o mês/ano selecionado
     motorcycles.forEach(moto => {
@@ -273,6 +274,9 @@ const processMonthData = (motorcycles: Motorcycle[], selectedMonth: number, sele
                             case 'relocada':
                                 motosRelocadas++;
                                 break;
+                            case 'recolhida': // Adicionado para contar motos recuperadas
+                                motosRecuperadas++;
+                                break;
                             case 'indisponivel_rastreador':
                             case 'indisponivel_emplacamento':
                                 // Estes status são contados separadamente se necessário
@@ -290,7 +294,8 @@ const processMonthData = (motorcycles: Motorcycle[], selectedMonth: number, sele
         motosDisponiveis,
         motosAlugadas,
         emManutencao,
-        motosRelocadas
+        motosRelocadas,
+        motosRecuperadas // Adicionado para retornar o número de motos recuperadas
     };
 };
 
@@ -370,8 +375,8 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Novas Alugadas Hoje</p>
-                <p className="text-2xl font-bold text-blue-500">{todayData.motosAlugadasHoje}</p>
+                <p className="text-sm text-muted-foreground font-medium">Motos Alugadas Hoje</p>
+                <p className="text-2xl font-bold text-blue-500">{todayData.motosAlugadasHoje + todayData.motosRelocadasHoje}</p>
                 <p className="text-xs text-muted-foreground">unidades</p>
               </div>
               <div className="p-3 rounded-lg bg-blue-500">
@@ -383,8 +388,16 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-green-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Motos Recuperadas Hoje</p>
-                <p className="text-2xl font-bold text-green-500">{todayData.motosRecuperadasHoje}</p>
+                <p className="text-sm text-muted-foreground font-medium">Motos Disponíveis Hoje</p>
+                <p className="text-2xl font-bold text-green-500">{allMotorcycles.filter(moto => {
+                  if (!moto.data_ultima_mov) return false;
+                  try {
+                    const movDate = parseISO(moto.data_ultima_mov);
+                    return isValid(movDate) && isSameDay(startOfDay(movDate), startOfDay(new Date())) && moto.status === 'active';
+                  } catch {
+                    return false;
+                  }
+                }).length}</p>
                 <p className="text-xs text-muted-foreground">unidades</p>
               </div>
               <div className="p-3 rounded-lg bg-green-500">
@@ -393,14 +406,22 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-gray-400 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <Card className="border-l-4 border-l-orange-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Usadas Alugadas Hoje</p>
-                <p className="text-2xl font-bold text-gray-600">{todayData.motosRelocadasHoje}</p>
+                <p className="text-sm text-muted-foreground font-medium">Motos Recuperadas Hoje</p>
+                <p className="text-2xl font-bold text-orange-500">{allMotorcycles.filter(moto => {
+                  if (!moto.data_ultima_mov) return false;
+                  try {
+                    const movDate = parseISO(moto.data_ultima_mov);
+                    return isValid(movDate) && isSameDay(startOfDay(movDate), startOfDay(new Date())) && moto.status === 'recolhida';
+                  } catch {
+                    return false;
+                  }
+                }).length}</p>
                 <p className="text-xs text-muted-foreground">unidades</p>
               </div>
-              <div className="p-3 rounded-lg bg-gray-400">
+              <div className="p-3 rounded-lg bg-orange-500">
                 <ArrowRight className="h-6 w-6 text-white" />
               </div>
             </CardContent>
@@ -409,8 +430,16 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-violet-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Motos em Manutenção</p>
-                <p className="text-2xl font-bold text-violet-500">{todayData.motosEmManutencao}</p>
+                <p className="text-sm text-muted-foreground font-medium">Em Manutenção Hoje</p>
+                <p className="text-2xl font-bold text-violet-500">{allMotorcycles.filter(moto => {
+                  if (!moto.data_ultima_mov) return false;
+                  try {
+                    const movDate = parseISO(moto.data_ultima_mov);
+                    return isValid(movDate) && isSameDay(startOfDay(movDate), startOfDay(new Date())) && moto.status === 'manutencao';
+                  } catch {
+                    return false;
+                  }
+                }).length}</p>
                 <p className="text-xs text-muted-foreground">unidades</p>
               </div>
               <div className="p-3 rounded-lg bg-violet-500">
@@ -458,8 +487,8 @@ export default function DashboardPage() {
           <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Moto Nova Alugada</p>
-                <p className="text-2xl font-bold text-blue-500">{monthData.motosAlugadas}</p>
+                <p className="text-sm text-muted-foreground font-medium">Motos Alugadas</p>
+                <p className="text-2xl font-bold text-blue-500">{monthData.motosAlugadas + monthData.motosRelocadas}</p>
                 <p className="text-xs text-muted-foreground">em {monthNames[selectedMonth]}/{selectedYear}</p>
               </div>
               <div className="p-3 rounded-lg bg-blue-500">
@@ -481,14 +510,14 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-gray-400 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <Card className="border-l-4 border-l-orange-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Motos Usadas Alugadas</p>
-                <p className="text-2xl font-bold text-gray-600">{monthData.motosRelocadas}</p>
+                <p className="text-sm text-muted-foreground font-medium">Motos Recuperadas</p>
+                <p className="text-2xl font-bold text-orange-500">{monthData.motosRecuperadas || 0}</p>
                 <p className="text-xs text-muted-foreground">em {monthNames[selectedMonth]}/{selectedYear}</p>
               </div>
-              <div className="p-3 rounded-lg bg-gray-400">
+              <div className="p-3 rounded-lg bg-orange-500">
                 <ArrowRight className="h-6 w-6 text-white" />
               </div>
             </CardContent>
