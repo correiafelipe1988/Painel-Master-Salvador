@@ -12,7 +12,7 @@ import { subscribeToManutencao } from "@/lib/firebase/manutencaoService";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 
 export default function ManutencaoPage() {
-  const [activeTab, setActiveTab] = useState("dados");
+  const [activeTab, setActiveTab] = useState("graficos");
   const [data, setData] = useState<ManutencaoData[]>([]);
 
   useEffect(() => {

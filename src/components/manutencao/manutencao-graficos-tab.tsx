@@ -195,23 +195,24 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
           ))}
         </div>
       )}
-      {/* Layout side-by-side: ranking à esquerda, gráficos à direita */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-        {/* Coluna esquerda: Ranking de clientes e placas */}
-        <div className="flex flex-col h-[800px] gap-6">
-          <div className="h-1/2 flex-1 flex flex-col">
+      {/* Layout reorganizado: rankings no topo, gráficos embaixo */}
+      <div className="space-y-6">
+        {/* Linha superior: Rankings de clientes e placas lado a lado */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          <div className="flex-grow">
             <MaintenanceClientRankList data={dataFiltrada} />
           </div>
-          <div className="h-1/2 flex-1 flex flex-col">
+          <div className="flex-grow">
             <MaintenancePlateRankList data={dataFiltrada} />
           </div>
         </div>
-        {/* Coluna direita: Gráficos mensal e diário */}
-        <div className="flex flex-col h-[800px] gap-6">
-          <div className="h-1/2 flex-1 flex flex-col">
+        
+        {/* Linha inferior: Gráficos mensal e diário lado a lado */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          <div className="flex-grow">
             <MaintenanceVolumeRevenueMonthlyChart data={dataFiltrada} />
           </div>
-          <div className="h-1/2 flex-1 flex flex-col">
+          <div className="flex-grow">
             <MaintenanceVolumeRevenueDailyChart data={dataFiltrada} />
           </div>
         </div>
