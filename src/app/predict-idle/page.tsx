@@ -269,6 +269,69 @@ export default function IdleReportPage() {
         iconContainerClassName="bg-orange-500"
       />
 
+      {/* Métricas Gerais - agora acima dos filtros */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6 mb-6">
+        <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Total de Motos</p>
+              <p className="text-2xl font-bold text-blue-500">{idleStats.totalMotorcycles}</p>
+              <p className="text-xs text-muted-foreground">Com dados de ociosidade</p>
+            </div>
+            <div className="p-3 rounded-lg bg-blue-500">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Média de Dias Ociosos</p>
+              <p className="text-2xl font-bold text-green-500">{idleStats.averageIdleDays}</p>
+              <p className="text-xs text-muted-foreground">dias por moto</p>
+            </div>
+            <div className="p-3 rounded-lg bg-green-500">
+              <Clock className="h-6 w-6 text-white" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Motos +7 Dias</p>
+              <p className="text-2xl font-bold text-orange-500">{idleStats.motorcyclesAbove7Days}</p>
+              <p className="text-xs text-muted-foreground">{idleStats.percentageAbove7Days}% do total</p>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500">
+              <AlertTriangle className="h-6 w-6 text-white" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Status da Frota</p>
+              <div className="text-2xl font-bold">
+                {idleStats.percentageAbove7Days > 20 ? (
+                  <span className="text-red-600">Crítico</span>
+                ) : idleStats.percentageAbove7Days > 10 ? (
+                  <span className="text-orange-600">Atenção</span>
+                ) : (
+                  <span className="text-green-600">Bom</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Baseado em +7 dias</p>
+            </div>
+            <div className="p-3 rounded-lg bg-purple-500">
+              <TrendingUp className="h-6 w-6 text-white" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filtros */}
       <Card className="mb-6">
         <CardHeader>
@@ -347,82 +410,7 @@ export default function IdleReportPage() {
         </CardContent>
       </Card>
 
-      {/* Métricas Gerais */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6 mb-6">
-        <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardContent className="p-4 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">Total de Motos</p>
-              <p className="text-2xl font-bold text-blue-500">{idleStats.totalMotorcycles}</p>
-              <p className="text-xs text-muted-foreground">Com dados de ociosidade</p>
-            </div>
-            <div className="p-3 rounded-lg bg-blue-500">
-              <Users className="h-6 w-6 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-green-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardContent className="p-4 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">Média de Dias Ociosos</p>
-              <p className="text-2xl font-bold text-green-500">{idleStats.averageIdleDays}</p>
-              <p className="text-xs text-muted-foreground">dias por moto</p>
-            </div>
-            <div className="p-3 rounded-lg bg-green-500">
-              <Clock className="h-6 w-6 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-orange-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardContent className="p-4 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">Motos +7 Dias</p>
-              <p className="text-2xl font-bold text-orange-500">{idleStats.motorcyclesAbove7Days}</p>
-              <p className="text-xs text-muted-foreground">{idleStats.percentageAbove7Days}% do total</p>
-            </div>
-            <div className="p-3 rounded-lg bg-orange-500">
-              <AlertTriangle className="h-6 w-6 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardContent className="p-4 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">Status da Frota</p>
-              <div className="text-2xl font-bold">
-                {idleStats.percentageAbove7Days > 20 ? (
-                  <span className="text-red-600">Crítico</span>
-                ) : idleStats.percentageAbove7Days > 10 ? (
-                  <span className="text-orange-600">Atenção</span>
-                ) : (
-                  <span className="text-green-600">Bom</span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">Baseado em +7 dias</p>
-            </div>
-            <div className="p-3 rounded-lg bg-purple-500">
-              <TrendingUp className="h-6 w-6 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Alerta para Motos Críticas */}
-      {idleStats.motorcyclesAbove7Days > 0 && (
-        <Alert className="mb-6 border-orange-200 bg-orange-50">
-          <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertTitle className="text-orange-800">
-            Atenção: {idleStats.motorcyclesAbove7Days} motos com mais de 7 dias ociosas
-          </AlertTitle>
-          <AlertDescription className="text-orange-700">
-            {idleStats.percentageAbove7Days}% da frota está com tempo de ociosidade acima do recomendado. 
-            Verifique as abas abaixo para detalhes por franqueado e lista completa.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <Tabs defaultValue="franqueados" className="space-y-4">
         <TabsList>
