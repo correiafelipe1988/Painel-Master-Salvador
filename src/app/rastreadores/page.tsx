@@ -96,7 +96,8 @@ export default function RastreadoresPage() {
     "FOHbVCbMyhadO3tm1rVdknwLVPr1",
     "orbGQ8lbCfb51KuJlD5oSflsLRx1",
     "edsTZ2zG54Ph2ZoNSyFZXoJj74s2",
-    "VL0J7KdhhPUAmcTI0onP2PqZ19T2"
+    "VL0J7KdhhPUAmcTI0onP2PqZ19T2",
+    "9NvNKnLzbJZIrO7p8FlgFJ0IuYL2"
   ];
 
   useEffect(() => {
@@ -183,12 +184,26 @@ export default function RastreadoresPage() {
   
   const pageActions = (
     <>
-      <Button variant="outline" onClick={handleImportClick}><Upload className="mr-2 h-4 w-4" /> Importar CSV</Button>
-      <input type="file" ref={fileInputRef} hidden />
-      <Button onClick={handleOpenAddModal}>Adicionar Rastreador</Button>
-      {(filters.searchTerm || filters.status !== 'all' || filters.franqueado !== 'all') && (
-        <Button variant="ghost" onClick={handleClearFilters}><X className="mr-2 h-4 w-4" /> Limpar Filtros</Button>
-      )}
+      <div className="flex items-center gap-2">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-[180px]">
+            <Calendar className="mr-2 h-4 w-4" />
+            <SelectValue placeholder="Selecione o Mês" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Meses</SelectItem>
+            {monthFullNames.map((month, index) => (
+              <SelectItem key={index} value={month}>{month.charAt(0).toUpperCase() + month.slice(1)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={handleImportClick}><Upload className="mr-2 h-4 w-4" /> Importar CSV</Button>
+        <input type="file" ref={fileInputRef} hidden />
+        <Button onClick={handleOpenAddModal}>Adicionar Rastreador</Button>
+        {(filters.searchTerm || filters.status !== 'all' || filters.franqueado !== 'all') && (
+          <Button variant="ghost" onClick={handleClearFilters}><X className="mr-2 h-4 w-4" /> Limpar Filtros</Button>
+        )}
+      </div>
     </>
   );
 
@@ -252,20 +267,6 @@ export default function RastreadoresPage() {
           />
         </TabsContent>
         <TabsContent value="graficos" className="mt-4 space-y-4">
-          <div className="flex justify-start">
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Selecione o Mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Meses</SelectItem>
-                {monthFullNames.map((month, index) => (
-                  <SelectItem key={index} value={month}>{month.charAt(0).toUpperCase() + month.slice(1)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="grid gap-4 md:grid-cols-2">
             {kpiData.map((kpi: Kpi) => <KpiCard key={kpi.title} {...kpi} />)}
           </div>
