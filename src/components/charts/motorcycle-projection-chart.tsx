@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Target, Calendar, AlertCircle } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts"
 import { subscribeToMotorcycles } from "@/lib/firebase/motorcycleService"
+import { analyzeRealMotorcycleGrowth } from "@/utils/realGrowthAnalysis"
 import type { Motorcycle } from "@/lib/types"
 
 interface ProjectionData {
@@ -15,6 +16,10 @@ interface ProjectionData {
   projecao: number
   meta: number
   motosNecessarias: number
+  baseInicioMes?: number
+  progressoMes?: number
+  metaMes?: number
+  percentualCompleto?: number
 }
 
 export function MotorcycleProjectionChart() {
@@ -39,6 +44,12 @@ export function MotorcycleProjectionChart() {
   const baseAtual = useMemo(() => {
     const placasUnicas = new Set(motorcycles.map(moto => moto.placa).filter(Boolean))
     return placasUnicas.size
+  }, [motorcycles])
+
+  // Análise de crescimento real para obter dados precisos
+  const realAnalysis = useMemo(() => {
+    if (motorcycles.length === 0) return null
+    return analyzeRealMotorcycleGrowth(motorcycles, new Date().getFullYear())
   }, [motorcycles])
 
   // Determinar o mês atual
@@ -72,50 +83,83 @@ export function MotorcycleProjectionChart() {
     ]
   }, [baseAtual, mesAtual])
 
-  // Criar dados de projeção
+  // Criar dados de projeção com lógica corrigida
   const dadosProjecao: ProjectionData[] = useMemo(() => {
-    const hoje = new Date();
-    const diasNoMes = new Date(hoje.getFullYear(), mesAtual, 0).getDate();
-    const diaAtual = hoje.getDate();
-    const diasRestantes = diasNoMes - diaAtual;
+    if (!realAnalysis) return [];
     
-    // Projeção acumulada começa da base atual
-    let acumulado = baseAtual;
+    // Obter base do início do mês atual (mês anterior no array)
+    const baseInicioMesAtual = mesAtual > 1 
+      ? realAnalysis.realGrowthData[mesAtual - 2]?.cumulativeCount || 0
+      : realAnalysis.baseCount;
+    
+    // Calcular progresso já realizado no mês atual
+    const progressoMesAtual = baseAtual - baseInicioMesAtual;
+    
+    // Meta original para o mês atual
+    const metaOriginalMesAtual = baseInicioMesAtual + motasPorMes;
+    
+    // Calcular quantas motas ainda faltam no mês atual
+    const motasRestantesMesAtual = Math.max(0, metaOriginalMesAtual - baseAtual);
+    
+    // Calcular distribuição para atingir exatamente 1000 em dezembro
+    const motasTotalRestantes = Math.max(0, metaFinal - baseAtual);
+    const mesesRestantesAteDezembo = 12 - mesAtual; // meses do próximo mês até dezembro
+    const novaDistribuicaoMensal = mesesRestantesAteDezembo > 0 ? Math.ceil(motasTotalRestantes / mesesRestantesAteDezembo) : 0;
     
     return dadosHistoricos.map((item) => {
       let projecao = item.atual;
       let motosNecessarias = 0;
+      let baseInicioMes = undefined;
+      let progressoMes = undefined;
+      let metaMes = undefined;
+      let percentualCompleto = undefined;
       
       if (item.monthNumber < mesAtual) {
-        // Meses passados: usar realizado
-        projecao = item.atual;
-      } else if (item.monthNumber === mesAtual && item.monthNumber < 7) {
-        // Mês corrente antes de julho: manter base atual
-        projecao = baseAtual;
-        acumulado = baseAtual;
-      } else if (item.monthNumber === 7) {
-        // Julho: base atual + primeiro incremento mensal
-        acumulado = Math.round(baseAtual + motasPorMes);
-        projecao = acumulado;
-        motosNecessarias = motasPorMes;
-      } else if (item.monthNumber > 7) {
-        // Meses após julho: continuar crescimento proporcional
-        acumulado = Math.round(acumulado + motasPorMes);
-        projecao = acumulado;
-        motosNecessarias = motasPorMes;
-      } else {
-        // Meses entre o atual e julho: manter base atual
-        projecao = baseAtual;
+        // Meses passados: usar dados reais
+        const realData = realAnalysis.realGrowthData[item.monthNumber - 1];
+        projecao = realData?.cumulativeCount || item.atual;
+      } else if (item.monthNumber === mesAtual) {
+        // Mês atual: mostrar meta do mês, não base atual
+        baseInicioMes = baseInicioMesAtual;
+        progressoMes = progressoMesAtual;
+        metaMes = metaOriginalMesAtual;
+        motosNecessarias = motasRestantesMesAtual;
+        percentualCompleto = metaOriginalMesAtual > 0 ? (progressoMesAtual / motasPorMes) * 100 : 0;
+        projecao = metaOriginalMesAtual; // Meta do mês, não base atual
+      } else if (item.monthNumber > mesAtual) {
+        // Meses futuros: calcular progressão linear até dezembro = 1000
+        // Partir da meta do mês atual, não da base atual
+        const baseParaCalculo = metaOriginalMesAtual;
+        const motasRestantesAposMesAtual = metaFinal - baseParaCalculo;
+        const mesesAposMesAtual = 12 - mesAtual;
+        const mesesAteEsseMes = item.monthNumber - mesAtual;
+        const crescimentoAteEsseMes = (motasRestantesAposMesAtual / mesesAposMesAtual) * mesesAteEsseMes;
+        
+        if (item.monthNumber === 12) {
+          // Dezembro: sempre exatamente 1000
+          projecao = metaFinal;
+          // Calcular quantas motos precisam ser adicionadas em dezembro
+          const projecaoNovembro = baseParaCalculo + ((motasRestantesAposMesAtual / mesesAposMesAtual) * (11 - mesAtual));
+          motosNecessarias = Math.max(0, metaFinal - Math.round(projecaoNovembro));
+        } else {
+          // Outros meses: progressão linear a partir da meta do mês atual
+          projecao = Math.round(baseParaCalculo + crescimentoAteEsseMes);
+          motosNecessarias = Math.ceil(motasRestantesAposMesAtual / mesesAposMesAtual);
+        }
       }
       
       return {
         ...item,
-        projecao: Math.min(projecao, metaFinal),
+        projecao,
         meta: metaFinal,
-        motosNecessarias
+        motosNecessarias,
+        baseInicioMes,
+        progressoMes,
+        metaMes,
+        percentualCompleto
       };
     });
-  }, [dadosHistoricos, mesAtual, baseAtual, motasPorMes, metaFinal]);
+  }, [dadosHistoricos, mesAtual, baseAtual, motasPorMes, metaFinal, realAnalysis]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -127,8 +171,17 @@ export function MotorcycleProjectionChart() {
           {data.projecao > data.atual && (
             <p className="text-green-600">{`Projeção: ${data.projecao} motos`}</p>
           )}
+          {data.progressoMes !== undefined && (
+            <div className="mt-2 border-t pt-2">
+              <p className="text-sm text-gray-600">{`Base início: ${data.baseInicioMes} motos`}</p>
+              <p className="text-sm text-purple-600">{`Progresso: +${data.progressoMes} motos`}</p>
+              {data.percentualCompleto !== undefined && (
+                <p className="text-sm text-purple-600">{`Completo: ${data.percentualCompleto.toFixed(1)}%`}</p>
+              )}
+            </div>
+          )}
           {data.motosNecessarias > 0 && (
-            <p className="text-orange-600">{`Necessário: +${data.motosNecessarias} motos`}</p>
+            <p className="text-orange-600">{`Restante: +${data.motosNecessarias} motos`}</p>
           )}
         </div>
       )
@@ -221,9 +274,30 @@ export function MotorcycleProjectionChart() {
         <Card className="border-l-4 border-l-purple-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardContent className="p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm text-muted-foreground font-medium">Por Mês (Jul-Dez)</p>
-              <p className="text-2xl font-bold text-purple-500">+{motasPorMes}</p>
-              <p className="text-xs text-muted-foreground">motos necessárias</p>
+              <p className="text-sm text-muted-foreground font-medium">Progresso {getNomesMeses()}</p>
+              {(() => {
+                const mesAtualData = dadosProjecao.find(d => d.monthNumber === mesAtual);
+                if (mesAtualData?.progressoMes !== undefined) {
+                  return (
+                    <>
+                      <p className="text-2xl font-bold text-purple-500">+{mesAtualData.progressoMes}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {mesAtualData.motosNecessarias > 0 
+                          ? `faltam +${mesAtualData.motosNecessarias}`
+                          : 'meta atingida'
+                        }
+                      </p>
+                    </>
+                  );
+                } else {
+                  return (
+                    <>
+                      <p className="text-2xl font-bold text-purple-500">+{motasPorMes}</p>
+                      <p className="text-xs text-muted-foreground">motos necessárias</p>
+                    </>
+                  );
+                }
+              })()}
             </div>
             <div className="p-3 rounded-lg bg-purple-500">
               <Calendar className="h-6 w-6 text-white" />
@@ -314,7 +388,8 @@ export function MotorcycleProjectionChart() {
                   <th className="text-left p-2">Mês</th>
                   <th className="text-right p-2">Base Atual</th>
                   <th className="text-right p-2">Projeção</th>
-                  <th className="text-right p-2">Motos a Adicionar</th>
+                  <th className="text-right p-2">Progresso</th>
+                  <th className="text-right p-2">Restante</th>
                   <th className="text-center p-2">Status</th>
                 </tr>
               </thead>
@@ -331,6 +406,17 @@ export function MotorcycleProjectionChart() {
                       )}
                     </td>
                     <td className="text-right p-2">
+                      {item.progressoMes !== undefined ? (
+                        <Badge variant="secondary" className="text-purple-600">
+                          +{item.progressoMes} ({item.percentualCompleto?.toFixed(0)}%)
+                        </Badge>
+                      ) : item.monthNumber < mesAtual ? (
+                        <span className="text-green-600">Concluído</span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
+                    <td className="text-right p-2">
                       {item.motosNecessarias > 0 ? (
                         <Badge variant="outline" className="text-orange-600">
                           +{item.motosNecessarias}
@@ -340,8 +426,10 @@ export function MotorcycleProjectionChart() {
                       )}
                     </td>
                     <td className="text-center p-2">
-                      {item.monthNumber <= mesAtual ? (
+                      {item.monthNumber < mesAtual ? (
                         <Badge variant="secondary">Realizado</Badge>
+                      ) : item.monthNumber === mesAtual ? (
+                        <Badge variant="default" className="bg-purple-600">Em Andamento</Badge>
                       ) : (
                         <Badge variant="outline">Planejado</Badge>
                       )}
@@ -370,6 +458,20 @@ export function MotorcycleProjectionChart() {
             <p>
               <strong>Crescimento Necessário:</strong> +{motasFaltantes} motos em {mesesRestantes} meses
             </p>
+            {(() => {
+              const mesAtualData = dadosProjecao.find(d => d.monthNumber === mesAtual);
+              if (mesAtualData?.progressoMes !== undefined) {
+                return (
+                  <div className="mt-3 p-3 bg-purple-100 rounded-lg border-purple-200 border">
+                    <p><strong>Progresso {getNomesMeses()}:</strong></p>
+                    <p>• Adicionadas: +{mesAtualData.progressoMes} motos</p>
+                    <p>• Faltam: +{mesAtualData.motosNecessarias} motos</p>
+                    <p>• Percentual: {mesAtualData.percentualCompleto?.toFixed(1)}% da meta mensal</p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <p>
               <strong>Média Mensal:</strong> +{motasPorMes} motos por mês (julho a dezembro)
             </p>
