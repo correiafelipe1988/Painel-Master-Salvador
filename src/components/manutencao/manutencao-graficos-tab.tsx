@@ -45,11 +45,13 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
       return;
     }
 
-    // Dados por fabricante
+    // Dados por fabricante (extraído do campo veiculo)
     const fabricanteCount: Record<string, number> = {};
     data.forEach(item => {
-      if (item.veiculo_fabricante) {
-        fabricanteCount[item.veiculo_fabricante] = (fabricanteCount[item.veiculo_fabricante] || 0) + 1;
+      if (item.veiculo) {
+        // Extrair fabricante do campo veiculo (ex: "DAFRA - NH190" -> "DAFRA")
+        const fabricante = item.veiculo.split(' - ')[0] || item.veiculo;
+        fabricanteCount[fabricante] = (fabricanteCount[fabricante] || 0) + 1;
       }
     });
 
@@ -59,11 +61,11 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
       color: getFabricanteColor(fabricante),
     }));
 
-    // Dados por modelo
+    // Dados por modelo (campo veiculo completo)
     const modeloCount: Record<string, number> = {};
     data.forEach(item => {
-      if (item.veiculo_modelo) {
-        modeloCount[item.veiculo_modelo] = (modeloCount[item.veiculo_modelo] || 0) + 1;
+      if (item.veiculo) {
+        modeloCount[item.veiculo] = (modeloCount[item.veiculo] || 0) + 1;
       }
     });
 
@@ -72,7 +74,7 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
       value: count,
     }));
 
-    // Dados de valor por mês
+    // Dados de valor por mês (usando faturamento_pecas)
     const valorMensal: Record<string, number> = {};
     data.forEach(item => {
       if (item.data) {
@@ -80,7 +82,7 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
           year: 'numeric', 
           month: 'short' 
         });
-        valorMensal[month] = (valorMensal[month] || 0) + item.valor_total;
+        valorMensal[month] = (valorMensal[month] || 0) + item.faturamento_pecas;
       }
     });
 
@@ -89,18 +91,8 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
       valor,
     }));
 
-    // Dados por semana
-    const semanaCount: Record<string, number> = {};
-    data.forEach(item => {
-      if (item.semana) {
-        semanaCount[item.semana] = (semanaCount[item.semana] || 0) + 1;
-      }
-    });
-
-    const semanaData = Object.entries(semanaCount).map(([semana, count]) => ({
-      name: semana,
-      value: count,
-    }));
+    // Dados por semana (removido pois não existe mais)
+    const semanaData: { name: string; value: number }[] = [];
 
     setChartData({
       fabricanteData,
@@ -116,8 +108,9 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
     return colors[index];
   };
 
-  const totalValor = dataFiltrada.reduce((sum, item) => sum + item.valor_total, 0);
-  const avgValor = dataFiltrada.length > 0 ? totalValor / dataFiltrada.length : 0;
+  const totalFaturamento = dataFiltrada.reduce((sum, item) => sum + item.faturamento_pecas, 0);
+  const totalLiquido = dataFiltrada.reduce((sum, item) => sum + item.liquido, 0);
+  const avgFaturamento = dataFiltrada.length > 0 ? totalFaturamento / dataFiltrada.length : 0;
   const totalClientes = new Set(dataFiltrada.map(item => item.nome_cliente)).size;
 
   if (data.length === 0) {
@@ -150,8 +143,8 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
       description: '',
     },
     {
-      title: 'Valor Total',
-      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValor),
+      title: 'Faturamento Total',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFaturamento),
       icon: DollarSign,
       iconBgColor: 'bg-green-100',
       iconColor: 'text-green-600',
@@ -159,8 +152,8 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
       description: '',
     },
     {
-      title: 'Valor Médio',
-      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(avgValor),
+      title: 'Líquido Total',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalLiquido),
       icon: BarChart3,
       iconBgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
@@ -205,14 +198,14 @@ export function ManutencaoGraficosTab({ data = [], hideKpis = false }: Manutenca
           </div>
         </div>
         
-        {/* Linha inferior: Gráficos mensal e diário lado a lado */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          <div className="flex-grow">
-            <MaintenanceVolumeRevenueMonthlyChart data={dataFiltrada} />
-          </div>
-          <div className="flex-grow">
-            <MaintenanceVolumeRevenueDailyChart data={dataFiltrada} />
-          </div>
+        {/* Gráfico diário - largura total */}
+        <div className="w-full">
+          <MaintenanceVolumeRevenueDailyChart data={dataFiltrada} />
+        </div>
+        
+        {/* Gráfico mensal - largura total */}
+        <div className="w-full">
+          <MaintenanceVolumeRevenueMonthlyChart data={dataFiltrada} />
         </div>
       </div>
     </div>

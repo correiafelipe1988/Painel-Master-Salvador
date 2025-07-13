@@ -44,7 +44,7 @@ function groupByDay(data: ManutencaoData[]) {
     const key = date.toISOString().split('T')[0];
     if (!result[key]) result[key] = { count: 0, revenue: 0, date };
     result[key].count += 1;
-    result[key].revenue += item.valor_total || 0;
+    result[key].revenue += item.faturamento_pecas || 0;
     if (!minDate || date < minDate) minDate = date;
     if (!maxDate || date > maxDate) maxDate = date;
   });
@@ -110,11 +110,11 @@ export function MaintenanceVolumeRevenueDailyChart({ data }: MaintenanceVolumeRe
                 }}
               />
               <Legend verticalAlign="top" wrapperStyle={{top: 0}}/>
+              <Line yAxisId="right" type="monotone" dataKey="revenue" name="Receita" stroke="hsl(221.2 83.2% 53.3%)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
               <Bar yAxisId="left" dataKey="count" name="Volume" fill="hsl(142.1 76.2% 36.3%)" radius={[4, 4, 0, 0]}>
                 <LabelList dataKey="count" position="center" style={{ fontSize: '12px', fill: 'white', fontWeight: 'bold' }} formatter={(value: number) => (value > 0 ? formatCount(value) : '')} />
                 <LabelList dataKey="revenue" content={<RevenueLabel />} />
               </Bar>
-              <Line yAxisId="right" type="monotone" dataKey="revenue" name="Receita" stroke="hsl(221.2 83.2% 53.3%)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
             </ComposedChart>
           </ResponsiveContainer>
         )}

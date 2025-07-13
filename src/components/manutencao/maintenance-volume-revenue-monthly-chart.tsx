@@ -43,7 +43,7 @@ function groupByMonth(data: ManutencaoData[]) {
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     if (!result[key]) result[key] = { count: 0, revenue: 0, date };
     result[key].count += 1;
-    result[key].revenue += item.valor_total || 0;
+    result[key].revenue += item.faturamento_pecas || 0;
     if (date.getFullYear() < minYear) minYear = date.getFullYear();
   });
   // Preencher todos os meses do ano

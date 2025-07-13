@@ -21,29 +21,25 @@ import { useEffect, useState } from "react";
 import type { ManutencaoData } from "@/lib/types";
 
 const formSchema = z.object({
-  nome_cliente: z.string().min(2, "Nome obrigatório"),
-  veiculo_placa: z.string().min(3, "Placa obrigatória"),
-  veiculo_modelo: z.string().min(2, "Modelo obrigatório"),
-  veiculo_fabricante: z.string().min(2, "Fabricante obrigatório"),
-  semana: z.string().min(1, "Semana obrigatória"),
   data: z.date({ required_error: "Data obrigatória" }),
-  valor_total: z.coerce.number().min(0, "Valor obrigatório"),
-  pecas_utilizadas: z.string().optional(),
-  responsaveis_mao_obra: z.string().optional(),
+  veiculo_placa: z.string().min(3, "Placa obrigatória"),
+  veiculo: z.string().min(2, "Veículo obrigatório"),
+  nome_cliente: z.string().min(2, "Nome obrigatório"),
+  faturamento_pecas: z.coerce.number().min(0, "Faturamento obrigatório"),
+  custo_pecas: z.coerce.number().min(0, "Custo obrigatório"),
+  liquido: z.coerce.number().min(0, "Líquido obrigatório"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 const defaultFormValues: FormValues = {
-  nome_cliente: "",
-  veiculo_placa: "",
-  veiculo_modelo: "",
-  veiculo_fabricante: "",
-  semana: "",
   data: new Date(),
-  valor_total: 0,
-  pecas_utilizadas: "",
-  responsaveis_mao_obra: "",
+  veiculo_placa: "",
+  veiculo: "",
+  nome_cliente: "",
+  faturamento_pecas: 0,
+  custo_pecas: 0,
+  liquido: 0,
 };
 
 interface AddManutencaoFormProps {
@@ -61,15 +57,13 @@ export function AddManutencaoForm({ onSubmit, onCancel, initialData }: AddManute
   useEffect(() => {
     if (initialData) {
       const dataToReset: FormValues = {
-        nome_cliente: initialData.nome_cliente || "",
-        veiculo_placa: initialData.veiculo_placa || "",
-        veiculo_modelo: initialData.veiculo_modelo || "",
-        veiculo_fabricante: initialData.veiculo_fabricante || "",
-        semana: initialData.semana || "",
         data: initialData.data ? parseISO(initialData.data) : new Date(),
-        valor_total: initialData.valor_total || 0,
-        pecas_utilizadas: initialData.pecas_utilizadas || "",
-        responsaveis_mao_obra: initialData.responsaveis_mao_obra || "",
+        veiculo_placa: initialData.veiculo_placa || "",
+        veiculo: initialData.veiculo || "",
+        nome_cliente: initialData.nome_cliente || "",
+        faturamento_pecas: initialData.faturamento_pecas || 0,
+        custo_pecas: initialData.custo_pecas || 0,
+        liquido: initialData.liquido || 0,
       };
       form.reset(dataToReset);
     } else {
@@ -79,15 +73,13 @@ export function AddManutencaoForm({ onSubmit, onCancel, initialData }: AddManute
 
   function handleFormSubmit(values: FormValues) {
     const manutencaoData: Omit<ManutencaoData, 'id' | 'created_at' | 'updated_at'> = {
-      nome_cliente: values.nome_cliente,
-      veiculo_placa: values.veiculo_placa,
-      veiculo_modelo: values.veiculo_modelo,
-      veiculo_fabricante: values.veiculo_fabricante,
-      semana: values.semana,
       data: format(values.data, "yyyy-MM-dd"),
-      valor_total: values.valor_total,
-      pecas_utilizadas: values.pecas_utilizadas || "",
-      responsaveis_mao_obra: values.responsaveis_mao_obra || "",
+      veiculo_placa: values.veiculo_placa,
+      veiculo: values.veiculo,
+      nome_cliente: values.nome_cliente,
+      faturamento_pecas: values.faturamento_pecas,
+      custo_pecas: values.custo_pecas,
+      liquido: values.liquido,
     };
     onSubmit(manutencaoData);
   }
@@ -106,13 +98,31 @@ export function AddManutencaoForm({ onSubmit, onCancel, initialData }: AddManute
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
           <FormField
             control={form.control}
-            name="nome_cliente"
+            name="data"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nome do Cliente <span className="text-destructive">*</span></FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: FVE LOCAÇÕES LTDA" {...field} />
-                </FormControl>
+                <FormLabel>Data <span className="text-destructive">*</span></FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={field.value ? "outline" : "secondary"}
+                        className={"w-full pl-3 text-left font-normal" + (!field.value ? " text-muted-foreground" : "")}
+                      >
+                        {field.value ? format(field.value, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione a data</span>}
+                        <CalendarIcon className="ml-2 h-4 w-4" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
@@ -125,7 +135,7 @@ export function AddManutencaoForm({ onSubmit, onCancel, initialData }: AddManute
                 <FormItem>
                   <FormLabel>Placa <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: BRA2E19" {...field} />
+                    <Input placeholder="Ex: TGR9F96" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -133,86 +143,12 @@ export function AddManutencaoForm({ onSubmit, onCancel, initialData }: AddManute
             />
             <FormField
               control={form.control}
-              name="veiculo_modelo"
+              name="veiculo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Modelo <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel>Veículo <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: SHINERAY SHI 175" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="veiculo_fabricante"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fabricante <span className="text-destructive">*</span></FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: SHINERAY" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="semana"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Semana <span className="text-destructive">*</span></FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: 12" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="data"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data <span className="text-destructive">*</span></FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={field.value ? "outline" : "secondary"}
-                          className={"w-full pl-3 text-left font-normal" + (!field.value ? " text-muted-foreground" : "")}
-                        >
-                          {field.value ? format(field.value, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione a data</span>}
-                          <CalendarIcon className="ml-2 h-4 w-4" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="valor_total"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valor Total (R$) <span className="text-destructive">*</span></FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: 245.00" type="number" step="0.01" {...field} />
+                    <Input placeholder="Ex: DAFRA - NH190" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -221,30 +157,58 @@ export function AddManutencaoForm({ onSubmit, onCancel, initialData }: AddManute
           </div>
           <FormField
             control={form.control}
-            name="pecas_utilizadas"
+            name="nome_cliente"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Peças Utilizadas</FormLabel>
+                <FormLabel>Cliente <span className="text-destructive">*</span></FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: Filtro de óleo, Pastilha de freio" {...field} />
+                  <Input placeholder="Ex: CG Motos Ltda" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="responsaveis_mao_obra"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Responsáveis pela Mão de Obra</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: João, Maria" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="faturamento_pecas"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Faturamento Peças (R$) <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: 391.98" type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="custo_pecas"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Custo Peças (R$) <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: 267.86" type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="liquido"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Líquido (R$) <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: 124.12" type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
           <DialogFooter className="flex flex-row gap-2 justify-end pt-4">
             <DialogClose asChild>
               <Button type="button" variant="outline" onClick={onCancel}>

@@ -92,12 +92,34 @@ const processMotorcycleData = (motorcycles: Motorcycle[], year: number) => {
         }
     });
 
-    const combinedRentalData = monthAbbreviations.map((m, i) => ({
-      month: m,
-      alugadas: rentalCounts[i],
-      relocadas: relocatedCounts[i],
-      total: rentalCounts[i] + relocatedCounts[i],
-    }));
+    // Cálculo da projeção do mês atual (ritmo diário do mês corrente)
+    const currentDate = new Date();
+    const isCurrentYear = currentDate.getFullYear() === year;
+    const currentMonthIndex = isCurrentYear ? currentDate.getMonth() : 11;
+    let projecaoAlugadas = 0;
+    let projecaoRelocadas = 0;
+    if (isCurrentYear) {
+      const today = currentDate.getDate();
+      const daysInMonth = new Date(year, currentMonthIndex + 1, 0).getDate();
+      const acumuladoAlugadas = rentalCounts[currentMonthIndex];
+      const acumuladoRelocadas = relocatedCounts[currentMonthIndex];
+      const divisor = today > 1 ? today - 1 : 1;
+      projecaoAlugadas = Math.round((acumuladoAlugadas / divisor) * daysInMonth);
+      projecaoRelocadas = Math.round((acumuladoRelocadas / divisor) * daysInMonth);
+    }
+
+    const combinedRentalData = monthAbbreviations.map((m, i) => {
+      const isCurrentMonth = i === currentMonthIndex;
+      return {
+        month: m,
+        alugadas: rentalCounts[i],
+        relocadas: relocatedCounts[i],
+        total: rentalCounts[i] + relocatedCounts[i],
+        projecaoAlugadas: isCurrentMonth ? projecaoAlugadas : undefined,
+        projecaoRelocadas: isCurrentMonth ? projecaoRelocadas : undefined,
+        projecaoTotal: isCurrentMonth ? projecaoAlugadas + projecaoRelocadas : undefined,
+      };
+    });
 
     const earliestDateByPlaca = new Map<string, Date>();
     motorcycles.forEach(moto => {

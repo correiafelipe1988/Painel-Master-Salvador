@@ -23,9 +23,9 @@ export function MaintenancePlateRankList({ data }: MaintenancePlateRankListProps
     const key = item.veiculo_placa || 'Não especificada';
     if (!plateStats[key]) plateStats[key] = { volume: 0, receita: 0 };
     plateStats[key].volume += 1;
-    plateStats[key].receita += item.valor_total || 0;
+    plateStats[key].receita += item.faturamento_pecas || 0;
     totalVolume += 1;
-    totalReceita += item.valor_total || 0;
+    totalReceita += item.faturamento_pecas || 0;
   });
 
   const rankedData = Object.keys(plateStats)

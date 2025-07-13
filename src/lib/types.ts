@@ -70,15 +70,13 @@ export interface StatusRapidoItem {
 
 export interface ManutencaoData {
   id: string;
-  nome_cliente: string;
-  veiculo_placa: string;
-  veiculo_modelo: string;
-  veiculo_fabricante: string;
-  semana: string;
   data: string;
-  valor_total: number;
-  pecas_utilizadas: string;
-  responsaveis_mao_obra: string;
+  veiculo_placa: string;
+  veiculo: string;
+  nome_cliente: string;
+  faturamento_pecas: number;
+  custo_pecas: number;
+  liquido: number;
   created_at: string;
   updated_at: string;
 }

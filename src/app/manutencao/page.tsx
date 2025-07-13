@@ -24,8 +24,9 @@ export default function ManutencaoPage() {
   }, []);
 
   // KPIs de manutenção no novo padrão visual
-  const totalValor = data.reduce((sum, item) => sum + item.valor_total, 0);
-  const avgValor = data.length > 0 ? totalValor / data.length : 0;
+  const totalFaturamento = data.reduce((sum, item) => sum + item.faturamento_pecas, 0);
+  const totalCusto = data.reduce((sum, item) => sum + item.custo_pecas, 0);
+  const totalLiquido = data.reduce((sum, item) => sum + item.liquido, 0);
   const totalClientes = new Set(data.map(item => item.nome_cliente)).size;
 
   const kpis = [
@@ -39,22 +40,22 @@ export default function ManutencaoPage() {
       description: 'Quantidade total de manutenções registradas no período.',
     },
     {
-      title: 'Valor Total',
-      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValor),
+      title: 'Faturamento Total',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFaturamento),
       icon: DollarSign,
       iconBgColor: 'bg-green-100',
       iconColor: 'text-green-600',
       color: 'text-green-600',
-      description: 'Soma de todos os valores das manutenções realizadas.',
+      description: 'Total de faturamento com peças nas manutenções.',
     },
     {
-      title: 'Valor Médio',
-      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(avgValor),
+      title: 'Líquido Total',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalLiquido),
       icon: BarChart3,
       iconBgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
       color: 'text-blue-600',
-      description: 'Média de valor por manutenção registrada.',
+      description: 'Total líquido (faturamento - custo) das manutenções.',
     },
     {
       title: 'Clientes Únicos',

@@ -23,9 +23,9 @@ export function MaintenanceClientRankList({ data }: MaintenanceClientRankListPro
     const key = item.nome_cliente || 'Não especificado';
     if (!clientStats[key]) clientStats[key] = { volume: 0, receita: 0 };
     clientStats[key].volume += 1;
-    clientStats[key].receita += item.valor_total || 0;
+    clientStats[key].receita += item.faturamento_pecas || 0;
     totalVolume += 1;
-    totalReceita += item.valor_total || 0;
+    totalReceita += item.faturamento_pecas || 0;
   });
 
   const rankedData = Object.keys(clientStats)

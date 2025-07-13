@@ -1,11 +1,10 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import type { Kpi } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function KpiCard({ title, value, icon: Icon, description, color, iconBgColor, iconColor, titleClassName, valueClassName, descriptionClassName }: Kpi) {
+export function KpiCard({ title, value, icon: Icon, description, color, iconBgColor, iconColor, titleClassName, valueClassName, descriptionClassName, className }: Kpi & { className?: string; titleClassName?: string; valueClassName?: string; descriptionClassName?: string }) {
   return (
-    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300", iconBgColor ? iconBgColor.replace('bg-', 'border-') : 'border-transparent', 'border-l-4')}>
+    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300", iconBgColor ? iconBgColor.replace('bg-', 'border-') : 'border-transparent', 'border-l-4', className)}>
       <CardContent className="p-4 flex justify-between items-center">
         <div>
           <p className={cn("text-sm text-muted-foreground font-medium", titleClassName, color ? color.replace('text-','text-muted-') : 'text-muted-foreground')}>{title}</p>

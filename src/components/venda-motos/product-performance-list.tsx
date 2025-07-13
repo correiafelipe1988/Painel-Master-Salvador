@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { getVendasMotos } from "@/lib/firebase/vendaMotoService";
 import { ProductPerformanceCard } from "./product-performance-card";
 import { Skeleton } from "@/components/ui/skeleton";
+// @ts-expect-error: Módulo 'diacritics' não possui declaração de tipos
+import { remove as removeDiacritics } from "diacritics";
 
 interface ModelPerformance {
   rank: number;
@@ -35,23 +37,37 @@ export function ProductPerformanceList() {
       try {
         const vendas = await getVendasMotos();
         
-        const statsByModel = vendas.reduce((acc, venda) => {
-          const model = venda.modelo || 'Não Especificado';
+        // Tipagem explícita para statsByModel
+        type StatsByModel = {
+          [model: string]: {
+            unitsSold: number;
+            totalRevenue: number;
+            franchisees: Set<string>;
+          };
+        };
+        
+        const statsByModel: StatsByModel = vendas.reduce((acc: StatsByModel, venda) => {
+          // Normalização dos nomes de modelo e franqueado
+          const normalize = (str: string): string => {
+            if (!str) return 'Não Especificado';
+            return removeDiacritics(str.trim().toUpperCase().replace(/\s+/g, ' '));
+          };
+          const model = normalize(venda.modelo);
           if (!acc[model]) {
             acc[model] = { 
               unitsSold: 0, 
               totalRevenue: 0,
-              franchisees: new Set(),
+              franchisees: new Set<string>(),
             };
           }
           acc[model].unitsSold += venda.quantidade;
           acc[model].totalRevenue += venda.valor_total;
-          // Correção: usar o campo "franqueado" em vez de "nome_franqueado"
+          // Normalizar franqueado
           if (venda.franqueado) {
-            acc[model].franchisees.add(venda.franqueado);
+            acc[model].franchisees.add(normalize(venda.franqueado));
           }
           return acc;
-        }, {});
+        }, {} as StatsByModel);
 
         const grandTotalRevenue = Object.values(statsByModel).reduce((sum: number, model: any) => sum + model.totalRevenue, 0);
 

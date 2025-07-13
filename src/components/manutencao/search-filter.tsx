@@ -52,7 +52,7 @@ const matchesFilter = (item: ManutencaoData, filter: { field?: string; value: st
     const numValue = parseFloat(filter.value);
     if (isNaN(numValue)) return false;
     
-    const itemValue = item.valor_total;
+    const itemValue = item.faturamento_pecas;
     return filter.operator === ">" ? itemValue > numValue : itemValue < numValue;
   }
 
@@ -60,13 +60,11 @@ const matchesFilter = (item: ManutencaoData, filter: { field?: string; value: st
     const fieldMap: { [key: string]: keyof ManutencaoData } = {
       cliente: "nome_cliente",
       placa: "veiculo_placa",
-      modelo: "veiculo_modelo",
-      fabricante: "veiculo_fabricante",
+      veiculo: "veiculo",
       data: "data",
-      semana: "semana",
-      pecas: "pecas_utilizadas",
-      responsavel: "responsaveis_mao_obra",
-      responsaveis: "responsaveis_mao_obra",
+      faturamento: "faturamento_pecas",
+      custo: "custo_pecas",
+      liquido: "liquido",
     };
 
     const fieldKey = fieldMap[filter.field] || filter.field as keyof ManutencaoData;
@@ -80,12 +78,11 @@ const matchesFilter = (item: ManutencaoData, filter: { field?: string; value: st
   const searchableFields = [
     item.nome_cliente,
     item.veiculo_placa,
-    item.veiculo_modelo,
-    item.veiculo_fabricante,
+    item.veiculo,
     item.data,
-    item.semana,
-    item.pecas_utilizadas,
-    item.responsaveis_mao_obra,
+    String(item.faturamento_pecas),
+    String(item.custo_pecas),
+    String(item.liquido),
   ];
 
   return searchableFields.some(field => 

@@ -139,34 +139,38 @@ export function ManutencaoDataTab() {
                 return '';
               };
 
+              // Função para converter valores monetários
+              const parseMoneyValue = (value: string) => {
+                if (!value) return 0;
+                // Remove tudo exceto números, vírgulas e pontos
+                const cleanValue = String(value).replace(/[^\d.,]/g, '');
+                // Substitui vírgula por ponto para decimal
+                const normalizedValue = cleanValue.replace(',', '.');
+                return parseFloat(normalizedValue) || 0;
+              };
+
               const data = {
-                nome_cliente: getColumnValue([
-                  'Nome do cliente', 'nome_cliente', 'cliente', 'Cliente', 'CLIENTE', 'Nome Cliente', 'nome cliente'
-                ]),
-                veiculo_placa: getColumnValue([
-                  'Veículo placa', 'veiculo_placa', 'placa', 'Placa', 'PLACA', 'Veiculo Placa', 'veiculo placa'
-                ]),
-                veiculo_modelo: getColumnValue([
-                  'Veículo modelo', 'veiculo_modelo', 'modelo', 'Modelo', 'MODELO', 'Veiculo Modelo', 'veiculo modelo'
-                ]),
-                veiculo_fabricante: getColumnValue([
-                  'Veículo fabricante', 'veiculo_fabricante', 'fabricante', 'Fabricante', 'FABRICANTE', 'Veiculo Fabricante', 'veiculo fabricante', 'marca', 'Marca', 'MARCA'
-                ]),
-                semana: getColumnValue([
-                  'SEMANA', 'semana', 'Semana', 'Sem', 'SEM', 'sem'
-                ]),
                 data: formatDate(getColumnValue([
-                  'Data', 'data', 'DATA', 'Date', 'date', 'Data Manutencao', 'data_manutencao'
+                  'Data', 'data', 'DATA', 'Date', 'date'
                 ])),
-                valor_total: parseFloat(String(getColumnValue([
-                  'Valor Total', 'valor_total', 'valor', 'Valor', 'VALOR', 'Total', 'TOTAL', 'Valor total', 'valor total'
-                ]) || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
-                pecas_utilizadas: getColumnValue([
-                  'Peças utilizadas', 'pecas_utilizadas', 'pecas', 'Pecas', 'PECAS', 'Peças', 'Pecas utilizadas', 'pecas utilizadas', 'Peça', 'peca'
+                veiculo_placa: getColumnValue([
+                  'Placa', 'placa', 'PLACA', 'Veículo placa', 'veiculo_placa'
                 ]),
-                responsaveis_mao_obra: getColumnValue([
-                  'Responsáveis pela mão de obra', 'responsaveis_mao_obra', 'responsaveis', 'Responsaveis', 'RESPONSAVEIS', 'Responsáveis', 'mao_obra', 'mao de obra', 'Mao de obra', 'MAO DE OBRA', 'mecanico', 'Mecanico', 'MECANICO'
+                veiculo: getColumnValue([
+                  'Veículo', 'veiculo', 'VEICULO', 'Veiculo'
                 ]),
+                nome_cliente: getColumnValue([
+                  'Cliente', 'cliente', 'CLIENTE', 'Nome do cliente', 'nome_cliente'
+                ]),
+                faturamento_pecas: parseMoneyValue(getColumnValue([
+                  'Faturamento Peças', 'faturamento_pecas', 'Faturamento Pecas', 'FATURAMENTO PECAS'
+                ])),
+                custo_pecas: parseMoneyValue(getColumnValue([
+                  'Custo Peças', 'custo_pecas', 'Custo Pecas', 'CUSTO PECAS'
+                ])),
+                liquido: parseMoneyValue(getColumnValue([
+                  'Líquido', 'liquido', 'LIQUIDO', 'Liquido'
+                ])),
               };
               
               console.log(`Linha ${index + 1} processada:`, data);
@@ -361,15 +365,13 @@ export function ManutencaoDataTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Placa</TableHead>
-                  <TableHead>Modelo</TableHead>
-                  <TableHead>Fabricante</TableHead>
-                  <TableHead>Semana</TableHead>
                   <TableHead>Data</TableHead>
-                  <TableHead>Valor Total</TableHead>
-                  <TableHead>Peças</TableHead>
-                  <TableHead>Responsáveis</TableHead>
+                  <TableHead>Placa</TableHead>
+                  <TableHead>Veículo</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Faturamento Peças</TableHead>
+                  <TableHead>Custo Peças</TableHead>
+                  <TableHead>Líquido</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -379,12 +381,13 @@ export function ManutencaoDataTab() {
                     <TableCell>
                       {editingId === item.id ? (
                         <Input
-                          value={editingData.nome_cliente || ''}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, nome_cliente: e.target.value }))}
+                          type="date"
+                          value={editingData.data || ''}
+                          onChange={(e) => setEditingData(prev => ({ ...prev, data: e.target.value }))}
                           className="w-32"
                         />
                       ) : (
-                        item.nome_cliente
+                        format(new Date(item.data), 'dd/MM/yyyy', { locale: ptBR })
                       )}
                     </TableCell>
                     <TableCell>
@@ -401,84 +404,62 @@ export function ManutencaoDataTab() {
                     <TableCell>
                       {editingId === item.id ? (
                         <Input
-                          value={editingData.veiculo_modelo || ''}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, veiculo_modelo: e.target.value }))}
-                          className="w-24"
-                        />
-                      ) : (
-                        item.veiculo_modelo
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === item.id ? (
-                        <Input
-                          value={editingData.veiculo_fabricante || ''}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, veiculo_fabricante: e.target.value }))}
-                          className="w-24"
-                        />
-                      ) : (
-                        item.veiculo_fabricante
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === item.id ? (
-                        <Input
-                          value={editingData.semana || ''}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, semana: e.target.value }))}
-                          className="w-20"
-                        />
-                      ) : (
-                        item.semana
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === item.id ? (
-                        <Input
-                          type="date"
-                          value={editingData.data || ''}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, data: e.target.value }))}
+                          value={editingData.veiculo || ''}
+                          onChange={(e) => setEditingData(prev => ({ ...prev, veiculo: e.target.value }))}
                           className="w-32"
                         />
                       ) : (
-                        format(new Date(item.data), 'dd/MM/yyyy', { locale: ptBR })
+                        item.veiculo
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingId === item.id ? (
+                        <Input
+                          value={editingData.nome_cliente || ''}
+                          onChange={(e) => setEditingData(prev => ({ ...prev, nome_cliente: e.target.value }))}
+                          className="w-32"
+                        />
+                      ) : (
+                        item.nome_cliente
                       )}
                     </TableCell>
                     <TableCell>
                       {editingId === item.id ? (
                         <Input
                           type="number"
-                          value={editingData.valor_total || 0}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, valor_total: parseFloat(e.target.value) || 0 }))}
+                          step="0.01"
+                          value={editingData.faturamento_pecas || 0}
+                          onChange={(e) => setEditingData(prev => ({ ...prev, faturamento_pecas: parseFloat(e.target.value) || 0 }))}
                           className="w-24"
                         />
                       ) : (
-                        formatCurrency(item.valor_total)
+                        formatCurrency(item.faturamento_pecas)
                       )}
                     </TableCell>
                     <TableCell>
                       {editingId === item.id ? (
                         <Input
-                          value={editingData.pecas_utilizadas || ''}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, pecas_utilizadas: e.target.value }))}
-                          className="w-32"
+                          type="number"
+                          step="0.01"
+                          value={editingData.custo_pecas || 0}
+                          onChange={(e) => setEditingData(prev => ({ ...prev, custo_pecas: parseFloat(e.target.value) || 0 }))}
+                          className="w-24"
                         />
                       ) : (
-                        <div className="max-w-32 truncate" title={item.pecas_utilizadas}>
-                          {item.pecas_utilizadas}
-                        </div>
+                        formatCurrency(item.custo_pecas)
                       )}
                     </TableCell>
                     <TableCell>
                       {editingId === item.id ? (
                         <Input
-                          value={editingData.responsaveis_mao_obra || ''}
-                          onChange={(e) => setEditingData(prev => ({ ...prev, responsaveis_mao_obra: e.target.value }))}
-                          className="w-32"
+                          type="number"
+                          step="0.01"
+                          value={editingData.liquido || 0}
+                          onChange={(e) => setEditingData(prev => ({ ...prev, liquido: parseFloat(e.target.value) || 0 }))}
+                          className="w-24"
                         />
                       ) : (
-                        <div className="max-w-32 truncate" title={item.responsaveis_mao_obra}>
-                          {item.responsaveis_mao_obra}
-                        </div>
+                        formatCurrency(item.liquido)
                       )}
                     </TableCell>
                     <TableCell>
