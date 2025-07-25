@@ -1,4 +1,17 @@
 import { Motorcycle, ManutencaoData } from "@/lib/types";
+import { normalizeMotorcycleModel } from "@/lib/utils/modelNormalizer";
+
+/**
+ * Calcula a diferença em dias entre duas datas incluindo ambos os dias (início e fim)
+ * Adiciona 1 dia para incluir o dia final no período
+ */
+function calculateDaysDifference(startDate: string, endDate: string): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir o dia final
+  return Math.max(0, diffDays);
+}
 
 export interface RentalPeriod {
   placa: string;
@@ -92,7 +105,7 @@ export function calculateRentalPeriods(
         if (current.status === 'alugada' || current.status === 'relocada') {
           const startDateObj = new Date(current.data_ultima_mov!);
           const endDateObj = new Date(next.data_ultima_mov!);
-          const durationDays = Math.floor((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+          const durationDays = calculateDaysDifference(current.data_ultima_mov!, next.data_ultima_mov!);
 
           const maintenanceInPeriod = maintenanceData.filter(m => {
             if (m.veiculo_placa !== placa) return false;
@@ -105,7 +118,7 @@ export function calculateRentalPeriods(
             startDate: current.data_ultima_mov!,
             endDate: next.data_ultima_mov!,
             status: current.status,
-            durationDays: Math.max(0, durationDays),
+            durationDays: durationDays,
             maintenanceCount: maintenanceInPeriod.length,
             maintenanceRecords: maintenanceInPeriod
           });
@@ -122,7 +135,7 @@ export function calculateRentalPeriods(
         
         results.push({
           placa,
-          modelo: latestMoto.model || 'Modelo não especificado',
+          modelo: normalizeMotorcycleModel(latestMoto.model || 'Modelo não especificado'),
           periods,
           totalDays,
           averageDays: completedPeriods.length > 0 ? Math.round(totalDays / completedPeriods.length) : 0,
@@ -145,7 +158,7 @@ export function calculateRentalPeriods(
       const currentStatus = moto.status;
       const lastMovementDate = new Date(moto.data_ultima_mov);
       const today = new Date();
-      const daysSinceLastMovement = Math.floor((today.getTime() - lastMovementDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSinceLastMovement = Math.ceil((today.getTime() - lastMovementDate.getTime()) / (1000 * 60 * 60 * 24));
 
       const periods: RentalPeriod[] = [];
 
@@ -225,7 +238,7 @@ export function calculateRentalPeriods(
         
         results.push({
           placa,
-          modelo: moto.model || 'Modelo não especificado',
+          modelo: normalizeMotorcycleModel(moto.model || 'Modelo não especificado'),
           periods,
           totalDays,
           averageDays: completedPeriods.length > 0 ? Math.round(totalDays / completedPeriods.length) : 0,
@@ -296,12 +309,12 @@ export function calculateModelRentalStats(rentalAnalyses: RentalAnalysis[]): Mod
 }
 
 /**
- * Formata período para exibição
+ * Formata período para exibição usando UTC para consistência com gestão de motos
  */
 export function formatPeriod(period: RentalPeriod): string {
-  const startDate = new Date(period.startDate).toLocaleDateString('pt-BR');
+  const startDate = new Date(period.startDate + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   const endDate = period.endDate 
-    ? new Date(period.endDate).toLocaleDateString('pt-BR')
+    ? new Date(period.endDate + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC' })
     : 'Em andamento';
   
   return `${startDate} - ${endDate}`;
