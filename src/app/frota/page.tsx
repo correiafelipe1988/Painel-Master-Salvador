@@ -214,7 +214,7 @@ export default function FrotaPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <AverageRentalTime motorcycles={uniqueMotorcycles} />
+                <AverageRentalTime motorcycles={allMotorcycles} />
               </CardContent>
             </Card>
           </TabsContent>
