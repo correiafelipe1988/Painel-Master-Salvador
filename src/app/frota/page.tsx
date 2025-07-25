@@ -6,14 +6,14 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Package, Users, DollarSign, Wrench, Calendar, TrendingUp, Bike } from "lucide-react";
+import { Package, Users, DollarSign, Clock, TrendingUp, Bike } from "lucide-react";
 import type { Motorcycle } from "@/lib/types";
 import { subscribeToMotorcycles } from '@/lib/firebase/motorcycleService';
 import { FleetOverviewCards } from "@/components/frota/fleet-overview-cards";
 import { ModelAnalysisTable } from "@/components/frota/model-analysis-table";
 import { FranchiseeDistributionChart } from "@/components/frota/franchisee-distribution-chart";
 import { ModelPerformanceChart } from "@/components/frota/model-performance-chart";
-import { MaintenanceAnalysis } from "@/components/frota/maintenance-analysis";
+import { AverageRentalTime } from "@/components/frota/average-rental-time";
 
 export default function FrotaPage() {
   const [allMotorcycles, setAllMotorcycles] = useState<Motorcycle[]>([]);
@@ -91,7 +91,7 @@ export default function FrotaPage() {
             <TabsTrigger value="models">Modelos</TabsTrigger>
             <TabsTrigger value="distribution">Distribuição</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="maintenance">Manutenção</TabsTrigger>
+            <TabsTrigger value="rental-time">Tempo Médio Locação</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -202,19 +202,19 @@ export default function FrotaPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="maintenance" className="space-y-6">
+          <TabsContent value="rental-time" className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Wrench className="h-6 w-6 text-orange-600" />
+                  <Clock className="h-6 w-6 text-blue-600" />
                   <div>
-                    <CardTitle className="font-headline">Análise de Manutenção</CardTitle>
-                    <CardDescription>Registros e custos de manutenção por modelo</CardDescription>
+                    <CardTitle className="font-headline">Tempo Médio de Locação</CardTitle>
+                    <CardDescription>Análise do tempo médio de locação por modelo e período</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <MaintenanceAnalysis motorcycles={uniqueMotorcycles} />
+                <AverageRentalTime motorcycles={uniqueMotorcycles} />
               </CardContent>
             </Card>
           </TabsContent>
