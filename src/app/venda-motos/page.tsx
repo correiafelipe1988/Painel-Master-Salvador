@@ -12,7 +12,7 @@ import { DollarSign, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Lista de IDs de usuários permitidos
-const ALLOWED_USER_IDS = ["edsTZ2zG54Ph2ZoNSyFZXoJj74s2", "FOHbVCbMyhadO3tm1rVdknwLVPr1", "VL0J7KdhhPUAmcTI0onP2PqZ19T2", "9NvNKnLzbJZIrO7p8FlgFJ0IuYL2"];
+const ALLOWED_USER_IDS = ["edsTZ2zG54Ph2ZoNSyFZXoJj74s2", "FOHbVCbMyhadO3tm1rVdknwLVPr1", "VL0J7KdhhPUAmcTI0onP2PqZ19T2", "9NvNKnLzbJZIrO7p8FlgFJ0IuYL2", "asa5TnKscSgeZbOUZKem2cJl0Yf2"];
 
 export default function VendaMotosPage() {
   const { user, loading } = useAuth();
