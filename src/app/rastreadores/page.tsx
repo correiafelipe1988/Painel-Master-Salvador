@@ -98,7 +98,8 @@ export default function RastreadoresPage() {
     "edsTZ2zG54Ph2ZoNSyFZXoJj74s2",
     "VL0J7KdhhPUAmcTI0onP2PqZ19T2",
     "9NvNKnLzbJZIrO7p8FlgFJ0IuYL2",
-    "asa5TnKscSgeZbOUZKem2cJl0Yf2"
+    "asa5TnKscSgeZbOUZKem2cJl0Yf2",
+    "y884M0oE6lbom15xQw0DpAup4Tg1"
   ];
 
   useEffect(() => {
