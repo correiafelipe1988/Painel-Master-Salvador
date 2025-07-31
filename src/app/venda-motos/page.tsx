@@ -27,6 +27,11 @@ export default function VendaMotosPage() {
     );
   }
 
+  // Debug temporário - mostrar UID do usuário
+  console.log("Debug Venda Motos - User UID:", user?.uid);
+  console.log("Debug Venda Motos - Allowed IDs:", ALLOWED_USER_IDS);
+  console.log("Debug Venda Motos - Is allowed:", user?.uid && ALLOWED_USER_IDS.includes(user.uid));
+
   // Verifica se o ID do usuário está na lista de permitidos
   if (!user || !ALLOWED_USER_IDS.includes(user.uid)) {
     return (
@@ -43,6 +48,10 @@ export default function VendaMotosPage() {
                 <AlertTitle>Acesso Negado</AlertTitle>
                 <AlertDescription>
                     Esta área é restrita e requer permissões especiais. Por favor, entre em contato com o administrador se você acredita que isso é um erro.
+                    <br /><br />
+                    <strong>Debug Info:</strong><br />
+                    User UID: {user?.uid || 'Não logado'}<br />
+                    User Email: {user?.email || 'N/A'}
                 </AlertDescription>
             </Alert>
         </div>
