@@ -12,7 +12,14 @@ import { DollarSign, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Lista de IDs de usuários permitidos
-const ALLOWED_USER_IDS = ["edsTZ2zG54Ph2ZoNSyFZXoJj74s2", "FOHbVCbMyhadO3tm1rVdknwLVPr1", "VL0J7KdhhPUAmcTI0onP2PqZ19T2", "9NvNKnLzbJZIrO7p8FlgFJ0IuYL2", "asa5TnKscSgeZbOUZKem2cJl0Yf2", "y884M0oE6lbom15xQw0DpAup4Tg1"];
+const ALLOWED_USER_IDS = [
+  "edsTZ2zG54Ph2ZoNSyFZXoJj74s2", 
+  "FOHbVCbMyhadO3tm1rVdknwLVPr1", 
+  "VL0J7KdhhPUAmcTI0onP2PqZ19T2", 
+  "9NvNKnLzbJZIrO7p8FlgFJ0IuYL2", 
+  "asa5TnKscSgeZbOUZKem2cJl0Yf2", 
+  "y884M0oE6lbom15xQw0DpAup4Tg1"
+];
 
 export default function VendaMotosPage() {
   const { user, loading } = useAuth();
@@ -29,11 +36,28 @@ export default function VendaMotosPage() {
 
   // Debug temporário - mostrar UID do usuário
   console.log("Debug Venda Motos - User UID:", user?.uid);
+  console.log("Debug Venda Motos - User UID length:", user?.uid?.length);
   console.log("Debug Venda Motos - Allowed IDs:", ALLOWED_USER_IDS);
-  console.log("Debug Venda Motos - Is allowed:", user?.uid && ALLOWED_USER_IDS.includes(user.uid));
+  console.log("Debug Venda Motos - Target UID exact match test:", user?.uid === "y884M0oE6lbom15xQw0DpAup4Tg1");
+  console.log("Debug Venda Motos - Array includes test:", user?.uid && ALLOWED_USER_IDS.includes(user.uid));
+  
+  // Função de verificação mais robusta
+  const isUserAllowed = (userUid: string | undefined): boolean => {
+    if (!userUid) return false;
+    
+    // Limpar espaços e caracteres especiais
+    const cleanUid = userUid.trim();
+    const cleanAllowedIds = ALLOWED_USER_IDS.map(id => id.trim());
+    
+    console.log("Debug - Clean UID:", cleanUid);
+    console.log("Debug - Clean Allowed IDs:", cleanAllowedIds);
+    console.log("Debug - Clean includes test:", cleanAllowedIds.includes(cleanUid));
+    
+    return cleanAllowedIds.includes(cleanUid);
+  };
 
   // Verifica se o ID do usuário está na lista de permitidos
-  if (!user || !ALLOWED_USER_IDS.includes(user.uid)) {
+  if (!user || !isUserAllowed(user.uid)) {
     return (
       <DashboardLayout>
         <PageHeader
