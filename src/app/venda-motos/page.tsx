@@ -18,7 +18,8 @@ const ALLOWED_USER_IDS = [
   "VL0J7KdhhPUAmcTI0onP2PqZ19T2", 
   "9NvNKnLzbJZIrO7p8FlgFJ0IuYL2", 
   "asa5TnKscSgeZbOUZKem2cJl0Yf2", 
-  "y884M0oE6lbom15xQw0DpAup4Tg1"
+  "y884M0oE6lbom15xQw0DpAup4Tg1",
+  "1dpkLRLH3Sgm5hTkmNJAlfDQgoP2"
 ];
 
 export default function VendaMotosPage() {
