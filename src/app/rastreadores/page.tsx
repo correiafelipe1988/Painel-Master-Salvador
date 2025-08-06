@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { RastreadoresList } from "@/components/rastreadores/rastreadores-list";
 import { Button } from "@/components/ui/button";
-import { Upload, X, BarChartBig, SatelliteDish, DollarSign, Calendar, ShieldAlert } from "lucide-react";
+import { Upload, X, BarChartBig, SatelliteDish, DollarSign, Calendar, ShieldAlert, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   addRastreador, 
@@ -31,16 +31,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { TrackerInstallationRevenueChart } from "@/components/charts/tracker-installation-revenue-chart";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { type Kpi } from "@/lib/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const monthFullNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-const processTrackerData = (rastreadores: RastreadorData[], selectedMonth: string) => {
-    const filteredByMonth = selectedMonth === 'all'
+const processTrackerData = (rastreadores: RastreadorData[], selectedMonths: string[]) => {
+    const filteredByMonth = selectedMonths.includes('all') || selectedMonths.length === 0
         ? rastreadores
-        : rastreadores.filter(r => r.mes.toLowerCase() === selectedMonth);
+        : rastreadores.filter(r => selectedMonths.includes(r.mes.toLowerCase()));
 
     const monthlyInstallations = Array(12).fill(0);
     const monthlyRevenue = Array(12).fill(0);
@@ -77,7 +77,7 @@ export default function RastreadoresPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rastreadoresData, setRastreadoresData] = useState<RastreadorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingRastreador, setEditingRastreador] = useState<RastreadorData | null>(null);
@@ -130,10 +130,44 @@ export default function RastreadoresPage() {
     });
   }, [rastreadoresData, filters]);
   
-  const { kpiData, chartData } = useMemo(() => processTrackerData(rastreadoresData, selectedMonth), [rastreadoresData, selectedMonth]);
+  const { kpiData, chartData } = useMemo(() => processTrackerData(rastreadoresData, selectedMonths), [rastreadoresData, selectedMonths]);
 
   const handleFilterChange = useCallback((newFilters: RastreadorFiltersState) => setFilters(newFilters), []);
   const handleClearFilters = useCallback(() => setFilters({ searchTerm: '', status: 'all', franqueado: 'all' }), []);
+  
+  const handleMonthToggle = (month: string) => {
+    if (month === 'all') {
+      setSelectedMonths(['all']);
+    } else {
+      setSelectedMonths(prev => {
+        // Remove 'all' se estiver selecionado
+        const withoutAll = prev.filter(m => m !== 'all');
+        
+        if (withoutAll.includes(month)) {
+          // Remove o mês se já estiver selecionado
+          const newSelection = withoutAll.filter(m => m !== month);
+          // Mantém vazio ao invés de voltar para 'all'
+          return newSelection;
+        } else {
+          // Adiciona o mês à seleção
+          return [...withoutAll, month];
+        }
+      });
+    }
+  };
+
+  const getSelectedMonthsDisplay = () => {
+    if (selectedMonths.includes('all')) {
+      return 'Todos os Meses';
+    }
+    if (selectedMonths.length === 0) {
+      return 'Selecionar Meses';
+    }
+    if (selectedMonths.length === 1) {
+      return selectedMonths[0].charAt(0).toUpperCase() + selectedMonths[0].slice(1);
+    }
+    return `${selectedMonths.length} meses selecionados`;
+  };
   
   const handleOpenAddModal = () => {
     setEditingRastreador(null);
@@ -184,24 +218,240 @@ export default function RastreadoresPage() {
   };
   
   const handleImportClick = () => fileInputRef.current?.click();
+
+
+  const handleExportData = () => {
+    try {
+      // Preparar dados para exportação
+      const dataToExport = filteredRastreadores.length > 0 ? filteredRastreadores : rastreadoresData;
+      
+      if (dataToExport.length === 0) {
+        toast({ title: "Aviso", description: "Não há dados para exportar.", variant: "destructive" });
+        return;
+      }
+
+      // Cabeçalhos do CSV
+      const headers = ['cnpj', 'empresa', 'franqueado', 'chassi', 'placa', 'rastreador', 'tipo', 'moto', 'mes', 'valor'];
+      
+      // Converter dados para CSV
+      const csvContent = [
+        headers.join(','), // Cabeçalho
+        ...dataToExport.map(item => 
+          headers.map(header => {
+            const value = (item as any)[header] || '';
+            // Escapar aspas e vírgulas
+            return value.toString().includes(',') || value.toString().includes('"') 
+              ? `"${value.toString().replace(/"/g, '""')}"` 
+              : value;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // Criar e baixar arquivo
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        
+        // Nome do arquivo com data
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const monthsStr = selectedMonths.includes('all') ? 'todos' : selectedMonths.join('-');
+        const fileName = `rastreadores_${monthsStr}_${dateStr}.csv`;
+        
+        link.setAttribute('download', fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({ 
+          title: "Sucesso!", 
+          description: `${dataToExport.length} registros exportados para ${fileName}`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro na exportação:', error);
+      toast({ 
+        title: "Erro", 
+        description: "Erro ao exportar dados.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast({ title: "Erro", description: "Por favor, selecione um arquivo CSV.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        toast({ title: "Erro", description: "Arquivo CSV vazio ou inválido.", variant: "destructive" });
+        return;
+      }
+
+      const headers = parseCSVLine(lines[0]);
+      const expectedHeaders = ['cnpj', 'empresa', 'franqueado', 'chassi', 'placa', 'rastreador', 'tipo', 'moto', 'mes', 'valor'];
+      
+      console.log('Headers encontrados:', headers);
+      console.log('Headers esperados:', expectedHeaders);
+      
+      const isValidFormat = expectedHeaders.every(header => headers.includes(header));
+      if (!isValidFormat) {
+        toast({ title: "Erro", description: `Formato do CSV inválido. Headers encontrados: ${headers.join(', ')}`, variant: "destructive" });
+        return;
+      }
+
+      const rastreadoresData: Omit<RastreadorData, 'id'>[] = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.length === headers.length) {
+          const rastreadorObj: any = {};
+          headers.forEach((header, index) => {
+            rastreadorObj[header] = values[index];
+          });
+          rastreadoresData.push(rastreadorObj);
+        }
+      }
+
+      console.log('Dados processados:', rastreadoresData.length, 'registros');
+      
+      if (rastreadoresData.length === 0) {
+        toast({ title: "Erro", description: "Nenhum dado válido encontrado no arquivo.", variant: "destructive" });
+        return;
+      }
+
+      // Usar a função de importação em lote
+      const { importRastreadoresBatch } = await import("@/lib/firebase/rastreadorService");
+      await importRastreadoresBatch(rastreadoresData);
+      
+      toast({ 
+        title: "Sucesso!", 
+        description: `${rastreadoresData.length} rastreadores importados com sucesso!`,
+      });
+
+      // Limpar o input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+    } catch (error: any) {
+      console.error('Erro na importação:', error);
+      toast({ 
+        title: "Erro", 
+        description: error.message || "Erro ao importar arquivo CSV.", 
+        variant: "destructive" 
+      });
+    }
+  };
   
   const pageActions = (
     <>
       <div className="flex items-center gap-2">
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-[180px]">
-            <Calendar className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Selecione o Mês" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Meses</SelectItem>
-            {monthFullNames.map((month, index) => (
-              <SelectItem key={index} value={month}>{month.charAt(0).toUpperCase() + month.slice(1)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[180px] justify-start">
+              <Calendar className="mr-2 h-4 w-4" />
+              {getSelectedMonthsDisplay()}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0">
+            <div className="p-4 space-y-2">
+              <div 
+                className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded"
+              >
+                <div className="flex items-center">
+                  <input 
+                    type="checkbox"
+                    id="all"
+                    checked={selectedMonths.includes('all')}
+                    onChange={() => handleMonthToggle('all')}
+                    className="h-4 w-4 cursor-pointer"
+                  />
+                </div>
+                <label 
+                  htmlFor="all" 
+                  className="text-sm font-medium cursor-pointer"
+                  onClick={() => handleMonthToggle('all')}
+                >
+                  Todos os Meses
+                </label>
+              </div>
+              <div className="border-t pt-2 space-y-2">
+                {monthFullNames.map((month, index) => (
+                  <div 
+                    key={index} 
+                    className={`flex items-center space-x-2 hover:bg-gray-50 p-1 rounded ${selectedMonths.includes('all') ? 'opacity-50' : ''}`}
+                  >
+                    <div className="flex items-center">
+                      <input 
+                        type="checkbox"
+                        id={month}
+                        checked={selectedMonths.includes(month)}
+                        onChange={() => {
+                          if (!selectedMonths.includes('all')) {
+                            handleMonthToggle(month);
+                          }
+                        }}
+                        disabled={selectedMonths.includes('all')}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+                    <label 
+                      htmlFor={month} 
+                      className="text-sm cursor-pointer"
+                      onClick={() => {
+                        if (!selectedMonths.includes('all')) {
+                          handleMonthToggle(month);
+                        }
+                      }}
+                    >
+                      {month.charAt(0).toUpperCase() + month.slice(1)}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
         <Button variant="outline" onClick={handleImportClick}><Upload className="mr-2 h-4 w-4" /> Importar CSV</Button>
-        <input type="file" ref={fileInputRef} hidden />
+        <Button variant="outline" onClick={handleExportData} className="bg-blue-50 hover:bg-blue-100 border-blue-300">
+          <Download className="mr-2 h-4 w-4" /> Exportar CSV
+        </Button>
+        <input type="file" ref={fileInputRef} accept=".csv" onChange={handleFileChange} hidden />
         <Button onClick={handleOpenAddModal}>Adicionar Rastreador</Button>
         {(filters.searchTerm || filters.status !== 'all' || filters.franqueado !== 'all') && (
           <Button variant="ghost" onClick={handleClearFilters}><X className="mr-2 h-4 w-4" /> Limpar Filtros</Button>
