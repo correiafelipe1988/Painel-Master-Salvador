@@ -26,6 +26,7 @@ interface FranchiseeFleetStatus {
     inadimplente: number;
     indisponivel_rastreador: number;
     indisponivel_emplacamento: number;
+    furto_roubo: number;
   };
   totalGeral: number;
   percentLocadas: number;
@@ -142,6 +143,7 @@ export default function FranqueadosPage() {
             inadimplente: 0,
             indisponivel_rastreador: 0,
             indisponivel_emplacamento: 0,
+            furto_roubo: 0,
             indefinido: 0,
           },
           totalGeral: 0,
@@ -149,9 +151,12 @@ export default function FranqueadosPage() {
       }
 
       const status = moto.status;
-      if (status && (status === 'active' || status === 'alugada' || status === 'manutencao' || status === 'relocada' || status === 'recolhida' || status === 'inadimplente' || status === 'indisponivel_rastreador' || status === 'indisponivel_emplacamento')) {
+      console.log('Processando moto:', moto.placa, 'Status:', status, 'Franqueado:', frName);
+      if (status && (status === 'active' || status === 'alugada' || status === 'manutencao' || status === 'relocada' || status === 'recolhida' || status === 'inadimplente' || status === 'indisponivel_rastreador' || status === 'indisponivel_emplacamento' || status === 'furto_roubo')) {
+        console.log('Status válido, incrementando contador para:', status);
         franchiseeStats[frName].counts[status]++;
       } else {
+        console.log('Status inválido ou undefined, indo para indefinido:', status);
         franchiseeStats[frName].counts.indefinido++;
       }
       franchiseeStats[frName].totalGeral++;
@@ -174,6 +179,7 @@ export default function FranqueadosPage() {
           inadimplente: stats.counts.inadimplente,
           indisponivel_rastreador: stats.counts.indisponivel_rastreador,
           indisponivel_emplacamento: stats.counts.indisponivel_emplacamento,
+          furto_roubo: stats.counts.furto_roubo,
         },
         totalGeral: stats.totalGeral,
         percentLocadas,
@@ -501,6 +507,27 @@ export default function FranqueadosPage() {
                                 <div className="text-2xl font-bold text-purple-600">{item.counts.indisponivel_emplacamento}</div>
                                 <div className="text-sm font-medium text-purple-600">
                                   {item.totalGeral > 0 ? ((item.counts.indisponivel_emplacamento / item.totalGeral) * 100).toFixed(0) : 0}%
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Furto/Roubo */}
+                          {item.counts.furto_roubo > 0 && (
+                            <div className="flex items-center justify-between p-3 bg-black/5 rounded-lg border-l-4 border-black">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-black/10 rounded-full">
+                                  <Shield className="h-4 w-4 text-black" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-800">Furto/Roubo</p>
+                                  <p className="text-sm text-gray-600">Ocorrência policial</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-black">{item.counts.furto_roubo}</div>
+                                <div className="text-sm font-medium text-black">
+                                  {item.totalGeral > 0 ? ((item.counts.furto_roubo / item.totalGeral) * 100).toFixed(0) : 0}%
                                 </div>
                               </div>
                             </div>

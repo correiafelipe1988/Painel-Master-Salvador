@@ -36,7 +36,15 @@ import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Calendar, Building2, TrendingUp } from "lucide-react";
 import { ParetoChart } from "@/components/charts/pareto-chart";
-import { MonthlyDistratosChart } from "@/components/charts/monthly-distratos-chart";
+import { RentalPeriodChart } from "@/components/charts/rental-period-chart";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const currentYear = new Date().getFullYear();
+
+const years = Array.from({ length: 3 }, (_, i) => ({
+  value: (currentYear - i).toString(),
+  label: (currentYear - i).toString(),
+}));
 
 // Função para processar dados dos distratos para gráficos
 const processDistratosData = (distratos: DistratoData[]) => {
@@ -109,6 +117,7 @@ export default function DistratosLocacoesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [distratosData, setDistratosData] = useState<DistratoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingDistrato, setEditingDistrato] = useState<DistratoData | null>(null);
@@ -152,8 +161,25 @@ export default function DistratosLocacoesPage() {
     return Array.from(causaSet);
   }, [distratosData]);
 
+  // Filtrar dados por ano selecionado
+  const filteredDistratosDataByYear = useMemo(() => {
+    if (!selectedYear || selectedYear === "all") return distratosData;
+    
+    return distratosData.filter(distrato => {
+      try {
+        if (distrato.fim_ctt && distrato.fim_ctt.includes('/')) {
+          const [dia, mes, ano] = distrato.fim_ctt.split('/');
+          return parseInt(ano) === parseInt(selectedYear);
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    });
+  }, [distratosData, selectedYear]);
+
   const filteredDistratos = useMemo(() => {
-    return distratosData.filter(d => {
+    return filteredDistratosDataByYear.filter(d => {
       const searchTermLower = filters.searchTerm.toLowerCase();
       const searchMatch = !filters.searchTerm ||
         d.placa?.toLowerCase().includes(searchTermLower) ||
@@ -178,9 +204,9 @@ export default function DistratosLocacoesPage() {
 
       return searchMatch && franqueadoMatch && causaMatch && periodoMatch;
     });
-  }, [distratosData, filters]);
+  }, [filteredDistratosDataByYear, filters]);
   
-  const { kpiData, topCausas, topFranqueados } = useMemo(() => processDistratosData(distratosData), [distratosData]);
+  const { kpiData, topCausas, topFranqueados } = useMemo(() => processDistratosData(filteredDistratosDataByYear), [filteredDistratosDataByYear]);
 
   const handleFilterChange = useCallback((newFilters: DistratoFiltersState) => setFilters(newFilters), []);
   const handleClearFilters = useCallback(() => setFilters({ searchTerm: '', franqueado: 'all', causa: 'all', periodo: 'all' }), []);
@@ -445,6 +471,18 @@ export default function DistratosLocacoesPage() {
   const pageActions = (
     <>
       <div className="flex items-center gap-2">
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="Ano" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map(year => (
+              <SelectItem key={year.value} value={year.value}>
+                {year.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button variant="outline" onClick={handleImportClick}>
           <Upload className="mr-2 h-4 w-4" /> Importar CSV
         </Button>
@@ -503,7 +541,7 @@ export default function DistratosLocacoesPage() {
     <DashboardLayout>
       <PageHeader 
         title="Distratos Locações" 
-        description="Visualize e gerencie os distratos de locação." 
+        description={`Visualize e gerencie os distratos de locação - ${selectedYear}`}
         icon={AlertTriangle}
         iconContainerClassName="bg-red-600"
         actions={pageActions} 
@@ -556,10 +594,10 @@ export default function DistratosLocacoesPage() {
                 <Calendar className="h-5 w-5" />
                 Distratos ao Longo do Tempo
               </CardTitle>
-              <CardDescription>Evolução mensal dos distratos</CardDescription>
+              <CardDescription>Evolução mensal por período de locação (até 30 dias vs maior que 30 dias)</CardDescription>
             </CardHeader>
             <CardContent>
-              <MonthlyDistratosChart data={distratosData} />
+              <RentalPeriodChart data={filteredDistratosDataByYear} />
             </CardContent>
           </Card>
 

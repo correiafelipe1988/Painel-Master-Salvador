@@ -35,6 +35,7 @@ const getStatusBadgeVariant = (status?: MotorcycleStatus) => {
     case 'relocada': return 'default';
     case 'indisponivel_rastreador': return 'destructive';
     case 'indisponivel_emplacamento': return 'destructive';
+    case 'furto_roubo': return 'destructive';
     default: return 'outline';
   }
 };
@@ -50,6 +51,7 @@ const getStatusBadgeClassName = (status?: MotorcycleStatus) => {
     case 'relocada': return 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500';
     case 'indisponivel_rastreador': return 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500';
     case 'indisponivel_emplacamento': return 'bg-purple-500 hover:bg-purple-600 text-white border-purple-500';
+    case 'furto_roubo': return 'bg-black hover:bg-gray-800 text-white border-black';
     default: return 'bg-gray-200 text-gray-700 border-gray-400';
   }
 }
@@ -66,6 +68,7 @@ const translateStatus = (status?: MotorcycleStatus): string => {
     case 'relocada': return 'Relocada';
     case 'indisponivel_rastreador': return 'Indisponível Rastreador';
     case 'indisponivel_emplacamento': return 'Indisponível Emplacamento';
+    case 'furto_roubo': return 'Furto/Roubo';
     default:
       const s = status as string;
       return s.charAt(0).toUpperCase() + s.slice(1);
@@ -227,6 +230,9 @@ export function MotorcycleList({ filters, motorcycles, onUpdateStatus, onDeleteM
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'indisponivel_emplacamento')}>
                             <XCircle className="mr-2 h-4 w-4 text-purple-500" /> Indisponível Emplacamento
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onUpdateStatus(moto.id, 'furto_roubo')}>
+                            <XCircle className="mr-2 h-4 w-4 text-black" /> Furto/Roubo
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
