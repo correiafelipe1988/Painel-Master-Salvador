@@ -1,0 +1,13 @@
+Dados limpos com os 299 registros da planilha:
+
+Por favor, forneça os 299 registros completos da planilha original para que eu possa processá-los e incluir no sistema.
+
+Preciso de todos os registros em formato:
+- Placa
+- Franqueado
+- Inicio CTT
+- Fim CTT
+- Motivo
+- Causa
+
+Aguardando os dados completos...

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auto-preenchimento Junho</title>
+</head>
+<body>
+    <h1>Script de Auto-preenchimento - Dados de Junho</h1>
+    <button onclick="autoFill()">Iniciar Preenchimento Automático</button>
+    <div id="status"></div>
+    <div id="progress"></div>
+
+    <script>
+        const dadosJunho = [
+            {
+                cnpj: "60.909.378/",
+                empresa: "ASF LOCACAO ALIATIR",
+                franqueado: "ASF LOCACAO ALIATIR",
+                chassi: "99HSH175S TGW606",
+                placa: "ALLCOM",
+                rastreador: "SHINERAY",
+                tipo: "SH 175 EFI",
+                moto: "19/06/2025",
+                mes: "junho",
+                valor: "150"
+            },
+            {
+                cnpj: "60.909.378/",
+                empresa: "ASF LOCACAO ALIATIR",
+                franqueado: "ASF LOCACAO ALIATIR",
+                chassi: "99HSH175S TGW957",
+                placa: "ALLCOM",
+                rastreador: "SHINERAY",
+                tipo: "SH 175 EFI",
+                moto: "19/06/2025",
+                mes: "junho",
+                valor: "150"
+            }
+            // Continue with all 33 records...
+        ];
+
+        function autoFill() {
+            const statusDiv = document.getElementById('status');
+            const progressDiv = document.getElementById('progress');
+            
+            statusDiv.innerHTML = '<h2>Instruções para preenchimento manual:</h2>';
+            
+            let html = '<ol>';
+            dadosJunho.forEach((item, index) => {
+                html += `<li style="margin-bottom: 10px;">
+                    <strong>Registro ${index + 1}:</strong><br>
+                    CNPJ: ${item.cnpj} | Empresa: ${item.empresa}<br>
+                    Franqueado: ${item.franqueado} | Chassi: ${item.chassi}<br>
+                    Placa: ${item.placa} | Rastreador: ${item.rastreador}<br>
+                    Tipo: ${item.tipo} | Moto: ${item.moto}<br>
+                    Mês: ${item.mes} | Valor: ${item.valor}
+                </li>`;
+            });
+            html += '</ol>';
+            
+            progressDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

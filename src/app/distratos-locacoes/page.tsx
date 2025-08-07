@@ -37,6 +37,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Calendar, Building2, TrendingUp } from "lucide-react";
 import { ParetoChart } from "@/components/charts/pareto-chart";
 import { RentalPeriodChart } from "@/components/charts/rental-period-chart";
+import { GroupedCausesChart } from "@/components/charts/grouped-causes-chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const currentYear = new Date().getFullYear();
@@ -207,6 +208,63 @@ export default function DistratosLocacoesPage() {
   }, [filteredDistratosDataByYear, filters]);
   
   const { kpiData, topCausas, topFranqueados } = useMemo(() => processDistratosData(filteredDistratosDataByYear), [filteredDistratosDataByYear]);
+
+  // KPIs adicionais solicitados
+  const kpiExtras = useMemo(() => {
+    const total = filteredDistratosDataByYear.length;
+    // Inadimplência/Financeiro usando o mapeamento centralizado
+    const { CAUSA_GROUP_RULES } = require('@/data/causas-map');
+    const normalize = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, ' ').trim();
+    const mapToGroup = (raw: string) => {
+      const n = normalize(raw || '');
+      for (const rule of CAUSA_GROUP_RULES) {
+        for (const kw of rule.keywords) {
+          if (n.includes(normalize(kw))) return rule.group;
+        }
+      }
+      return 'Outros/Diversos';
+    };
+    const inadCount = filteredDistratosDataByYear.reduce((acc, d) => acc + (mapToGroup(d.causa || '') === 'Inadimplência/Financeiro' ? 1 : 0), 0);
+    const inadPct = total ? Math.round((inadCount / total) * 1000) / 10 : 0;
+
+    // Últimos 30 dias e variação
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+    const prevStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 60);
+    const prevEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 31);
+    const parseDDMMYYYY = (s?: string) => {
+      if (!s || !s.includes('/')) return null;
+      const [dd, mm, yyyy] = s.split('/');
+      return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+    };
+    const inRange = (d: Date | null, a: Date, b: Date) => d ? d >= a && d <= b : false;
+    const last30 = filteredDistratosDataByYear.filter(d => inRange(parseDDMMYYYY(d.fim_ctt), start, now)).length;
+    const prev30 = filteredDistratosDataByYear.filter(d => inRange(parseDDMMYYYY(d.fim_ctt), prevStart, prevEnd)).length;
+    const delta = prev30 ? Math.round(((last30 - prev30) / prev30) * 100) : 0;
+
+    // Tempo médio até distrato
+    const diffs: number[] = [];
+    filteredDistratosDataByYear.forEach(d => {
+      const i = parseDDMMYYYY(d.inicio_ctt);
+      const f = parseDDMMYYYY(d.fim_ctt);
+      if (i && f && f >= i) {
+        const diffDays = Math.round((f.getTime() - i.getTime()) / (1000 * 60 * 60 * 24));
+        diffs.push(diffDays);
+      }
+    });
+    const avg = diffs.length ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length) : 0;
+    const median = diffs.length ? diffs.sort((a, b) => a - b)[Math.floor(diffs.length / 2)] : 0;
+
+    // Distratos que ocorreram no mesmo mês do início
+    const sameMonthCount = filteredDistratosDataByYear.filter(d => {
+      const i = parseDDMMYYYY(d.inicio_ctt);
+      const f = parseDDMMYYYY(d.fim_ctt);
+      return !!(i && f && i.getMonth() === f.getMonth() && i.getFullYear() === f.getFullYear());
+    }).length;
+    const sameMonthPct = total ? Math.round((sameMonthCount / total) * 1000) / 10 : 0;
+
+    return { total, inadCount, inadPct, last30, delta, avg, median, sameMonthCount, sameMonthPct };
+  }, [filteredDistratosDataByYear]);
 
   const handleFilterChange = useCallback((newFilters: DistratoFiltersState) => setFilters(newFilters), []);
   const handleClearFilters = useCallback(() => setFilters({ searchTerm: '', franqueado: 'all', causa: 'all', periodo: 'all' }), []);
@@ -569,21 +627,58 @@ export default function DistratosLocacoesPage() {
         </TabsContent>
         
         <TabsContent value="graficos" className="mt-4 space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {kpiData.map((kpi: Kpi) => <KpiCard key={kpi.title} {...kpi} />)}
+          <div className="grid gap-4 md:grid-cols-4">
+            <KpiCard
+              title="Total de Distratos"
+              value={kpiExtras.total.toString()}
+              icon={AlertTriangle}
+              description="Contratos encerrados"
+              color="text-red-700"
+              iconBgColor="bg-red-50"
+              iconColor="text-red-600"
+            />
+            <KpiCard
+              title="Mesmo mês do início"
+              value={`${kpiExtras.sameMonthCount} (${kpiExtras.sameMonthPct}%)`}
+              icon={Calendar}
+              description="Início e fim no mesmo mês"
+              color="text-orange-600"
+              iconBgColor="bg-orange-50"
+              iconColor="text-orange-600"
+            />
+            <KpiCard
+              title="Últimos 30 dias"
+              value={`${kpiExtras.last30}`}
+              icon={Calendar}
+              description={`${kpiExtras.delta >= 0 ? '+' : ''}${kpiExtras.delta}% vs 30 dias anteriores`}
+              color="text-blue-700"
+              iconBgColor="bg-blue-50"
+              iconColor="text-blue-600"
+            />
+            <KpiCard
+              title="Tempo médio até distrato"
+              value={`${kpiExtras.avg} dias`}
+              icon={TrendingUp}
+              description={`Mediana ${kpiExtras.median} dias`}
+              color="text-green-700"
+              iconBgColor="bg-green-50"
+              iconColor="text-green-600"
+            />
           </div>
           
-          {/* Gráfico de Pareto - Tela Inteira */}
+          {/* Removido: Gráfico de Pareto de Principais Causas */}
+
+          {/* Gráfico de Causas Agrupadas - Tela Inteira */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChartBig className="h-5 w-5" />
-                Principais Causas de Distrato
+                <TrendingUp className="h-5 w-5" />
+                Causas Agrupadas por Categoria
               </CardTitle>
-              <CardDescription>Top 10 motivos mais frequentes - Análise de Pareto</CardDescription>
+              <CardDescription>Análise estratégica dos motivos de distrato organizados por grupos principais</CardDescription>
             </CardHeader>
             <CardContent>
-              <ParetoChart data={topCausas.slice(0, 10)} />
+              <GroupedCausesChart data={filteredDistratosDataByYear} />
             </CardContent>
           </Card>
           
@@ -612,7 +707,7 @@ export default function DistratosLocacoesPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {topFranqueados.slice(0, 5).map((item, index) => (
+                  {topFranqueados.slice(0, 5).map((item) => (
                     <div key={item.franqueado} className="flex justify-between items-center p-2 rounded bg-gray-50">
                       <span className="text-sm">{item.franqueado}</span>
                       <span className="font-semibold text-orange-600">{item.count}</span>

@@ -30,6 +30,7 @@ const statusOptions: { value: MotorcycleStatus | 'all'; label: string }[] = [
   { value: 'manutencao', label: 'Manutenção' },
   { value: 'indisponivel_rastreador', label: 'Indisponível Rastreador' },
   { value: 'indisponivel_emplacamento', label: 'Indisponível Emplacamento' },
+  { value: 'furto_roubo', label: 'Furto/Roubo' },
 ];
 
 // Mock data for models, replace with actual data source if available

@@ -1,0 +1,249 @@
+{
+  "mapeamento_causas_distratos": {
+    "metadata": {
+      "total_registros": 119,
+      "causas_unicas": 36,
+      "periodo_analise": "Janeiro 2025 - Agosto 2025",
+      "data_analise": "2025-08-07"
+    },
+    "grupos_sugeridos": [
+      {
+        "id": 1,
+        "nome": "Inadimplência/Financeiro",
+        "total_ocorrencias": 59,
+        "percentual": 49.6,
+        "causas": [
+          {"causa_original": "inadimplência", "ocorrencias": 54},
+          {"causa_original": "sem condições financeiras", "ocorrencias": 1},
+          {"causa_original": "sublocação do veículo e inadimplência", "ocorrencias": 1},
+          {"causa_original": "não pagamento de manutenção corretiva", "ocorrencias": 1},
+          {"causa_original": "pendência financeira", "ocorrencias": 1},
+          {"causa_original": "ausência de retorno", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 2,
+        "nome": "Questões Pessoais do Cliente",
+        "total_ocorrencias": 12,
+        "percentual": 10.1,
+        "causas": [
+          {"causa_original": "motivos pessoais", "ocorrencias": 12}
+        ]
+      },
+      {
+        "id": 3,
+        "nome": "Problemas Administrativos",
+        "total_ocorrencias": 12,
+        "percentual": 10.1,
+        "causas": [
+          {"causa_original": "sem informações", "ocorrencias": 7},
+          {"causa_original": "Sem informações", "ocorrencias": 5}
+        ]
+      },
+      {
+        "id": 4,
+        "nome": "Desistência do Cliente",
+        "total_ocorrencias": 5,
+        "percentual": 4.2,
+        "causas": [
+          {"causa_original": "não adaptação ao modelo da motocicleta", "ocorrencias": 4},
+          {"causa_original": "Desistencia", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 5,
+        "nome": "Problemas Operacionais",
+        "total_ocorrencias": 5,
+        "percentual": 4.2,
+        "causas": [
+          {"causa_original": "Desistência", "ocorrencias": 3},
+          {"causa_original": "Liberação de placa", "ocorrencias": 2}
+        ]
+      },
+      {
+        "id": 6,
+        "nome": "Mudança de Negócio",
+        "total_ocorrencias": 4,
+        "percentual": 3.4,
+        "causas": [
+          {"causa_original": "TROCA de moto", "ocorrencias": 3},
+          {"causa_original": "mudança de contrato para fidelidade", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 7,
+        "nome": "Problemas Mecânicos/Manutenção",
+        "total_ocorrencias": 4,
+        "percentual": 3.4,
+        "causas": [
+          {"causa_original": "moto reserva", "ocorrencias": 2},
+          {"causa_original": "falhas técnicas na motocicleta", "ocorrencias": 1},
+          {"causa_original": "manutenção", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 8,
+        "nome": "Relacionamento Comercial",
+        "total_ocorrencias": 3,
+        "percentual": 2.5,
+        "causas": [
+          {"causa_original": "TROCA DE MOTO", "ocorrencias": 1},
+          {"causa_original": "TROCA De MOTO", "ocorrencias": 1},
+          {"causa_original": "troca de moto", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 9,
+        "nome": "Questões Legais/Regulatórias",
+        "total_ocorrencias": 2,
+        "percentual": 1.7,
+        "causas": [
+          {"causa_original": "CNH suspensa", "ocorrencias": 1},
+          {"causa_original": "uso indevido da motocicleta", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 10,
+        "nome": "Questões de Saúde/Acidente",
+        "total_ocorrencias": 1,
+        "percentual": 0.8,
+        "causas": [
+          {"causa_original": "acidente", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 11,
+        "nome": "Performance Insatisfatória",
+        "total_ocorrencias": 1,
+        "percentual": 0.8,
+        "causas": [
+          {"causa_original": "insatisfação do cliente", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 12,
+        "nome": "Fatores Externos",
+        "total_ocorrencias": 1,
+        "percentual": 0.8,
+        "causas": [
+          {"causa_original": "Locatário vai viajar para fora do estado", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 13,
+        "nome": "Problemas Contratuais",
+        "total_ocorrencias": 1,
+        "percentual": 0.8,
+        "causas": [
+          {"causa_original": "encerrado em comum acordo entre as partes", "ocorrencias": 1}
+        ]
+      },
+      {
+        "id": 14,
+        "nome": "Outros/Diversos",
+        "total_ocorrencias": 9,
+        "percentual": 7.6,
+        "causas": [
+          {"causa_original": "Liberação de placa/desistência", "ocorrencias": 1},
+          {"causa_original": "uso em carater de reserva", "ocorrencias": 1},
+          {"causa_original": "está com a moto reserva", "ocorrencias": 1},
+          {"causa_original": "utilização de moto reserva de outra franquia", "ocorrencias": 1},
+          {"causa_original": "FIM CONTRATO", "ocorrencias": 1},
+          {"causa_original": "substituição de moto", "ocorrencias": 1},
+          {"causa_original": "Alteração", "ocorrencias": 1},
+          {"causa_original": "decorrência do cumprimento integral do prazo", "ocorrencias": 1},
+          {"causa_original": "devolução", "ocorrencias": 1}
+        ]
+      }
+    ],
+    "causas_originais_completas": {
+      "inadimplência": {
+        "grupo": "Inadimplência/Financeiro",
+        "ocorrencias": 54,
+        "percentual": 45.4,
+        "descricao": "Falta de pagamento das parcelas contratuais"
+      },
+      "motivos pessoais": {
+        "grupo": "Questões Pessoais do Cliente",
+        "ocorrencias": 12,
+        "percentual": 10.1,
+        "descricao": "Questões particulares do locatário"
+      },
+      "sem informações": {
+        "grupo": "Problemas Administrativos",
+        "ocorrencias": 7,
+        "percentual": 5.9,
+        "descricao": "Falta de documentação adequada"
+      },
+      "Sem informações": {
+        "grupo": "Problemas Administrativos",
+        "ocorrencias": 5,
+        "percentual": 4.2,
+        "descricao": "Falta de documentação adequada (maiúscula)"
+      },
+      "não adaptação ao modelo da motocicleta": {
+        "grupo": "Desistência do Cliente",
+        "ocorrencias": 4,
+        "percentual": 3.4,
+        "descricao": "Cliente não se adaptou ao modelo da moto"
+      },
+      "Desistência": {
+        "grupo": "Problemas Operacionais",
+        "ocorrencias": 3,
+        "percentual": 2.5,
+        "descricao": "Cliente desistiu da locação"
+      },
+      "TROCA de moto": {
+        "grupo": "Mudança de Negócio",
+        "ocorrencias": 3,
+        "percentual": 2.5,
+        "descricao": "Substituição do veículo"
+      },
+      "moto reserva": {
+        "grupo": "Problemas Mecânicos/Manutenção",
+        "ocorrencias": 2,
+        "percentual": 1.7,
+        "descricao": "Uso de veículo reserva temporário"
+      },
+      "Liberação de placa": {
+        "grupo": "Problemas Operacionais",
+        "ocorrencias": 2,
+        "percentual": 1.7,
+        "descricao": "Liberação da placa do veículo"
+      }
+    },
+    "recomendacoes": {
+      "prioridade_alta": [
+        {
+          "area": "Inadimplência",
+          "acao": "Sistema de cobrança preventiva",
+          "justificativa": "49.6% dos distratos são por inadimplência"
+        },
+        {
+          "area": "Inadimplência",
+          "acao": "Análise de crédito mais rigorosa",
+          "justificativa": "54 casos de pura inadimplência"
+        }
+      ],
+      "prioridade_media": [
+        {
+          "area": "Administrativo",
+          "acao": "Padronização de motivos de distrato",
+          "justificativa": "12 casos sem informações adequadas"
+        },
+        {
+          "area": "Produto",
+          "acao": "Período de adaptação para novos clientes",
+          "justificativa": "4 casos de não adaptação ao modelo"
+        }
+      ],
+      "prioridade_baixa": [
+        {
+          "area": "Comercial",
+          "acao": "Produtos sazonais flexíveis",
+          "justificativa": "12 casos por motivos pessoais"
+        }
+      ]
+    }
+  }
+}

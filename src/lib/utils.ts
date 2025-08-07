@@ -18,6 +18,7 @@ export const translateMotorcycleStatus = (status?: MotorcycleStatus): string => 
     case 'relocada': return 'Relocada';
     case 'indisponivel_rastreador': return 'Indisponível Rastreador';
     case 'indisponivel_emplacamento': return 'Indisponível Emplacamento';
+    case 'furto_roubo': return 'Furto/Roubo';
     default:
       const s = status as string;
       return s.charAt(0).toUpperCase() + s.slice(1);

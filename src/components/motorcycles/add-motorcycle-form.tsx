@@ -42,6 +42,7 @@ const motorcycleStatusOptions: { value: MotorcycleStatus; label: string }[] = [
   { value: 'manutencao', label: 'Manutenção' },
   { value: 'indisponivel_rastreador', label: 'Indisponível Rastreador' },
   { value: 'indisponivel_emplacamento', label: 'Indisponível Emplacamento' },
+  { value: 'furto_roubo', label: 'Furto/Roubo' },
 ];
 
 const motorcycleTypeOptions: { value: MotorcycleType; label: string }[] = [
@@ -62,7 +63,7 @@ const formSchema = z.object({
   placa: z.string().min(7, "A placa deve ter pelo menos 7 caracteres.").max(8, "A placa deve ter no máximo 8 caracteres.").regex(/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/, "Formato de placa inválido (Ex: AAA1B23)."),
   model: z.string().optional(),
   type: z.enum(['nova', 'usada']).optional(),
-  status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento']).optional(),
+  status: z.enum(['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento', 'furto_roubo']).optional(),
   valorSemanal: z.coerce.number().positive("O valor semanal deve ser positivo.").optional().or(z.literal('')),
   data_ultima_mov: z.date().optional(),
   tempo_ocioso_dias: z.coerce.number().min(0, "Os dias parado não podem ser negativos.").optional().or(z.literal('')),

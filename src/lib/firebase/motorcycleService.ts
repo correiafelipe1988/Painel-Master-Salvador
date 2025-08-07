@@ -48,7 +48,7 @@ const fromFirestore = (docData: any): Omit<Motorcycle, 'id'> => {
     delete data.tempo_ocioso_dias; // Ensure it's not present
   }
 
-  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento'];
+  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento', 'furto_roubo'];
   if (data.status && !allowedStatus.includes(data.status)) {
     console.warn(`Invalid status "${data.status}" from Firestore for doc, defaulting to 'alugada'.`);
     data.status = 'alugada';
@@ -96,7 +96,7 @@ export async function addMotorcycle(
   let dataToSave = cleanDataForFirestore(motorcycleData);
 
   if (dataToSave.status === undefined) {
-    dataToSave.status = 'alugada'; 
+    dataToSave.status = 'active'; 
   }
   
   const docRef = await addDoc(motorcyclesCollectionRef, dataToSave);
@@ -135,7 +135,7 @@ export async function deleteMotorcycle(id: string): Promise<void> {
 export async function importMotorcyclesBatch(motorcycles: Omit<Motorcycle, 'id'>[]): Promise<string[]> {
   const batch = writeBatch(db);
   const addedMotorcycleIds: string[] = [];
-  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento'];
+  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento', 'furto_roubo'];
 
   motorcycles.forEach((moto) => {
     let preProcessedMoto: Partial<Omit<Motorcycle, 'id'>> = { ...moto };

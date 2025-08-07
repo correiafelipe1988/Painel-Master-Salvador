@@ -42,8 +42,8 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ data }) => {
         <div className="bg-white p-3 border border-gray-300 rounded shadow-lg">
           <p className="font-semibold text-gray-800">{`${label}`}</p>
           <p className="text-sm text-gray-600">{`Causa: ${data.causa}`}</p>
-          <p className="text-blue-600">{`Frequência: ${data.frequencia}`}</p>
-          <p className="text-red-600">{`Acumulado: ${data.acumulado}%`}</p>
+          <p style={{ color: '#28A745' }}>{`Frequência: ${data.frequencia}`}</p>
+          <p style={{ color: '#3366FF' }}>{`Acumulado: ${data.acumulado}%`}</p>
         </div>
       );
     }
@@ -89,7 +89,7 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ data }) => {
         <Bar 
           yAxisId="left"
           dataKey="frequencia" 
-          fill="#3b82f6"
+          fill="#28A745"
           name="FREQUÊNCIA"
           radius={[2, 2, 0, 0]}
         >
@@ -103,16 +103,16 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ data }) => {
           yAxisId="right"
           type="monotone" 
           dataKey="acumulado" 
-          stroke="#ef4444"
+          stroke="#3366FF"
           strokeWidth={3}
           name="ACUMULADO"
-          dot={{ fill: '#ef4444', r: 4 }}
+          dot={{ fill: '#3366FF', r: 4 }}
           connectNulls={false}
         >
           <LabelList 
             dataKey="acumulado" 
             position="top" 
-            style={{ fill: '#dc2626', fontSize: '12px', fontWeight: 'bold' }}
+            style={{ fill: '#3366FF', fontSize: '12px', fontWeight: 'bold' }}
             formatter={(value: number) => `${value}%`}
           />
         </Line>
