@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Wrench, Database, BarChart3, DollarSign, Users } from "lucide-react";
 import { ManutencaoDataTab } from "@/components/manutencao/manutencao-data-tab";
 import { ManutencaoGraficosTab } from "@/components/manutencao/manutencao-graficos-tab";
@@ -11,28 +12,86 @@ import { ManutencaoData } from "@/lib/types";
 import { subscribeToManutencao } from "@/lib/firebase/manutencaoService";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 
+const currentYear = new Date().getFullYear();
+
+const years = Array.from({ length: 3 }, (_, i) => ({
+  value: (currentYear - i).toString(),
+  label: (currentYear - i).toString(),
+}));
+
+const months = [
+  { value: "all", label: "Todos os Meses" },
+  { value: "1", label: "Janeiro" },
+  { value: "2", label: "Fevereiro" },
+  { value: "3", label: "Março" },
+  { value: "4", label: "Abril" },
+  { value: "5", label: "Maio" },
+  { value: "6", label: "Junho" },
+  { value: "7", label: "Julho" },
+  { value: "8", label: "Agosto" },
+  { value: "9", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
 export default function ManutencaoPage() {
   const [activeTab, setActiveTab] = useState("graficos");
-  const [data, setData] = useState<ManutencaoData[]>([]);
+  const [allData, setAllData] = useState<ManutencaoData[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
   useEffect(() => {
     const unsubscribe = subscribeToManutencao((manutencaoData) => {
-      setData(manutencaoData);
+      setAllData(manutencaoData);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // KPIs de manutenção no novo padrão visual
-  const totalFaturamento = data.reduce((sum, item) => sum + item.faturamento_pecas, 0);
-  const totalCusto = data.reduce((sum, item) => sum + item.custo_pecas, 0);
-  const totalLiquido = data.reduce((sum, item) => sum + item.liquido, 0);
-  const totalClientes = new Set(data.map(item => item.nome_cliente)).size;
+  // Filtrar dados por ano e mês
+  const filteredData = useMemo(() => {
+    let filtered = allData;
+
+    // Filtro por ano
+    if (selectedYear !== "all") {
+      const targetYear = parseInt(selectedYear);
+      filtered = filtered.filter(item => {
+        try {
+          const itemDate = new Date(item.data);
+          return itemDate.getFullYear() === targetYear;
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    // Filtro por mês
+    if (selectedMonth !== "all") {
+      const targetMonth = parseInt(selectedMonth);
+      filtered = filtered.filter(item => {
+        try {
+          const itemDate = new Date(item.data);
+          return itemDate.getMonth() + 1 === targetMonth;
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    return filtered;
+  }, [allData, selectedYear, selectedMonth]);
+
+  // KPIs de manutenção no novo padrão visual (usando dados filtrados)
+  const totalFaturamento = filteredData.reduce((sum, item) => sum + item.faturamento_pecas, 0);
+  const totalCusto = filteredData.reduce((sum, item) => sum + item.custo_pecas, 0);
+  const totalLiquido = filteredData.reduce((sum, item) => sum + item.liquido, 0);
+  const totalClientes = new Set(filteredData.map(item => item.nome_cliente)).size;
 
   const kpis = [
     {
       title: 'Total de Manutenções',
-      value: data.length.toString(),
+      value: filteredData.length.toString(),
       icon: Wrench,
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
@@ -68,6 +127,35 @@ export default function ManutencaoPage() {
     },
   ];
 
+  const pageActions = (
+    <div className="flex items-center gap-2">
+      <Select value={selectedYear} onValueChange={setSelectedYear}>
+        <SelectTrigger className="w-[120px]">
+          <SelectValue placeholder="Ano" />
+        </SelectTrigger>
+        <SelectContent>
+          {years.map(year => (
+            <SelectItem key={year.value} value={year.value}>
+              {year.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+        <SelectTrigger className="w-[160px]">
+          <SelectValue placeholder="Mês" />
+        </SelectTrigger>
+        <SelectContent>
+          {months.map(month => (
+            <SelectItem key={month.value} value={month.value}>
+              {month.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -75,6 +163,7 @@ export default function ManutencaoPage() {
         description="Gestão e análise de manutenção da frota"
         icon={Wrench}
         iconContainerClassName="bg-purple-600"
+        actions={pageActions}
       />
 
       {/* KPIs de Manutenção - sempre visíveis */}
@@ -101,11 +190,11 @@ export default function ManutencaoPage() {
         </TabsList>
         
         <TabsContent value="dados" className="space-y-6">
-          <ManutencaoDataTab />
+          <ManutencaoDataTab data={filteredData} />
         </TabsContent>
         
         <TabsContent value="graficos" className="space-y-6">
-          <ManutencaoGraficosTab data={data} hideKpis />
+          <ManutencaoGraficosTab data={filteredData} hideKpis />
         </TabsContent>
       </Tabs>
       </div>
