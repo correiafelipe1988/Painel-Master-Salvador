@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DistratosList } from "@/components/distratos/distratos-list";
 import { DistratoFilters, DistratoFiltersState } from "@/components/distratos/distrato-filters";
 import { Button } from "@/components/ui/button";
-import { Upload, X, BarChartBig, AlertTriangle, ShieldAlert, Download, Plus } from "lucide-react";
+import { Upload, X, AlertTriangle, ShieldAlert, Plus, Brain, Calendar as CalendarIcon, TrendingUp as TrendingUpIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   addDistrato, 
@@ -30,12 +30,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { KpiCard } from "@/components/dashboard/kpi-card";
-import { type Kpi } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Calendar, Building2, TrendingUp } from "lucide-react";
-import { ParetoChart } from "@/components/charts/pareto-chart";
+import { Calendar, TrendingUp } from "lucide-react";
 import { RentalPeriodChart } from "@/components/charts/rental-period-chart";
 import { GroupedCausesChart } from "@/components/charts/grouped-causes-chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,70 +44,6 @@ const years = Array.from({ length: 3 }, (_, i) => ({
   label: (currentYear - i).toString(),
 }));
 
-// Função para processar dados dos distratos para gráficos
-const processDistratosData = (distratos: DistratoData[]) => {
-  // Contar por causa
-  const causasCount = distratos.reduce((acc, distrato) => {
-    const causa = distrato.causa || 'Sem informações';
-    acc[causa] = (acc[causa] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Top 10 causas mais frequentes
-  const topCausas = Object.entries(causasCount)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 10)
-    .map(([causa, count]) => ({ causa, count }));
-
-  // Contar por franqueado
-  const franqueadosCount = distratos.reduce((acc, distrato) => {
-    acc[distrato.franqueado] = (acc[distrato.franqueado] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Top 5 franqueados com mais distratos
-  const topFranqueados = Object.entries(franqueadosCount)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5)
-    .map(([franqueado, count]) => ({ franqueado, count }));
-
-  // Dados mensais (últimos 6 meses)
-  const monthlyData = Array(6).fill(0);
-  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  
-  distratos.forEach(distrato => {
-    try {
-      const [dia, mes, ano] = distrato.fim_ctt.split('/');
-      const dataFim = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
-      const hoje = new Date();
-      const diffMonths = hoje.getMonth() - dataFim.getMonth() + (12 * (hoje.getFullYear() - dataFim.getFullYear()));
-      
-      if (diffMonths >= 0 && diffMonths < 6) {
-        monthlyData[5 - diffMonths]++;
-      }
-    } catch (e) {
-      // Ignorar datas inválidas
-    }
-  });
-
-  const chartData = monthlyData.map((count, index) => {
-    const monthIndex = (new Date().getMonth() - (5 - index) + 12) % 12;
-    return {
-      month: monthNames[monthIndex],
-      count
-    };
-  });
-
-  return {
-    kpiData: [
-      { title: "Total de Distratos", value: distratos.length.toString(), icon: AlertTriangle, description: "Contratos encerrados", color: "text-red-700" },
-      { title: "Principal Causa", value: topCausas[0]?.causa || "N/A", icon: BarChartBig, description: `${topCausas[0]?.count || 0} ocorrências`, color: "text-orange-600" },
-    ] as Kpi[],
-    topCausas,
-    topFranqueados,
-    chartData,
-  };
-};
 
 export default function DistratosLocacoesPage() {
   const { toast } = useToast();
@@ -145,11 +78,17 @@ export default function DistratosLocacoesPage() {
 
   useEffect(() => {
     setIsLoading(true);
-    const unsubscribe = subscribeToDistratos((dataFromDB) => {
+    
+    // Subscribe to distratos
+    const unsubscribeDistratos = subscribeToDistratos((dataFromDB) => {
       setDistratosData(Array.isArray(dataFromDB) ? dataFromDB : []);
       setIsLoading(false);
     });
-    return () => unsubscribe();
+    
+    
+    return () => {
+      unsubscribeDistratos();
+    };
   }, []);
 
   const franqueadosUnicos = useMemo(() => {
@@ -169,7 +108,7 @@ export default function DistratosLocacoesPage() {
     return distratosData.filter(distrato => {
       try {
         if (distrato.fim_ctt && distrato.fim_ctt.includes('/')) {
-          const [dia, mes, ano] = distrato.fim_ctt.split('/');
+          const [, , ano] = distrato.fim_ctt.split('/');
           return parseInt(ano) === parseInt(selectedYear);
         }
         return false;
@@ -207,64 +146,8 @@ export default function DistratosLocacoesPage() {
     });
   }, [filteredDistratosDataByYear, filters]);
   
-  const { kpiData, topCausas, topFranqueados } = useMemo(() => processDistratosData(filteredDistratosDataByYear), [filteredDistratosDataByYear]);
 
-  // KPIs adicionais solicitados
-  const kpiExtras = useMemo(() => {
-    const total = filteredDistratosDataByYear.length;
-    // Inadimplência/Financeiro usando o mapeamento centralizado
-    const { CAUSA_GROUP_RULES } = require('@/data/causas-map');
-    const normalize = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, ' ').trim();
-    const mapToGroup = (raw: string) => {
-      const n = normalize(raw || '');
-      for (const rule of CAUSA_GROUP_RULES) {
-        for (const kw of rule.keywords) {
-          if (n.includes(normalize(kw))) return rule.group;
-        }
-      }
-      return 'Outros/Diversos';
-    };
-    const inadCount = filteredDistratosDataByYear.reduce((acc, d) => acc + (mapToGroup(d.causa || '') === 'Inadimplência/Financeiro' ? 1 : 0), 0);
-    const inadPct = total ? Math.round((inadCount / total) * 1000) / 10 : 0;
 
-    // Últimos 30 dias e variação
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
-    const prevStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 60);
-    const prevEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 31);
-    const parseDDMMYYYY = (s?: string) => {
-      if (!s || !s.includes('/')) return null;
-      const [dd, mm, yyyy] = s.split('/');
-      return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
-    };
-    const inRange = (d: Date | null, a: Date, b: Date) => d ? d >= a && d <= b : false;
-    const last30 = filteredDistratosDataByYear.filter(d => inRange(parseDDMMYYYY(d.fim_ctt), start, now)).length;
-    const prev30 = filteredDistratosDataByYear.filter(d => inRange(parseDDMMYYYY(d.fim_ctt), prevStart, prevEnd)).length;
-    const delta = prev30 ? Math.round(((last30 - prev30) / prev30) * 100) : 0;
-
-    // Tempo médio até distrato
-    const diffs: number[] = [];
-    filteredDistratosDataByYear.forEach(d => {
-      const i = parseDDMMYYYY(d.inicio_ctt);
-      const f = parseDDMMYYYY(d.fim_ctt);
-      if (i && f && f >= i) {
-        const diffDays = Math.round((f.getTime() - i.getTime()) / (1000 * 60 * 60 * 24));
-        diffs.push(diffDays);
-      }
-    });
-    const avg = diffs.length ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length) : 0;
-    const median = diffs.length ? diffs.sort((a, b) => a - b)[Math.floor(diffs.length / 2)] : 0;
-
-    // Distratos que ocorreram no mesmo mês do início
-    const sameMonthCount = filteredDistratosDataByYear.filter(d => {
-      const i = parseDDMMYYYY(d.inicio_ctt);
-      const f = parseDDMMYYYY(d.fim_ctt);
-      return !!(i && f && i.getMonth() === f.getMonth() && i.getFullYear() === f.getFullYear());
-    }).length;
-    const sameMonthPct = total ? Math.round((sameMonthCount / total) * 1000) / 10 : 0;
-
-    return { total, inadCount, inadPct, last30, delta, avg, median, sameMonthCount, sameMonthPct };
-  }, [filteredDistratosDataByYear]);
 
   const handleFilterChange = useCallback((newFilters: DistratoFiltersState) => setFilters(newFilters), []);
   const handleClearFilters = useCallback(() => setFilters({ searchTerm: '', franqueado: 'all', causa: 'all', periodo: 'all' }), []);
@@ -318,61 +201,179 @@ export default function DistratosLocacoesPage() {
   
   const handleImportClick = () => fileInputRef.current?.click();
 
-  const handleExportData = () => {
+
+
+  // Função para reclassificar causas baseado nos motivos
+  const reclassificarCausas = (motivo: string, causaAtual: string): string => {
+    const motivoLower = motivo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    
+    // Padrões para Problemas Mecânicos/Manutenção
+    const padroesMecanicos = [
+      'insatisfação', 'insatisfacao', 'problema', 'defeito', 'manutencao', 'manutenção',
+      'reparo', 'conserto', 'quebra', 'quebrou', 'danificad', 'avaria', 'falha',
+      'não funciona', 'nao funciona', 'ruim', 'péssim', 'pessim', 'horrível', 'horrible',
+      'condições', 'condicoes', 'estado', 'qualidade', 'funcionamento', 'motor',
+      'freio', 'pneu', 'bateria', 'combustível', 'combustivel', 'vazamento',
+      'barulho', 'vibração', 'vibracao', 'travando', 'emperr', 'dificuld'
+    ];
+    
+    // Padrões para Inadimplência/Financeiro
+    const padroesFinanceiros = [
+      'inadimpl', 'financei', 'pagamento', 'pagar', 'dinheiro', 'valor', 'preço', 'preco',
+      'caro', 'custo', 'conta', 'débito', 'debito', 'atraso', 'vencimento', 'parcela',
+      'boleto', 'cartão', 'cartao', 'empréstimo', 'emprestimo', 'crédito', 'credito',
+      'economia', 'econom', 'situação financeira', 'situacao financeira', 'sem dinheiro',
+      'desempreg', 'renda', 'salário', 'salario'
+    ];
+    
+    // Padrões para Mudança de Cidade/Pessoal
+    const padroesMudanca = [
+      'mudança', 'mudanca', 'mudar', 'cidade', 'estado', 'viagem', 'trabalho',
+      'emprego', 'casa', 'família', 'familia', 'pessoal', 'saúde', 'saude',
+      'doença', 'doenca', 'hospital', 'médico', 'medico', 'tratamento',
+      'aposentad', 'idade', 'faleceu', 'falecimento', 'morte', 'óbito', 'obito',
+      'casamento', 'divórcio', 'divorcio', 'separação', 'separacao',
+      'transferência', 'transferencia', 'relocação', 'relocacao'
+    ];
+    
+    // Padrões para Furto/Roubo/Acidente
+    const padroesFurto = [
+      'furto', 'roubo', 'roubada', 'furtada', 'acidente', 'bateu', 'colisão', 'colisao',
+      'sinistro', 'seguro', 'polícia', 'policia', 'bo', 'boletim', 'delegacia',
+      'ladrão', 'ladrao', 'bandido', 'criminoso', 'assalto', 'assaltada',
+      'danificada', 'destruída', 'destruida', 'perda total', 'guincho'
+    ];
+    
+    // Padrões para Desistência/Não Adaptação
+    const padroesDesistencia = [
+      'desistência', 'desistencia', 'desistir', 'desisti', 'não quer', 'nao quer',
+      'não precisa', 'nao precisa', 'não usa', 'nao usa', 'não utiliza', 'nao utiliza',
+      'sem necessidade', 'desnecessário', 'desnecessario', 'adaptação', 'adaptacao',
+      'não se adaptou', 'nao se adaptou', 'preferência', 'preferencia', 'prefere',
+      'mudou de ideia', 'mudou de idéia', 'arrependimento', 'arrependeu'
+    ];
+    
+    // Análise dos padrões
+    const contemMecanico = padroesMecanicos.some(padrao => motivoLower.includes(padrao));
+    const contemFinanceiro = padroesFinanceiros.some(padrao => motivoLower.includes(padrao));
+    const contemMudanca = padroesMudanca.some(padrao => motivoLower.includes(padrao));
+    const contemFurto = padroesFurto.some(padrao => motivoLower.includes(padrao));
+    const contemDesistencia = padroesDesistencia.some(padrao => motivoLower.includes(padrao));
+    
+    // Reclassificação baseada na análise
+    if (contemFurto) return 'Furto/Roubo/Acidente';
+    if (contemFinanceiro) return 'Inadimplência/Financeiro';
+    if (contemMecanico) return 'Problemas Mecânicos/Manutenção';
+    if (contemMudanca) return 'Mudança de Cidade/Pessoal';
+    if (contemDesistencia) return 'Desistência/Não Adaptação';
+    
+    // Se não encontrar padrão específico, manter a causa atual ou usar uma genérica
+    if (causaAtual && causaAtual.trim()) return causaAtual;
+    return 'Outros/Diversos';
+  };
+
+  // Função para aplicar reclassificação em lote
+  const handleReclassificarCausas = async () => {
+    if (!window.confirm('🤖 Deseja reclassificar automaticamente as causas baseado na análise inteligente dos motivos?\n\nEsta ação irá:\n• Analisar todos os motivos\n• Reclassificar causas inadequadas\n• Atualizar os dados no Firebase')) {
+      return;
+    }
+
+    setIsLoading(true);
+    console.log('🤖 Iniciando reclassificação inteligente...');
+    
     try {
-      const dataToExport = filteredDistratos.length > 0 ? filteredDistratos : distratosData;
-      
-      if (dataToExport.length === 0) {
-        toast({ title: "Aviso", description: "Não há dados para exportar.", variant: "destructive" });
+      const distratosReclassificados = distratosData.map(distrato => {
+        const novaCausa = reclassificarCausas(distrato.motivo || '', distrato.causa || '');
+        const mudou = novaCausa !== distrato.causa;
+        
+        if (mudou) {
+          console.log(`🔄 ${distrato.placa}: "${distrato.causa}" → "${novaCausa}"`);
+        }
+        
+        return {
+          ...distrato,
+          causa: novaCausa
+        };
+      });
+
+      const mudancas = distratosReclassificados.filter(d => {
+        const original = distratosData.find(orig => orig.id === d.id);
+        return original && original.causa !== d.causa;
+      }).length;
+
+      if (mudancas === 0) {
+        toast({ 
+          title: "🤖 Análise Concluída", 
+          description: "Nenhuma reclassificação necessária. As causas já estão adequadas!",
+        });
+        setIsLoading(false);
         return;
       }
 
-      const headers = ['placa', 'franqueado', 'inicio_ctt', 'fim_ctt', 'motivo', 'causa'];
-      
-      const csvContent = [
-        headers.join(','),
-        ...dataToExport.map(item => 
-          headers.map(header => {
-            const value = (item as any)[header] || '';
-            return value.toString().includes(',') || value.toString().includes('"') 
-              ? `"${value.toString().replace(/"/g, '""')}"` 
-              : value;
-          }).join(',')
-        )
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      
-      if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const fileName = `distratos_locacoes_${dateStr}.csv`;
-        
-        link.setAttribute('download', fileName);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({ 
-          title: "Sucesso!", 
-          description: `${dataToExport.length} registros exportados para ${fileName}`,
-        });
+      // Atualizar no Firebase
+      for (const distrato of distratosReclassificados) {
+        if (distrato.id) {
+          const original = distratosData.find(d => d.id === distrato.id);
+          if (original && original.causa !== distrato.causa) {
+            await updateDistratoInDB(distrato.id, { causa: distrato.causa });
+          }
+        }
       }
+
+      toast({ 
+        title: "🤖 Reclassificação Concluída!", 
+        description: `${mudancas} causas foram reclassificadas automaticamente com base na análise dos motivos.`,
+      });
+
+      console.log(`✅ Reclassificação concluída: ${mudancas} alterações`);
+      
     } catch (error: any) {
-      console.error('Erro na exportação:', error);
+      console.error('Erro na reclassificação:', error);
       toast({ 
         title: "Erro", 
-        description: "Erro ao exportar dados.", 
+        description: error.message || "Erro ao reclassificar causas.", 
         variant: "destructive" 
       });
     }
+    
+    setIsLoading(false);
   };
 
+  // Função robusta para parsing de CSV
+  const parseCSVLine = (line: string, separator: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+    
+    while (i < line.length) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Aspas escapadas
+          current += '"';
+          i += 2;
+        } else {
+          // Alternar estado das aspas
+          inQuotes = !inQuotes;
+          i++;
+        }
+      } else if (char === separator && !inQuotes) {
+        // Separador fora de aspas
+        result.push(current.trim());
+        current = '';
+        i++;
+      } else {
+        current += char;
+        i++;
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
+  };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -387,92 +388,143 @@ export default function DistratosLocacoesPage() {
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
       
+      console.log(`📊 Total de linhas no arquivo (incluindo header): ${lines.length}`);
+      
       if (lines.length < 2) {
         toast({ title: "Erro", description: "Arquivo CSV vazio ou inválido.", variant: "destructive" });
         return;
       }
 
-      // Detectar separador (vírgula ou ponto e vírgula)
+      // Detectar separador mais inteligentemente
       const firstLine = lines[0];
-      const separator = firstLine.includes(';') ? ';' : ',';
+      const semicolonCount = (firstLine.match(/;/g) || []).length;
+      const commaCount = (firstLine.match(/,/g) || []).length;
+      const separator = semicolonCount > commaCount ? ';' : ',';
       
-      const headers = firstLine.split(separator).map(h => h.toLowerCase().trim());
+      console.log(`🔍 Análise de separadores: vírgulas=${commaCount}, pontos-vírgula=${semicolonCount}`);
+      console.log(`🎯 Separador escolhido: ${separator === ';' ? 'ponto e vírgula' : 'vírgula'}`);
       
-      // Debug - mostrar headers encontrados
-      console.log('Headers encontrados:', headers);
+      // Parse robusto do header
+      const headers = parseCSVLine(firstLine, separator).map(h => h.toLowerCase().trim().replace(/"/g, ''));
       
-      // Mapeamento mais flexível
-      const headerMap = new Map([
-        ['placa', 'placa'],
-        ['franqueado', 'franqueado'],
-        ['inicio_ctt', 'inicio_ctt'],
-        ['inicio ctt', 'inicio_ctt'],
-        ['fim_ctt', 'fim_ctt'], 
-        ['fim ctt', 'fim_ctt'],
-        ['motivo', 'motivo'],
-        ['causa', 'causa']
-      ]);
+      console.log('📋 Headers encontrados:', headers);
+      console.log(`📏 Número de colunas esperado: ${headers.length}`);
       
-      // Verificar se encontrou pelo menos placa, franqueado, motivo e causa
+      // Mapeamento mais flexível com variações comuns
+      const headerMapping: { [key: string]: string } = {
+        'placa': 'placa',
+        'franqueado': 'franqueado',
+        'franquiado': 'franqueado', // typo comum
+        'inicio_ctt': 'inicio_ctt',
+        'inicio ctt': 'inicio_ctt',
+        'inicio': 'inicio_ctt',
+        'data inicio': 'inicio_ctt',
+        'fim_ctt': 'fim_ctt',
+        'fim ctt': 'fim_ctt',
+        'fim': 'fim_ctt',
+        'data fim': 'fim_ctt',
+        'motivo': 'motivo',
+        'causa': 'causa',
+        'motivo distrato': 'causa', // fallback
+        'observacao': 'motivo', // fallback
+        'observações': 'motivo'
+      };
+      
+      // Verificar campos obrigatórios de forma mais flexível
       const requiredFields = ['placa', 'franqueado', 'motivo', 'causa'];
-      const foundRequired = requiredFields.filter(field => 
-        headers.some(h => headerMap.has(h) && headerMap.get(h) === field)
-      );
+      const mappedHeaders = headers.map(h => headerMapping[h] || h);
+      const foundRequired = requiredFields.filter(field => mappedHeaders.includes(field));
+      
+      console.log('✅ Campos mapeados:', mappedHeaders.filter(h => requiredFields.includes(h)));
       
       if (foundRequired.length < requiredFields.length) {
         const missing = requiredFields.filter(f => !foundRequired.includes(f));
-        toast({ title: "Erro", description: `Headers obrigatórios não encontrados: ${missing.join(', ')}. Encontrados: ${headers.join(', ')}`, variant: "destructive" });
+        console.error('❌ Campos obrigatórios faltando:', missing);
+        toast({ 
+          title: "Erro", 
+          description: `Headers obrigatórios não encontrados: ${missing.join(', ')}. Verifique se o arquivo tem as colunas: placa, franqueado, motivo, causa`,
+          variant: "destructive" 
+        });
         return;
       }
 
       const distratosData: Omit<DistratoData, 'id'>[] = [];
-      
-      // Criar mapeamento de headers
-      const headerMapping: { [key: string]: string } = {
-        'placa': 'placa',
-        'franqueado': 'franqueado', 
-        'inicio_ctt': 'inicio_ctt',
-        'inicio ctt': 'inicio_ctt',
-        'fim_ctt': 'fim_ctt',
-        'fim ctt': 'fim_ctt',
-        'motivo': 'motivo',
-        'causa': 'causa'
-      };
+      let processedLines = 0;
+      let skippedColumnCount = 0;
+      let skippedValidation = 0;
+      let flexibleMatches = 0;
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(separator).map(v => v.trim());
-        if (values.length === headers.length) {
-          const distratoObj: any = {};
+        processedLines++;
+        const values = parseCSVLine(lines[i], separator);
+        
+        // Tentar diferentes estratégias se o número de colunas não bater
+        let finalValues = values;
+        
+        if (values.length !== headers.length) {
+          console.warn(`⚠️ Linha ${i + 1}: ${values.length} colunas, esperado ${headers.length}`);
           
-          headers.forEach((header, index) => {
-            // Só adicionar campos com nomes válidos (não vazios)
-            if (header && header.trim()) {
-              const mappedField = headerMapping[header] || header;
-              const value = values[index] || '';
-              
-              // Só adicionar se o campo mapeado também não for vazio
-              if (mappedField && mappedField.trim()) {
-                distratoObj[mappedField] = value;
-              }
-            }
-          });
+          // Estratégia 1: Se tem menos colunas, preencher com vazios
+          if (values.length < headers.length) {
+            finalValues = [...values, ...Array(headers.length - values.length).fill('')];
+            flexibleMatches++;
+            console.log(`🔧 Linha ${i + 1}: Preenchida com campos vazios`);
+          }
+          // Estratégia 2: Se tem mais colunas, truncar
+          else if (values.length > headers.length) {
+            finalValues = values.slice(0, headers.length);
+            flexibleMatches++;
+            console.log(`🔧 Linha ${i + 1}: Truncada para ${headers.length} colunas`);
+          }
           
-          // Garantir que tenha os campos básicos com valores válidos
-          const validDistrato = {
-            placa: distratoObj.placa || '',
-            franqueado: distratoObj.franqueado || '',
-            inicio_ctt: distratoObj.inicio_ctt || '',
-            fim_ctt: distratoObj.fim_ctt || '',
-            motivo: distratoObj.motivo || '',
-            causa: distratoObj.causa || ''
-          };
-          
-          // Só adicionar se tiver pelo menos os campos obrigatórios preenchidos
-          if (validDistrato.placa && validDistrato.franqueado && validDistrato.motivo && validDistrato.causa) {
-            distratosData.push(validDistrato);
+          // Se ainda não conseguir ajustar, pular
+          if (finalValues.length !== headers.length) {
+            skippedColumnCount++;
+            continue;
           }
         }
+        
+        const distratoObj: any = {};
+        
+        headers.forEach((header, index) => {
+          const mappedField = headerMapping[header] || header;
+          const value = (finalValues[index] || '').replace(/"/g, '').trim();
+          
+          if (mappedField && requiredFields.includes(mappedField)) {
+            distratoObj[mappedField] = value;
+          }
+        });
+        
+        // Garantir estrutura básica
+        const validDistrato = {
+          placa: distratoObj.placa || '',
+          franqueado: distratoObj.franqueado || '',
+          inicio_ctt: distratoObj.inicio_ctt || '',
+          fim_ctt: distratoObj.fim_ctt || '',
+          motivo: distratoObj.motivo || '',
+          causa: distratoObj.causa || ''
+        };
+        
+        // Validação mais permissiva - só precisa de placa E (franqueado OU motivo OU causa)
+        const hasPlaca = !!validDistrato.placa;
+        const hasAtLeastOneOther = !!(validDistrato.franqueado || validDistrato.motivo || validDistrato.causa);
+        
+        if (!hasPlaca || !hasAtLeastOneOther) {
+          console.warn(`⚠️ Linha ${i + 1} rejeitada - dados insuficientes`);
+          skippedValidation++;
+          continue;
+        }
+        
+        distratosData.push(validDistrato);
       }
+      
+      // LOG: Resumo detalhado
+      console.log(`📈 RESUMO DA IMPORTAÇÃO:`);
+      console.log(`   • Linhas processadas: ${processedLines}`);
+      console.log(`   • Ajustes flexíveis aplicados: ${flexibleMatches}`);
+      console.log(`   • Rejeitadas por estrutura: ${skippedColumnCount}`);
+      console.log(`   • Rejeitadas por validação: ${skippedValidation}`);
+      console.log(`   • ✅ Aceitas para importação: ${distratosData.length}`);
       
       if (distratosData.length === 0) {
         toast({ title: "Erro", description: "Nenhum dado válido encontrado no arquivo.", variant: "destructive" });
@@ -481,9 +533,27 @@ export default function DistratosLocacoesPage() {
 
       await importDistratosBatch(distratosData);
       
+      // Força uma atualização dos dados após importação
+      console.log("🔄 Forçando atualização dos dados...");
+      setTimeout(() => {
+        const unsubscribe = subscribeToDistratos((dataFromDB) => {
+          console.log(`📊 Dados atualizados: ${dataFromDB.length} distratos`);
+          setDistratosData(Array.isArray(dataFromDB) ? dataFromDB : []);
+          setIsLoading(false);
+        });
+        
+        // Limpar o listener após 5 segundos para não duplicar
+        setTimeout(() => unsubscribe(), 5000);
+      }, 1000);
+      
+      const rejectedTotal = skippedColumnCount + skippedValidation;
+      const successMessage = rejectedTotal > 0 
+        ? `${distratosData.length} distratos importados (${rejectedTotal} linhas rejeitadas, ${flexibleMatches} ajustadas)`
+        : `${distratosData.length} distratos importados com sucesso!`;
+      
       toast({ 
         title: "Sucesso!", 
-        description: `${distratosData.length} distratos importados com sucesso!`,
+        description: successMessage,
       });
 
       if (fileInputRef.current) {
@@ -499,6 +569,7 @@ export default function DistratosLocacoesPage() {
       });
     }
   };
+
 
 
   const handleClearAllData = async () => {
@@ -544,11 +615,11 @@ export default function DistratosLocacoesPage() {
         <Button variant="outline" onClick={handleImportClick}>
           <Upload className="mr-2 h-4 w-4" /> Importar CSV
         </Button>
+        <Button variant="outline" onClick={handleReclassificarCausas} className="bg-purple-50 hover:bg-purple-100 border-purple-300">
+          <Brain className="mr-2 h-4 w-4" /> Reclassificar IA
+        </Button>
         <Button variant="outline" onClick={handleClearAllData} className="bg-red-50 hover:bg-red-100 border-red-300">
           <X className="mr-2 h-4 w-4" /> Limpar Todos
-        </Button>
-        <Button variant="outline" onClick={handleExportData} className="bg-blue-50 hover:bg-blue-100 border-blue-300">
-          <Download className="mr-2 h-4 w-4" /> Exportar CSV
         </Button>
         <input type="file" ref={fileInputRef} accept=".csv" onChange={handleFileChange} hidden />
         <Button onClick={handleOpenAddModal}>
@@ -599,11 +670,146 @@ export default function DistratosLocacoesPage() {
     <DashboardLayout>
       <PageHeader 
         title="Distratos Locações" 
-        description={`Visualize e gerencie os distratos de locação - ${selectedYear}`}
+        description=""
         icon={AlertTriangle}
         iconContainerClassName="bg-red-600"
         actions={pageActions} 
       />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-red-100 rounded-lg mr-4">
+                <AlertTriangle className="h-6 w-6 text-red-700" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total de Distratos</p>
+                <p className="text-2xl font-bold text-red-700">{filteredDistratosDataByYear.length}</p>
+                <p className="text-xs text-gray-500">Contratos encerrados</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-100 rounded-lg mr-4">
+                <CalendarIcon className="h-6 w-6 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Mesmo mês do início</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {filteredDistratosDataByYear.filter(d => {
+                    try {
+                      const [diaI, mesI, anoI] = (d.inicio_ctt || '').split('/');
+                      const [diaF, mesF, anoF] = (d.fim_ctt || '').split('/');
+                      if (!diaI || !mesI || !anoI || !diaF || !mesF || !anoF) return false;
+                      return mesI === mesF && anoI === anoF;
+                    } catch { return false; }
+                  }).length}
+                  <span className="text-sm font-normal">
+                    ({filteredDistratosDataByYear.length > 0 ? Math.round((filteredDistratosDataByYear.filter(d => {
+                      try {
+                        const [diaI, mesI, anoI] = (d.inicio_ctt || '').split('/');
+                        const [diaF, mesF, anoF] = (d.fim_ctt || '').split('/');
+                        if (!diaI || !mesI || !anoI || !diaF || !mesF || !anoF) return false;
+                        return mesI === mesF && anoI === anoF;
+                      } catch { return false; }
+                    }).length / filteredDistratosDataByYear.length) * 100) : 0}%)
+                  </span>
+                </p>
+                <p className="text-xs text-gray-500">Início e fim no mesmo mês</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg mr-4">
+                <CalendarIcon className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Últimos 30 dias</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {(() => {
+                    const now = new Date();
+                    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    return filteredDistratosDataByYear.filter(d => {
+                      try {
+                        const [dia, mes, ano] = (d.fim_ctt || '').split('/');
+                        if (!dia || !mes || !ano) return false;
+                        const fimDate = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+                        return fimDate >= thirtyDaysAgo && fimDate <= now;
+                      } catch { return false; }
+                    }).length;
+                  })()}
+                </p>
+                <p className="text-xs text-gray-500">vs 30 dias anteriores</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg mr-4">
+                <TrendingUpIcon className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Tempo médio até distrato</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {(() => {
+                    const durations: number[] = [];
+                    filteredDistratosDataByYear.forEach(d => {
+                      try {
+                        const [diaI, mesI, anoI] = (d.inicio_ctt || '').split('/');
+                        const [diaF, mesF, anoF] = (d.fim_ctt || '').split('/');
+                        if (!diaI || !mesI || !anoI || !diaF || !mesF || !anoF) return;
+                        const inicioDate = new Date(parseInt(anoI), parseInt(mesI) - 1, parseInt(diaI));
+                        const fimDate = new Date(parseInt(anoF), parseInt(mesF) - 1, parseInt(diaF));
+                        if (fimDate >= inicioDate) {
+                          const diffDays = Math.round((fimDate.getTime() - inicioDate.getTime()) / (1000 * 60 * 60 * 24));
+                          durations.push(diffDays);
+                        }
+                      } catch {}
+                    });
+                    const avgDays = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
+                    return `${avgDays} dias`;
+                  })()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Mediana {(() => {
+                    const durations: number[] = [];
+                    filteredDistratosDataByYear.forEach(d => {
+                      try {
+                        const [diaI, mesI, anoI] = (d.inicio_ctt || '').split('/');
+                        const [diaF, mesF, anoF] = (d.fim_ctt || '').split('/');
+                        if (!diaI || !mesI || !anoI || !diaF || !mesF || !anoF) return;
+                        const inicioDate = new Date(parseInt(anoI), parseInt(mesI) - 1, parseInt(diaI));
+                        const fimDate = new Date(parseInt(anoF), parseInt(mesF) - 1, parseInt(diaF));
+                        if (fimDate >= inicioDate) {
+                          const diffDays = Math.round((fimDate.getTime() - inicioDate.getTime()) / (1000 * 60 * 60 * 24));
+                          durations.push(diffDays);
+                        }
+                      } catch {}
+                    });
+                    if (durations.length === 0) return '0 dias';
+                    durations.sort((a, b) => a - b);
+                    const median = durations[Math.floor(durations.length / 2)];
+                    return `${median} dias`;
+                  })()}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Tabs defaultValue="graficos" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -627,48 +833,7 @@ export default function DistratosLocacoesPage() {
         </TabsContent>
         
         <TabsContent value="graficos" className="mt-4 space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <KpiCard
-              title="Total de Distratos"
-              value={kpiExtras.total.toString()}
-              icon={AlertTriangle}
-              description="Contratos encerrados"
-              color="text-red-700"
-              iconBgColor="bg-red-50"
-              iconColor="text-red-600"
-            />
-            <KpiCard
-              title="Mesmo mês do início"
-              value={`${kpiExtras.sameMonthCount} (${kpiExtras.sameMonthPct}%)`}
-              icon={Calendar}
-              description="Início e fim no mesmo mês"
-              color="text-orange-600"
-              iconBgColor="bg-orange-50"
-              iconColor="text-orange-600"
-            />
-            <KpiCard
-              title="Últimos 30 dias"
-              value={`${kpiExtras.last30}`}
-              icon={Calendar}
-              description={`${kpiExtras.delta >= 0 ? '+' : ''}${kpiExtras.delta}% vs 30 dias anteriores`}
-              color="text-blue-700"
-              iconBgColor="bg-blue-50"
-              iconColor="text-blue-600"
-            />
-            <KpiCard
-              title="Tempo médio até distrato"
-              value={`${kpiExtras.avg} dias`}
-              icon={TrendingUp}
-              description={`Mediana ${kpiExtras.median} dias`}
-              color="text-green-700"
-              iconBgColor="bg-green-50"
-              iconColor="text-green-600"
-            />
-          </div>
-          
-          {/* Removido: Gráfico de Pareto de Principais Causas */}
-
-          {/* Gráfico de Causas Agrupadas - Tela Inteira */}
+          {/* Gráfico 1: Causas Agrupadas por Categoria */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -682,7 +847,7 @@ export default function DistratosLocacoesPage() {
             </CardContent>
           </Card>
           
-          {/* Gráfico Mensal - Tela Inteira */}
+          {/* Gráfico 2: Distratos ao Longo do Tempo */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -695,53 +860,6 @@ export default function DistratosLocacoesPage() {
               <RentalPeriodChart data={filteredDistratosDataByYear} />
             </CardContent>
           </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Principais Franqueados
-                </CardTitle>
-                <CardDescription>Top 5 franqueados com mais distratos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {topFranqueados.slice(0, 5).map((item) => (
-                    <div key={item.franqueado} className="flex justify-between items-center p-2 rounded bg-gray-50">
-                      <span className="text-sm">{item.franqueado}</span>
-                      <span className="font-semibold text-orange-600">{item.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Tendências Semanais
-                </CardTitle>
-                <CardDescription>Padrões semanais de distratos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">Análise de tendências semanais</p>
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div className="text-center p-3 bg-blue-50 rounded">
-                      <div className="text-lg font-semibold text-blue-600">{Math.round(distratosData.length / 52)}</div>
-                      <div className="text-xs text-blue-500">Média/Semana</div>
-                    </div>
-                    <div className="text-center p-3 bg-green-50 rounded">
-                      <div className="text-lg font-semibold text-green-600">{distratosData.length}</div>
-                      <div className="text-xs text-green-500">Total Anual</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
       </Tabs>
 
