@@ -26,9 +26,10 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
   // Inicializar contadores para todos os meses
   const monthlyData = Array(12).fill(null).map((_, index) => ({
     month: monthNames[index],
-    curtaDuracao: 0, // <= 30 dias
-    longaDuracao: 0, // > 30 dias
-    total: 0
+    curtaDuracao: 0, // será usado para "Dentro do mês"
+    longaDuracao: 0, // será o restante (Total - Dentro do mês)
+    total: 0,
+    sameMonthCount: 0,
   }));
   
   // Função para calcular diferença em dias
@@ -61,23 +62,28 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
   data.forEach(distrato => {
     try {
       if (distrato.fim_ctt && distrato.fim_ctt.includes('/')) {
-        const [, mes] = distrato.fim_ctt.split('/');
-        const monthIndex = parseInt(mes) - 1; // Converter para índice (0-11)
+        const [, mesFim, anoFim] = distrato.fim_ctt.split('/');
+        const monthIndex = parseInt(mesFim) - 1; // Converter para índice (0-11)
         
         if (monthIndex >= 0 && monthIndex < 12) {
-          const diasLocacao = calcularDiasLocacao(distrato.inicio_ctt, distrato.fim_ctt);
-          
-          if (diasLocacao !== null) {
-            if (diasLocacao <= 30) {
-              monthlyData[monthIndex].curtaDuracao++;
-            } else {
-              monthlyData[monthIndex].longaDuracao++;
+          // Total do mês
+          monthlyData[monthIndex].total++;
+
+          // Dentro do mesmo mês (início e fim no mesmo mês/ano)
+          if (
+            distrato.inicio_ctt &&
+            distrato.fim_ctt &&
+            distrato.inicio_ctt.includes('/') &&
+            distrato.fim_ctt.includes('/')
+          ) {
+            const [, mesIni, anoIni] = distrato.inicio_ctt.split('/');
+            if (
+              mesIni && anoIni &&
+              parseInt(mesIni) === parseInt(mesFim) &&
+              parseInt(anoIni) === parseInt(anoFim)
+            ) {
+              monthlyData[monthIndex].sameMonthCount++;
             }
-            monthlyData[monthIndex].total++;
-          } else {
-            // Se não conseguir calcular período, conta como longa duração (padrão conservador)
-            monthlyData[monthIndex].longaDuracao++;
-            monthlyData[monthIndex].total++;
           }
         }
       }
@@ -86,31 +92,35 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
     }
   });
 
+  // Ajustar barras: verde = dentro do mês; azul = restante
+  monthlyData.forEach((m) => {
+    m.curtaDuracao = m.sameMonthCount;
+    m.longaDuracao = Math.max(0, m.total - m.sameMonthCount);
+  });
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const curtaDuracao = payload.find((p: any) => p.dataKey === 'curtaDuracao')?.value || 0;
       const longaDuracao = payload.find((p: any) => p.dataKey === 'longaDuracao')?.value || 0;
-      const total = payload.find((p: any) => p.dataKey === 'total')?.value || 0;
+      const total = (curtaDuracao + longaDuracao) || (payload.find((p: any) => p.dataKey === 'total')?.value || 0);
       
       return (
         <div className="bg-white p-3 border border-gray-300 rounded shadow-lg">
           <p className="font-semibold text-gray-800">{`${label}`}</p>
-          <p style={{ color: '#28A745' }}>{`Curta Duração: ${curtaDuracao}`}</p>
+          <p style={{ color: '#28A745' }}>{`Dentro do mês: ${curtaDuracao}`}</p>
           <p style={{ color: '#007BFF' }}>{`Longa Duração: ${longaDuracao}`}</p>
-          <div className="border-t pt-1 mt-1">
-            <p className="font-semibold" style={{ color: '#3366FF' }}>{`Total: ${total}`}</p>
-          </div>
+          <div className="border-t pt-1 mt-1" />
+          <p className="font-semibold" style={{ color: '#3366FF' }}>{`Total: ${total}`}</p>
         </div>
       );
     }
     return null;
   };
 
-  // Componente para rótulos personalizados nas barras
+  // Componente para rótulos personalizados nas barras (usa o value do segmento)
   const renderCustomLabel = (props: any) => {
     const { x, y, width, height, value } = props;
-    if (value === 0) return null;
-
+    if (!value) return null;
     return (
       <text
         x={x + width / 2}
@@ -125,6 +135,8 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
       </text>
     );
   };
+
+  // (Opcional) Label de topo não necessário, números já aparecem na linha de total
 
   // Componente personalizado para os dots da linha
   const CustomDot = (props: any) => {
@@ -148,6 +160,20 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
     );
   };
 
+  // Dot laranja para "mesmo mês" com rótulo
+  const SameMonthDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (!payload || !payload.sameMonthCount) return null;
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={4} fill="#f59e0b" stroke="#ffffff" strokeWidth={2} />
+        <text x={cx} y={cy - 10} textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="600">
+          {payload.sameMonthCount}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <ResponsiveContainer width="100%" height={400}>
       <ComposedChart
@@ -166,6 +192,7 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
           tickLine={false}
           tick={{ fontSize: 12, fill: '#666' }}
         />
+        {/* Eixo único para volume */}
         <Tooltip content={<CustomTooltip />} />
         <Legend 
           verticalAlign="top" 
@@ -177,15 +204,15 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
           }}
         />
         
-        {/* Barra para ≤ 30 dias - Verde (barra superior) */}
+        {/* Barra verde = Dentro do mês (início=fim) */}
         <Bar 
           dataKey="curtaDuracao" 
           stackId="a"
           fill="#28A745"
-          name="Curta Duração"
+          name="Dentro do mês"
           radius={[0, 0, 0, 0]}
         >
-          <LabelList content={renderCustomLabel} />
+          <LabelList dataKey="curtaDuracao" position="center" style={{ fill: '#ffffff', fontSize: '12px', fontWeight: 'bold' }} />
         </Bar>
         
         {/* Barra para > 30 dias - Azul (barra inferior) */}
@@ -196,10 +223,10 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
           name="Longa Duração"
           radius={[4, 4, 0, 0]}
         >
-          <LabelList content={renderCustomLabel} />
+          <LabelList dataKey="longaDuracao" position="center" style={{ fill: '#ffffff', fontSize: '12px', fontWeight: 'bold' }} />
         </Bar>
-        
-        {/* Linha do total - Azul da linha e dos pontos */}
+
+        {/* Linha do total - Azul com rótulo */}
         <Line
           type="monotone"
           dataKey="total"
@@ -208,6 +235,8 @@ export const RentalPeriodChart: React.FC<RentalPeriodChartProps> = ({ data }) =>
           dot={<CustomDot />}
           name="Total"
         />
+
+        {/* Removida a linha de percentual; agora mostramos apenas o volume dentro da barra */}
       </ComposedChart>
     </ResponsiveContainer>
   );

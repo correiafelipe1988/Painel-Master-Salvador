@@ -54,6 +54,7 @@ let db: Firestore;
 let auth: Auth;
 
 try {
+  console.debug('[Firebase] Initializing app with projectId:', (firebaseConfig as any)?.projectId);
   if (getApps().length) {
     app = getApp();
   } else {

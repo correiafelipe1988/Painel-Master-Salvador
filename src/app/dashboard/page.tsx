@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import React from 'react';
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -347,17 +348,32 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setIsLoading(true);
-    const unsubMotorcycles = subscribeToMotorcycles((data) => {
-      const motorcyclesData = Array.isArray(data) ? data : [];
-      setAllMotorcycles(motorcyclesData);
-      setMotorcycleReport(processMotorcycleData(motorcyclesData, currentYear));
-      setDailyRentalData(processDailyMotorcycleData(motorcyclesData));
-      setTodayData(processTodayData(motorcyclesData));
-      setMonthData(processMonthData(motorcyclesData, selectedMonth, selectedYear));
+    console.debug('[Dashboard] Subscribing motorcycles', { selectedMonth, selectedYear });
+    let unsubMotorcycles = () => {};
+    try {
+      unsubMotorcycles = subscribeToMotorcycles((data) => {
+        try {
+          const motorcyclesData = Array.isArray(data) ? data : [];
+          console.debug('[Dashboard] Received motorcycles:', motorcyclesData.length);
+          setAllMotorcycles(motorcyclesData);
+          const report = processMotorcycleData(motorcyclesData, currentYear);
+          setMotorcycleReport(report);
+          setDailyRentalData(processDailyMotorcycleData(motorcyclesData));
+          setTodayData(processTodayData(motorcyclesData));
+          const month = processMonthData(motorcyclesData, selectedMonth, selectedYear);
+          setMonthData(month);
+          setIsLoading(false);
+        } catch (err) {
+          console.error('[Dashboard] Error processing data:', err);
+          setIsLoading(false);
+        }
+      });
+    } catch (err) {
+      console.error('[Dashboard] Error subscribing motorcycles:', err);
       setIsLoading(false);
-    });
+    }
     return () => {
-      unsubMotorcycles();
+      try { unsubMotorcycles(); } catch {}
     };
   }, [selectedMonth, selectedYear]);
   
@@ -376,6 +392,8 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout>
+        {/* ErrorBoundary simples para capturar falhas de renderização */}
+        <PageErrorBoundary>
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">
             <BarChart3 className="h-8 w-8 text-primary" />
@@ -601,7 +619,15 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+        </PageErrorBoundary>
       </DashboardLayout>
     </ProtectedRoute>
   );
+}
+
+class PageErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }>{
+  constructor(props: any) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: any, errorInfo: any) { console.error('[Dashboard] Render error:', error, errorInfo); }
+  render() { if (this.state.hasError) { return <div className="p-4 text-red-600">Erro ao renderizar o dashboard. Verifique o console do navegador para detalhes.</div>; } return this.props.children as any; }
 }
