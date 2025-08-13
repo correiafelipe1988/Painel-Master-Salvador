@@ -14,7 +14,6 @@ import {
   deleteDistrato as deleteDistratoFromDB,
   updateDistrato as updateDistratoInDB,
   importDistratosBatch,
-  deleteAllDistratosBatch,
   DistratoData,
 } from "@/lib/firebase/distratoService";
 import {
@@ -44,6 +43,22 @@ const years = Array.from({ length: 3 }, (_, i) => ({
   label: (currentYear - i).toString(),
 }));
 
+const months = [
+  { value: "all", label: "Todos os meses" },
+  { value: "01", label: "Janeiro" },
+  { value: "02", label: "Fevereiro" },
+  { value: "03", label: "Março" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Maio" },
+  { value: "06", label: "Junho" },
+  { value: "07", label: "Julho" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
 
 export default function DistratosLocacoesPage() {
   const { toast } = useToast();
@@ -52,6 +67,7 @@ export default function DistratosLocacoesPage() {
   const [distratosData, setDistratosData] = useState<DistratoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingDistrato, setEditingDistrato] = useState<DistratoData | null>(null);
@@ -102,22 +118,42 @@ export default function DistratosLocacoesPage() {
     return Array.from(causaSet);
   }, [distratosData]);
 
-  // Filtrar dados por ano selecionado
+  // Filtrar dados por ano e mês selecionados
   const filteredDistratosDataByYear = useMemo(() => {
-    if (!selectedYear || selectedYear === "all") return distratosData;
+    let filtered = distratosData;
     
-    return distratosData.filter(distrato => {
-      try {
-        if (distrato.fim_ctt && distrato.fim_ctt.includes('/')) {
-          const [, , ano] = distrato.fim_ctt.split('/');
-          return parseInt(ano) === parseInt(selectedYear);
+    // Filtrar por ano
+    if (selectedYear && selectedYear !== "all") {
+      filtered = filtered.filter(distrato => {
+        try {
+          if (distrato.fim_ctt && distrato.fim_ctt.includes('/')) {
+            const [, , ano] = distrato.fim_ctt.split('/');
+            return parseInt(ano) === parseInt(selectedYear);
+          }
+          return false;
+        } catch {
+          return false;
         }
-        return false;
-      } catch {
-        return false;
-      }
-    });
-  }, [distratosData, selectedYear]);
+      });
+    }
+    
+    // Filtrar por mês
+    if (selectedMonth && selectedMonth !== "all") {
+      filtered = filtered.filter(distrato => {
+        try {
+          if (distrato.fim_ctt && distrato.fim_ctt.includes('/')) {
+            const [, mes] = distrato.fim_ctt.split('/');
+            return mes.padStart(2, '0') === selectedMonth;
+          }
+          return false;
+        } catch {
+          return false;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [distratosData, selectedYear, selectedMonth]);
 
   const filteredDistratos = useMemo(() => {
     return filteredDistratosDataByYear.filter(d => {
@@ -573,30 +609,6 @@ export default function DistratosLocacoesPage() {
 
 
 
-  const handleClearAllData = async () => {
-    if (!window.confirm("⚠️ ATENÇÃO: Esta ação vai remover TODOS os distratos. Tem certeza?")) {
-      return;
-    }
-
-    try {
-      toast({ title: "Removendo...", description: "Limpando TODOS os dados de uma vez..." });
-      
-      // Usar batch delete - remove tudo de uma vez
-      const result = await deleteAllDistratosBatch();
-      
-      toast({ 
-        title: "✅ Sucesso!", 
-        description: `${result.count || 0} distratos removidos de uma só vez!`,
-      });
-    } catch (error: any) {
-      console.error('Erro ao limpar dados:', error);
-      toast({ 
-        title: "Erro", 
-        description: error.message || "Erro ao limpar dados.", 
-        variant: "destructive" 
-      });
-    }
-  };
   
   const pageActions = (
     <>
@@ -613,14 +625,23 @@ export default function DistratosLocacoesPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Mês" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map(month => (
+              <SelectItem key={month.value} value={month.value}>
+                {month.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button variant="outline" onClick={handleImportClick}>
           <Upload className="mr-2 h-4 w-4" /> Importar CSV
         </Button>
         <Button variant="outline" onClick={handleReclassificarCausas} className="bg-purple-50 hover:bg-purple-100 border-purple-300">
           <Brain className="mr-2 h-4 w-4" /> Reclassificar IA
-        </Button>
-        <Button variant="outline" onClick={handleClearAllData} className="bg-red-50 hover:bg-red-100 border-red-300">
-          <X className="mr-2 h-4 w-4" /> Limpar Todos
         </Button>
         <input type="file" ref={fileInputRef} accept=".csv" onChange={handleFileChange} hidden />
         <Button onClick={handleOpenAddModal}>
