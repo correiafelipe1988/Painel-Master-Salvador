@@ -128,8 +128,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       manutencao: 0,
       recolhida: 0,
       relocada: 0,
+      renegociado: 0,
       indisponivel_rastreador: 0,
       indisponivel_emplacamento: 0,
+      furto_roubo: 0,
     };
 
     representativeMotorcycles.forEach(moto => {
@@ -146,7 +148,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           return { ...item, count: totalUniqueMotorcycles };
         }
         if (item.label === "Alugadas") {
-          return { ...item, count: (counts['alugada'] || 0) + (counts['relocada'] || 0) };
+          return { ...item, count: (counts['alugada'] || 0) + (counts['relocada'] || 0) + (counts['renegociado'] || 0) };
         }
         return {
           ...item,

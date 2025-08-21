@@ -27,6 +27,7 @@ const statusOptions: { value: MotorcycleStatus | 'all'; label: string }[] = [
   { value: 'inadimplente', label: 'Inadimplente' },
   { value: 'recolhida', label: 'Recolhida' },
   { value: 'relocada', label: 'Relocada' },
+  { value: 'renegociado', label: 'Renegociado' },
   { value: 'manutencao', label: 'Manutenção' },
   { value: 'indisponivel_rastreador', label: 'Indisponível Rastreador' },
   { value: 'indisponivel_emplacamento', label: 'Indisponível Emplacamento' },

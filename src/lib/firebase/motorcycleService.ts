@@ -48,7 +48,7 @@ const fromFirestore = (docData: any): Omit<Motorcycle, 'id'> => {
     delete data.tempo_ocioso_dias; // Ensure it's not present
   }
 
-  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento', 'furto_roubo'];
+  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'renegociado', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento', 'furto_roubo'];
   if (data.status && !allowedStatus.includes(data.status)) {
     console.warn(`Invalid status "${data.status}" from Firestore for doc, defaulting to 'alugada'.`);
     data.status = 'alugada';
@@ -135,7 +135,7 @@ export async function deleteMotorcycle(id: string): Promise<void> {
 export async function importMotorcyclesBatch(motorcycles: Omit<Motorcycle, 'id'>[]): Promise<string[]> {
   const batch = writeBatch(db);
   const addedMotorcycleIds: string[] = [];
-  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento', 'furto_roubo'];
+  const allowedStatus: MotorcycleStatus[] = ['active', 'inadimplente', 'recolhida', 'relocada', 'renegociado', 'manutencao', 'alugada', 'indisponivel_rastreador', 'indisponivel_emplacamento', 'furto_roubo'];
 
   motorcycles.forEach((moto) => {
     let preProcessedMoto: Partial<Omit<Motorcycle, 'id'>> = { ...moto };
@@ -178,8 +178,8 @@ export async function updateMotorcycleStatus(id: string, status: MotorcycleStatu
     data_ultima_mov: todayStr
   };
   
-  // Se a moto está sendo marcada como alugada ou relocada, limpar os dias ociosos congelados
-  if (status === 'alugada' || status === 'relocada') {
+  // Se a moto está sendo marcada como alugada, relocada ou renegociada, limpar os dias ociosos congelados
+  if (status === 'alugada' || status === 'relocada' || status === 'renegociado') {
     updateData.contagemPausada = false;
     updateData.dias_ociosos_congelados = undefined; // Remove o valor congelado
   }
@@ -234,8 +234,8 @@ export function calculateCorrectIdleDays(motorcycles: Motorcycle[], currentMoto:
     return 'Pausado';
   }
 
-  // Para motos alugadas, relocadas, recolhidas ou indisponíveis, não mostrar dias ociosos
-  if (currentMoto.status === 'alugada' || currentMoto.status === 'relocada' || currentMoto.status === 'recolhida' ||
+  // Para motos alugadas, relocadas, renegociadas, recolhidas ou indisponíveis, não mostrar dias ociosos
+  if (currentMoto.status === 'alugada' || currentMoto.status === 'relocada' || currentMoto.status === 'renegociado' || currentMoto.status === 'recolhida' ||
       currentMoto.status === 'indisponivel_rastreador' || currentMoto.status === 'indisponivel_emplacamento') {
     return 'N/A';
   }
@@ -318,8 +318,8 @@ export function hasActiveIdleCount(motorcycles: Motorcycle[], currentMoto: Motor
     return false;
   }
 
-  // Para motos alugadas, relocadas, recolhidas ou indisponíveis, não há contagem ativa
-  if (currentMoto.status === 'alugada' || currentMoto.status === 'relocada' || currentMoto.status === 'recolhida' ||
+  // Para motos alugadas, relocadas, renegociadas, recolhidas ou indisponíveis, não há contagem ativa
+  if (currentMoto.status === 'alugada' || currentMoto.status === 'relocada' || currentMoto.status === 'renegociado' || currentMoto.status === 'recolhida' ||
       currentMoto.status === 'indisponivel_rastreador' || currentMoto.status === 'indisponivel_emplacamento') {
     return false;
   }
@@ -782,8 +782,8 @@ export async function updateWeeklyValuesForRentedMotorcycles(): Promise<void> {
       const motoData = fromFirestore(docSnapshot.data());
       const motoId = docSnapshot.id;
       
-      // Verificar se a moto tem status Alugada ou Relocada e se a placa está na lista de referência
-      if ((motoData.status === 'alugada' || motoData.status === 'relocada') &&
+      // Verificar se a moto tem status Alugada, Relocada ou Renegociada e se a placa está na lista de referência
+      if ((motoData.status === 'alugada' || motoData.status === 'relocada' || motoData.status === 'renegociado') &&
           motoData.placa &&
           weeklyValues[motoData.placa]) {
         

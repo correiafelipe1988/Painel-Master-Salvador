@@ -22,6 +22,7 @@ interface FranchiseeFleetStatus {
     active: number; // Disponível
     manutencao: number;
     relocada: number;
+    renegociado: number;
     recolhida: number;
     inadimplente: number;
     indisponivel_rastreador: number;
@@ -139,6 +140,7 @@ export default function FranqueadosPage() {
             alugada: 0,
             manutencao: 0,
             relocada: 0,
+            renegociado: 0,
             recolhida: 0,
             inadimplente: 0,
             indisponivel_rastreador: 0,
@@ -152,7 +154,7 @@ export default function FranqueadosPage() {
 
       const status = moto.status;
       console.log('Processando moto:', moto.placa, 'Status:', status, 'Franqueado:', frName);
-      if (status && (status === 'active' || status === 'alugada' || status === 'manutencao' || status === 'relocada' || status === 'recolhida' || status === 'inadimplente' || status === 'indisponivel_rastreador' || status === 'indisponivel_emplacamento' || status === 'furto_roubo')) {
+      if (status && (status === 'active' || status === 'alugada' || status === 'manutencao' || status === 'relocada' || status === 'renegociado' || status === 'recolhida' || status === 'inadimplente' || status === 'indisponivel_rastreador' || status === 'indisponivel_emplacamento' || status === 'furto_roubo')) {
         console.log('Status válido, incrementando contador para:', status);
         franchiseeStats[frName].counts[status]++;
       } else {
@@ -163,7 +165,7 @@ export default function FranqueadosPage() {
     });
 
     const dataForTable: FranchiseeFleetStatus[] = Object.entries(franchiseeStats).map(([name, stats]) => {
-      const totalLocadasCount = stats.counts.alugada + stats.counts.relocada;
+      const totalLocadasCount = stats.counts.alugada + stats.counts.relocada + stats.counts.renegociado;
       const percentLocadas = stats.totalGeral > 0 ? (totalLocadasCount / stats.totalGeral) * 100 : 0;
       const percentManutencao = stats.totalGeral > 0 ? (stats.counts.manutencao / stats.totalGeral) * 100 : 0;
       const percentDisponivel = stats.totalGeral > 0 ? (stats.counts.active / stats.totalGeral) * 100 : 0;
@@ -175,6 +177,7 @@ export default function FranqueadosPage() {
           active: stats.counts.active,
           manutencao: stats.counts.manutencao,
           relocada: stats.counts.relocada,
+          renegociado: stats.counts.renegociado,
           recolhida: stats.counts.recolhida,
           inadimplente: stats.counts.inadimplente,
           indisponivel_rastreador: stats.counts.indisponivel_rastreador,
@@ -363,8 +366,8 @@ export default function FranqueadosPage() {
                         <div className="space-y-3">
                           {/* Status Operacionais */}
                           
-                          {/* Alugada (soma de alugada + relocada) */}
-                          {(item.counts.alugada + item.counts.relocada) > 0 && (
+                          {/* Alugada (soma de alugada + relocada + renegociado) */}
+                          {(item.counts.alugada + item.counts.relocada + item.counts.renegociado) > 0 && (
                             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
                               <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-100 rounded-full">
@@ -376,9 +379,9 @@ export default function FranqueadosPage() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="text-2xl font-bold text-blue-600">{item.counts.alugada + item.counts.relocada}</div>
+                                <div className="text-2xl font-bold text-blue-600">{item.counts.alugada + item.counts.relocada + item.counts.renegociado}</div>
                                 <div className="text-sm font-medium text-blue-600">
-                                  {item.totalGeral > 0 ? (((item.counts.alugada + item.counts.relocada) / item.totalGeral) * 100).toFixed(0) : 0}%
+                                  {item.totalGeral > 0 ? (((item.counts.alugada + item.counts.relocada + item.counts.renegociado) / item.totalGeral) * 100).toFixed(0) : 0}%
                                 </div>
                               </div>
                             </div>

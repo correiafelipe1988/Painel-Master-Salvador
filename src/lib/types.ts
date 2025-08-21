@@ -1,4 +1,4 @@
-export type MotorcycleStatus = 'active' | 'alugada' | 'inadimplente' | 'manutencao' | 'recolhida' | 'relocada' | 'indisponivel_rastreador' | 'indisponivel_emplacamento' | 'furto_roubo';
+export type MotorcycleStatus = 'active' | 'alugada' | 'inadimplente' | 'manutencao' | 'recolhida' | 'relocada' | 'renegociado' | 'indisponivel_rastreador' | 'indisponivel_emplacamento' | 'furto_roubo';
 export type MotorcycleType = 'nova' | 'usada';
 
 export interface Motorcycle {
